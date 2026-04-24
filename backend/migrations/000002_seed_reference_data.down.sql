@@ -1,12 +1,1 @@
-DELETE FROM reference_data WHERE type IN (
-  'person_status',
-  'collaborator_status',
-  'method',
-  'sector',
-  'location',
-  'task',
-  'expense_category',
-  'ledger_currency',
-  'ledger_cd_flag',
-  'period_code'
-);
+DELETE FROM reference_data WHERE id IN ('ref-person-status-active','ref-person-status-inactive','ref-person-status-discontinued','ref-method-daily-wages','ref-method-salary','ref-method-commission','ref-currency-brl','ref-currency-gold');

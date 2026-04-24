@@ -1,13 +1,33 @@
 package main
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"flag"
+	"log"
+
+	"mining-app/backend/internal/app"
+)
 
 func main() {
-    app := fiber.New()
+	migrateOnly := flag.Bool("migrate-only", false, "run migrations and exit")
+	flag.Parse()
 
-    app.Get("/", func(c fiber.Ctx) error {
-        return c.SendString("Hello, World!")
-    })
+	cfg, err := app.LoadConfig()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
 
-    app.Listen(":3000")
+	server, cleanup, err := app.Bootstrap(cfg)
+	if err != nil {
+		log.Fatalf("failed to bootstrap app: %v", err)
+	}
+	defer cleanup()
+
+	if *migrateOnly {
+		log.Println("migrations completed")
+		return
+	}
+
+	if err := server.Listen(cfg.HTTPAddr); err != nil {
+		log.Fatalf("server stopped: %v", err)
+	}
 }

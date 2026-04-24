@@ -1,2 +1,137 @@
 # CollaboratorAccounting
-Collaborator Accounting
+
+Production-oriented monorepo for a mobile-first collaborator accounting app.
+
+## Stack
+
+- Backend: Go 1.25, Fiber v3 (`github.com/gofiber/fiber/v3`), GORM (`gorm.io/gorm`)
+- Database: SQLite 3 through GORM's SQLite driver (`gorm.io/driver/sqlite`, CGO-backed by `github.com/mattn/go-sqlite3`)
+- Frontend: React, TypeScript, Vite
+
+## SQLite 3 build requirement
+
+This repo intentionally uses the SQLite 3 / CGO-backed GORM driver, not the pure-Go SQLite driver.
+
+Local requirements:
+
+- macOS: Xcode Command Line Tools are usually enough
+- Ubuntu/Debian: `gcc`, `libc6-dev`, `sqlite3`, `libsqlite3-dev`
+
+## Quick start
+
+```bash
+make dev
+```
+
+Backend health:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+Backend dependency refresh:
+
+```bash
+cd backend
+go mod tidy
+```
+# Development launch flow
+## Unzip and enter repo
+```bash
+unzip mining-collaborator-accounting-fiber3-sqlite3-gorm.zip
+cd mining-collaborator-accounting
+```
+
+## Create environment file
+```bash
+cp .env.example .env
+```
+
+### Expected Values
+```env
+APP_ENV=development
+HTTP_ADDR=:8080
+DB_PATH=/data/app.db
+JWT_SECRET=dev-only-change-me
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+```
+
+## Build and start with Docker Compose
+### Production-like local
+```bash
+docker compose up --build
+```
+
+### Development
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+## Open the app
+### Frontend:
+```bash
+http://localhost:5173
+```
+
+### Backend health check:
+```bash
+http://localhost:8080/healthz
+```
+
+### From terminal:
+```bash
+curl http://localhost:8080/healthz
+```
+
+### Expected:
+```JSON
+{
+  "status": "ok"
+}
+```
+
+## Stop the app
+```bash
+docker compose down
+```
+
+### To remove containers and volumes:
+```bash
+docker compose down -v
+```
+
+## Rebuild after dependency changes
+```bash
+docker compose build --no-cache
+docker compose up
+```
+
+## Useful development commands
+### Backend logs:
+```bash
+docker compose logs -f backend
+```
+
+### Frontend logs:
+```bash
+docker compose logs -f frontend
+```
+
+### Open backend shell:
+```bash
+docker compose exec backend sh
+```
+
+### Open frontend shell:
+```bash
+docker compose exec frontend sh
+```
+
+### SQLite database should be mounted under something like:
+```bash
+./data/app.db
+```
+### Make sure the data/ folder exists:
+```bash
+mkdir -p data
+```

@@ -1,0 +1,35 @@
+package db
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+func Open(path string) (*gorm.DB, error) {
+	if err := ensureDir(path); err != nil {
+		return nil, err
+	}
+	dsn := fmt.Sprintf("%s?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000", path)
+	database, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Warn)})
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite3 database with gorm: %w", err)
+	}
+	return database, nil
+}
+
+func AutoMigrate(database *gorm.DB) error {
+	return database.AutoMigrate(&ReferenceData{}, &Person{})
+}
+
+func ensureDir(path string) error {
+	dir := filepath.Dir(path)
+	if dir == "." || dir == "" {
+		return nil
+	}
+	return os.MkdirAll(dir, 0o755)
+}
