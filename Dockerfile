@@ -5,7 +5,7 @@ RUN npm install
 COPY frontend ./
 RUN npm run build
 
-FROM golang:1.23-bookworm AS backend
+FROM golang:1.25-bookworm AS backend
 WORKDIR /src/backend
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev sqlite3 libsqlite3-dev && rm -rf /var/lib/apt/lists/*
 COPY backend/go.mod backend/go.sum* ./
@@ -16,7 +16,9 @@ RUN CGO_ENABLED=1 go build -o /out/mining-app ./cmd/server
 
 FROM debian:bookworm-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates sqlite3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev sqlite3 libsqlite3-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=backend /out/mining-app /app/mining-app
 COPY backend/migrations /app/migrations
 COPY --from=frontend /src/frontend/dist /app/public

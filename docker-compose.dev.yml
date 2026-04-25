@@ -1,12 +1,29 @@
 services:
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      APP_ENV: development
+      HTTP_ADDR: ":8080"
+      DB_PATH: /data/app.db
+      JWT_SECRET: dev-only-change-me
     volumes:
-      - ./backend:/app/backend
+      - ./backend:/app
+      - ./data:/data
     command: go run ./cmd/server
+    ports:
+      - "8080:8080"
 
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
     volumes:
       - ./frontend:/app
-    command: npm run dev -- --host
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
     ports:
       - "5173:5173"

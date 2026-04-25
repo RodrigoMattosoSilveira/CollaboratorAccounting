@@ -1,27 +1,26 @@
 # Mining Collaborator Accounting System — Master Architecture Package
-[ChatGPT link](https://chatgpt.com/c/69e96045-5c14-83ea-91b4-96aba1b19f8)
 
 ## 1. Executive Summary
 
 This application is a mobile-first business system for managing collaborators working for a mining company in remote operations. It tracks:
 
-* people under contract or eligible to return,
-* collaborator work journeys,
-* mine-well production,
-* gold prices,
-* price lists for mercantile goods and services,
-* earnings accruals,
-* expenses,
-* current-account balances in both Real and grams of gold,
-* projected earnings through the end of the current journey,
-* journey closeout and payout.
+- people under contract or eligible to return,
+- collaborator work journeys,
+- mine-well production,
+- gold prices,
+- price lists for mercantile goods and services,
+- earnings accruals,
+- expenses,
+- current-account balances in both Real and grams of gold,
+- projected earnings through the end of the current journey,
+- journey closeout and payout.
 
 The target stack is:
 
-* **Backend:** Golang + Fiber
-* **Database:** SQLite + GORM
-* **Frontend:** React, mobile-first, desktop-capable
-* **Architecture style:** modular monolith with clean domain boundaries
+- **Backend:** Golang + Fiber
+- **Database:** SQLite + GORM
+- **Frontend:** React, mobile-first, desktop-capable
+- **Architecture style:** modular monolith with clean domain boundaries
 
 This system is not a simple CRUD application. It is a hybrid of workforce management, payroll, production-linked commission accounting, mercantile expense tracking, and dual-currency ledger management.
 
@@ -52,13 +51,13 @@ The source requirements are strong, but several operational rules must be made e
 
 The following records are never physically deleted:
 
-* Person
-* Collaborator
-* Current Account Entry
-* Mine Well Production
-* Gold Price
-* Price List Items
-* Reference Data
+- Person
+- Collaborator
+- Current Account Entry
+- Mine Well Production
+- Gold Price
+- Price List Items
+- Reference Data
 
 Instead, records are managed with status flags, activity flags, effective dates, or reversal records.
 
@@ -66,11 +65,11 @@ Instead, records are managed with status flags, activity flags, effective dates,
 
 The recommended architecture is a **modular monolith**, not microservices, because:
 
-* business rules are tightly coupled,
-* SQLite is the requested database,
-* deployment simplicity matters for remote operations,
-* transaction safety across accounting workflows is easier in one process,
-* future extraction to services remains possible.
+- business rules are tightly coupled,
+- SQLite is the requested database,
+- deployment simplicity matters for remote operations,
+- transaction safety across accounting workflows is easier in one process,
+- future extraction to services remains possible.
 
 ### 3.3 Ledger is the source of truth
 
@@ -80,8 +79,8 @@ Balances are derived from immutable current-account entries and reversals, not f
 
 The system tracks accounting in two units:
 
-* **BRL (Real)**
-* **Gold grams**
+- **BRL (Real)**
+- **Gold grams**
 
 A current-account entry belongs to exactly one currency. Summaries compute balances separately for each currency.
 
@@ -89,17 +88,17 @@ A current-account entry belongs to exactly one currency. Summaries compute balan
 
 Because salary is specified as a monthly salary, but work planning operates in daily work periods, the design assumes:
 
-* monthly salary is normalized to a **daily accrual rate** for daily projected earning calculations,
-* the normalization formula is configurable,
-* the default formula is `monthly_salary / 30`.
+- monthly salary is normalized to a **daily accrual rate** for daily projected earning calculations,
+- the normalization formula is configurable,
+- the default formula is `monthly_salary / 30`.
 
 ### 3.6 Daily period model
 
 Mine-well production is recorded by:
 
-* date
-* period
-* well
+- date
+- period
+- well
 
 Each period is a 12-hour shift. The plan/accrual engine uses a formal `work_period` entity to anchor planning and earnings.
 
@@ -107,10 +106,10 @@ Each period is a 12-hour shift. The plan/accrual engine uses a formal `work_peri
 
 Commissioned collaborators earn based on:
 
-* assigned work well,
-* work period,
-* recorded well production,
-* collaborator commission percentage.
+- assigned work well,
+- work period,
+- recorded well production,
+- collaborator commission percentage.
 
 If required production is missing, accrual status remains `pending` until production is recorded.
 
@@ -122,21 +121,21 @@ The specification implies substitution-based earnings transfer logic. The implem
 
 A collaborator journey has:
 
-* start date,
-* default end date = start date + 90 days,
-* extension days,
-* projected end date = default end + extension days,
-* status transitions,
-* closure workflow.
+- start date,
+- default end date = start date + 90 days,
+- extension days,
+- projected end date = default end + extension days,
+- status transitions,
+- closure workflow.
 
 ### 3.10 Role model
 
 Initial recommended roles:
 
-* **Administrator**: full access
-* **Planner**: planning, accrual, production support
-* **Mercantile Operator**: expense entry, read summaries
-* **Finance Viewer**: read-only reports and ledgers
+- **Administrator**: full access
+- **Planner**: planning, accrual, production support
+- **Mercantile Operator**: expense entry, read summaries
+- **Finance Viewer**: read-only reports and ledgers
 
 ---
 
@@ -204,29 +203,29 @@ Permanent identity and contact record.
 
 ### Fields
 
-* id
-* name
-* address
-* phone
-* email
-* cpf
-* bank_data
-* pix_key
-* emergency_contact_name
-* emergency_contact_phone
-* emergency_contact_notes
-* status
-* created_at
-* updated_at
-* archived_at nullable
+- id
+- name
+- address
+- phone
+- email
+- cpf
+- bank_data
+- pix_key
+- emergency_contact_name
+- emergency_contact_phone
+- emergency_contact_notes
+- status
+- created_at
+- updated_at
+- archived_at nullable
 
 ### Constraints
 
-* unique(name)
-* unique(phone)
-* unique(email)
-* unique(cpf)
-* unique(pix_key)
+- unique(name)
+- unique(phone)
+- unique(email)
+- unique(cpf)
+- unique(pix_key)
 
 ### Notes
 
@@ -240,33 +239,33 @@ Represents a specific contractual work journey for a person.
 
 ### Fields
 
-* id
-* person_id
-* journey_start_date
-* default_end_date
-* extension_days
-* projected_end_date
-* payment_method_id
-* payment_value
-* sector_id
-* location_id
-* task_id
-* status_id
-* notes
-* created_at
-* updated_at
-* closed_at nullable
+- id
+- person_id
+- journey_start_date
+- default_end_date
+- extension_days
+- projected_end_date
+- payment_method_id
+- payment_value
+- sector_id
+- location_id
+- task_id
+- status_id
+- notes
+- created_at
+- updated_at
+- closed_at nullable
 
 ### Derived values
 
-* `default_end_date = journey_start_date + 90 days`
-* `projected_end_date = default_end_date + extension_days`
+- `default_end_date = journey_start_date + 90 days`
+- `projected_end_date = default_end_date + extension_days`
 
 ### Constraints
 
-* no physical deletion
-* one person may have multiple journeys across time
-* optional rule: only one active collaborator journey per person at a time
+- no physical deletion
+- one person may have multiple journeys across time
+- optional rule: only one active collaborator journey per person at a time
 
 ---
 
@@ -276,20 +275,20 @@ Production recorded for a specific well and period.
 
 ### Fields
 
-* id
-* work_date
-* period_code
-* location_id
-* grams_produced
-* comments
-* created_by
-* created_at
-* updated_at
+- id
+- work_date
+- period_code
+- location_id
+- grams_produced
+- comments
+- created_by
+- created_at
+- updated_at
 
 ### Constraints
 
-* unique(work_date, period_code, location_id)
-* location must be a mine-well type location
+- unique(work_date, period_code, location_id)
+- location must be a mine-well type location
 
 ---
 
@@ -299,19 +298,19 @@ Daily gold reference price.
 
 ### Fields
 
-* id
-* quote_date
-* quoted_at_time
-* price_brl_per_gram
-* source_name
-* comments
-* created_by
-* created_at
-* updated_at
+- id
+- quote_date
+- quoted_at_time
+- price_brl_per_gram
+- source_name
+- comments
+- created_by
+- created_at
+- updated_at
 
 ### Constraints
 
-* unique(quote_date)
+- unique(quote_date)
 
 ### Notes
 
@@ -325,19 +324,19 @@ Catalog of goods and services.
 
 ### Fields
 
-* id
-* code
-* name
-* description
-* category
-* price_brl
-* active
-* created_at
-* updated_at
+- id
+- code
+- name
+- description
+- category
+- price_brl
+- active
+- created_at
+- updated_at
 
 ### Derived field at runtime
 
-* `price_gold_grams = price_brl / latest_gold_price_brl_per_gram`
+- `price_gold_grams = price_brl / latest_gold_price_brl_per_gram`
 
 ### Notes
 
@@ -351,49 +350,49 @@ Immutable ledger entry representing a credit or debit in one currency.
 
 ### Fields
 
-* id
-* reverted_entry_id nullable
-* collaborator_id
-* entry_date
-* source_type
-* source_id nullable
-* method_id nullable
-* currency_code
-* cd_flag
-* item_description
-* quantity
-* unit_price
-* total_price
-* comments
-* status
-* created_by
-* created_at
+- id
+- reverted_entry_id nullable
+- collaborator_id
+- entry_date
+- source_type
+- source_id nullable
+- method_id nullable
+- currency_code
+- cd_flag
+- item_description
+- quantity
+- unit_price
+- total_price
+- comments
+- status
+- created_by
+- created_at
 
 ### Allowed source types
 
-* earning_accrual
-* expense
-* reversal
-* zero_out
-* journey_close
-* manual_adjustment
+- earning_accrual
+- expense
+- reversal
+- zero_out
+- journey_close
+- manual_adjustment
 
 ### Allowed currencies
 
-* BRL
-* GOLD_GRAMS
+- BRL
+- GOLD_GRAMS
 
 ### Allowed cd_flag
 
-* CREDIT
-* DEBIT
+- CREDIT
+- DEBIT
 
 ### Constraints
 
-* quantity > 0
-* total_price >= 0
-* reversal entries reference original entry
-* original entries are not edited after posting
+- quantity > 0
+- total_price >= 0
+- reversal entries reference original entry
+- original entries are not edited after posting
 
 ---
 
@@ -403,25 +402,25 @@ A plan/accrual anchor for operational periods.
 
 ### Fields
 
-* id
-* work_date
-* period_code
-* starts_at
-* ends_at
-* status
-* created_at
-* updated_at
+- id
+- work_date
+- period_code
+- starts_at
+- ends_at
+- status
+- created_at
+- updated_at
 
 ### Status
 
-* planned
-* informed
-* accrued
-* locked
+- planned
+- informed
+- accrued
+- locked
 
 ### Constraints
 
-* unique(work_date, period_code)
+- unique(work_date, period_code)
 
 ---
 
@@ -431,36 +430,36 @@ Operational assignment of a collaborator for a work period.
 
 ### Fields
 
-* id
-* work_period_id
-* collaborator_id
-* include_flag
-* sector_id
-* location_id
-* task_id
-* method_id
-* payment_value_snapshot
-* assignment_status
-* substituted_for_collaborator_id nullable
-* exception_type nullable
-* comments
-* created_at
-* updated_at
+- id
+- work_period_id
+- collaborator_id
+- include_flag
+- sector_id
+- location_id
+- task_id
+- method_id
+- payment_value_snapshot
+- assignment_status
+- substituted_for_collaborator_id nullable
+- exception_type nullable
+- comments
+- created_at
+- updated_at
 
 ### assignment_status
 
-* planned
-* worked
-* sick
-* license
-* absent
-* excluded
+- planned
+- worked
+- sick
+- license
+- absent
+- excluded
 
 ### exception_type
 
-* none
-* sick_substitution
-* license_substitution
+- none
+- sick_substitution
+- license_substitution
 
 ---
 
@@ -470,25 +469,25 @@ Header record for an expense operation.
 
 ### Fields
 
-* id
-* collaborator_id
-* expense_date
-* currency_code
-* total_amount
-* category
-* collaborator_agreement
-* comments
-* created_by
-* created_at
-* updated_at
+- id
+- collaborator_id
+- expense_date
+- currency_code
+- total_amount
+- category
+- collaborator_agreement
+- comments
+- created_by
+- created_at
+- updated_at
 
 ### Categories
 
-* canteen
-* pix
-* flights
-* pay_daily_wager
-* diverse
+- canteen
+- pix
+- flights
+- pay_daily_wager
+- diverse
 
 ---
 
@@ -498,15 +497,15 @@ Line item under an expense transaction.
 
 ### Fields
 
-* id
-* expense_id
-* price_list_item_id nullable
-* item_name_snapshot
-* quantity
-* unit_price
-* total_price
-* comments
-* created_at
+- id
+- expense_id
+- price_list_item_id nullable
+- item_name_snapshot
+- quantity
+- unit_price
+- total_price
+- comments
+- created_at
 
 ---
 
@@ -516,21 +515,21 @@ Tracks the accrual operation for a work period.
 
 ### Fields
 
-* id
-* work_period_id
-* accrual_status
-* comments
-* created_by
-* created_at
-* updated_at
+- id
+- work_period_id
+- accrual_status
+- comments
+- created_by
+- created_at
+- updated_at
 
 ### accrual_status
 
-* draft
-* pending_production
-* posted
-* partially_posted
-* reverted
+- draft
+- pending_production
+- posted
+- partially_posted
+- reverted
 
 ---
 
@@ -540,19 +539,19 @@ One collaborator’s earnings computation for a period.
 
 ### Fields
 
-* id
-* accrual_batch_id
-* collaborator_id
-* method_id
-* currency_code
-* calculation_basis_json
-* gross_amount
-* transfer_amount
-* net_amount
-* ledger_entry_id nullable
-* status
-* comments
-* created_at
+- id
+- accrual_batch_id
+- collaborator_id
+- method_id
+- currency_code
+- calculation_basis_json
+- gross_amount
+- transfer_amount
+- net_amount
+- ledger_entry_id nullable
+- status
+- comments
+- created_at
 
 ---
 
@@ -562,29 +561,29 @@ Configurable lookup tables.
 
 Recommended generic table structure:
 
-* id
-* type
-* code
-* label
-* description
-* active
-* sort_order
-* metadata_json
-* created_at
-* updated_at
+- id
+- type
+- code
+- label
+- description
+- active
+- sort_order
+- metadata_json
+- created_at
+- updated_at
 
 Supported types:
 
-* sector
-* location
-* task
-* method
-* person_status
-* collaborator_status
-* expense_category
-* period_code
-* ledger_currency
-* ledger_cd_flag
+- sector
+- location
+- task
+- method
+- person_status
+- collaborator_status
+- expense_category
+- period_code
+- ledger_currency
+- ledger_cd_flag
 
 ---
 
@@ -592,96 +591,96 @@ Supported types:
 
 ## 6.1 Person rules
 
-* Person records are permanent.
-* Name, phone, email, CPF, and PIX must be unique if present.
-* A person can move across statuses without deleting history.
+- Person records are permanent.
+- Name, phone, email, CPF, and PIX must be unique if present.
+- A person can move across statuses without deleting history.
 
 ## 6.2 Collaborator rules
 
-* A collaborator journey is created from a person.
-* Default journey length is 90 days.
-* Extension days may be added by the administrator.
-* Projected end date is recalculated on extension change.
-* One person should generally have at most one active journey.
-* After journey end, business policy may enforce a minimum 30-day wait before a new journey. This should be configurable as a validation rule, with override permission for administrators.
+- A collaborator journey is created from a person.
+- Default journey length is 90 days.
+- Extension days may be added by the administrator.
+- Projected end date is recalculated on extension change.
+- One person should generally have at most one active journey.
+- After journey end, business policy may enforce a minimum 30-day wait before a new journey. This should be configurable as a validation rule, with override permission for administrators.
 
 ## 6.3 Earnings rules
 
 ### Daily wages
 
-* Earns daily rate for each worked period/day according to plan/accrual rules.
-* Currency is BRL unless business later adds another rule.
+- Earns daily rate for each worked period/day according to plan/accrual rules.
+- Currency is BRL unless business later adds another rule.
 
 ### Salary
 
-* Earns daily normalized value based on monthly salary.
-* Currency is BRL.
+- Earns daily normalized value based on monthly salary.
+- Currency is BRL.
 
 ### Commission
 
-* Earns in gold grams.
-* Amount is tied to recorded production for assigned well and period.
-* Formula: `grams_produced * collaborator_percentage`.
-* Accrual waits if production is missing.
+- Earns in gold grams.
+- Amount is tied to recorded production for assigned well and period.
+- Formula: `grams_produced * collaborator_percentage`.
+- Accrual waits if production is missing.
 
 ## 6.4 Sick-day rules
 
 For commissioned collaborator:
 
-* May take up to 3 sick days.
-* Still earns full daily commission.
-* Pays 1 gram gold to substitute daily wager.
-* Substitute daily wager also earns normal daily wages.
+- May take up to 3 sick days.
+- Still earns full daily commission.
+- Pays 1 gram gold to substitute daily wager.
+- Substitute daily wager also earns normal daily wages.
 
 System interpretation:
 
-* one commission credit for sick collaborator,
-* one gold debit for sick collaborator labeled `Pay Daily Wager - Sick Substitution`,
-* one gold credit for substitute daily wager labeled `Sick Substitution Payment`,
-* one BRL wage credit for substitute daily wager.
+- one commission credit for sick collaborator,
+- one gold debit for sick collaborator labeled `Pay Daily Wager - Sick Substitution`,
+- one gold credit for substitute daily wager labeled `Sick Substitution Payment`,
+- one BRL wage credit for substitute daily wager.
 
 ## 6.5 License rules
 
 For commissioned collaborator:
 
-* May take a license through default end of journey.
-* Earns half of daily commission.
-* Other half goes to substitute daily wager.
-* Substitute daily wager does not earn normal daily wages for that substitution period.
+- May take a license through default end of journey.
+- Earns half of daily commission.
+- Other half goes to substitute daily wager.
+- Substitute daily wager does not earn normal daily wages for that substitution period.
 
 System interpretation:
 
-* commissioned collaborator gets half commission credit,
-* substitute gets half commission credit,
-* substitute receives no daily wage credit for those substituted periods.
+- commissioned collaborator gets half commission credit,
+- substitute gets half commission credit,
+- substitute receives no daily wage credit for those substituted periods.
 
 ## 6.6 Expense rules
 
-* Expenses can be recorded in BRL or gold grams.
-* Expense line items snapshot unit and total prices at entry time.
-* Gold-priced expenses use current quote basis at transaction time.
-* PIX expenses are BRL-only.
-* Daily wager substitution payments may be generated automatically by earnings/accrual rules rather than manually entered.
+- Expenses can be recorded in BRL or gold grams.
+- Expense line items snapshot unit and total prices at entry time.
+- Gold-priced expenses use current quote basis at transaction time.
+- PIX expenses are BRL-only.
+- Daily wager substitution payments may be generated automatically by earnings/accrual rules rather than manually entered.
 
 ## 6.7 Ledger rules
 
-* Every financial effect becomes one or more immutable ledger entries.
-* Reversal is additive, never destructive.
-* Balances are computed as sum(credits) - sum(debits) per currency.
-* Reversed entries remain visible with status markers.
+- Every financial effect becomes one or more immutable ledger entries.
+- Reversal is additive, never destructive.
+- Balances are computed as sum(credits) - sum(debits) per currency.
+- Reversed entries remain visible with status markers.
 
 ## 6.8 Zero rules
 
-* Zeroing gold means paying out current positive gold balance during an active journey.
-* A zero operation creates a debit entry that offsets the available gold credit balance.
-* Zero cannot exceed available positive gold balance unless admin override is allowed.
+- Zeroing gold means paying out current positive gold balance during an active journey.
+- A zero operation creates a debit entry that offsets the available gold credit balance.
+- Zero cannot exceed available positive gold balance unless admin override is allowed.
 
 ## 6.9 Journey close rules
 
-* Closing a journey computes current BRL and gold balances.
-* Positive balances are payable.
-* Closing creates payout ledger entries to offset balances.
-* After close, collaborator status becomes finished.
+- Closing a journey computes current BRL and gold balances.
+- Positive balances are payable.
+- Closing creates payout ledger entries to offset balances.
+- After close, collaborator status becomes finished.
 
 ---
 
@@ -712,189 +711,189 @@ System interpretation:
 
 ### people
 
-* id TEXT PK
-* name TEXT NOT NULL UNIQUE
-* address TEXT
-* phone TEXT UNIQUE
-* email TEXT UNIQUE
-* cpf TEXT UNIQUE
-* bank_data TEXT
-* pix_key TEXT UNIQUE
-* emergency_contact_name TEXT
-* emergency_contact_phone TEXT
-* emergency_contact_notes TEXT
-* status_id TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- name TEXT NOT NULL UNIQUE
+- address TEXT
+- phone TEXT UNIQUE
+- email TEXT UNIQUE
+- cpf TEXT UNIQUE
+- bank_data TEXT
+- pix_key TEXT UNIQUE
+- emergency_contact_name TEXT
+- emergency_contact_phone TEXT
+- emergency_contact_notes TEXT
+- status_id TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### collaborator_journeys
 
-* id TEXT PK
-* person_id TEXT NOT NULL FK people(id)
-* journey_start_date DATE NOT NULL
-* default_end_date DATE NOT NULL
-* extension_days INTEGER NOT NULL DEFAULT 0
-* projected_end_date DATE NOT NULL
-* payment_method_id TEXT NOT NULL FK reference_data(id)
-* payment_value NUMERIC NOT NULL
-* sector_id TEXT NOT NULL FK reference_data(id)
-* location_id TEXT NOT NULL FK reference_data(id)
-* task_id TEXT NOT NULL FK reference_data(id)
-* status_id TEXT NOT NULL FK reference_data(id)
-* notes TEXT
-* closed_at DATETIME NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- person_id TEXT NOT NULL FK people(id)
+- journey_start_date DATE NOT NULL
+- default_end_date DATE NOT NULL
+- extension_days INTEGER NOT NULL DEFAULT 0
+- projected_end_date DATE NOT NULL
+- payment_method_id TEXT NOT NULL FK reference_data(id)
+- payment_value NUMERIC NOT NULL
+- sector_id TEXT NOT NULL FK reference_data(id)
+- location_id TEXT NOT NULL FK reference_data(id)
+- task_id TEXT NOT NULL FK reference_data(id)
+- status_id TEXT NOT NULL FK reference_data(id)
+- notes TEXT
+- closed_at DATETIME NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### work_periods
 
-* id TEXT PK
-* work_date DATE NOT NULL
-* period_code TEXT NOT NULL
-* starts_at DATETIME NULL
-* ends_at DATETIME NULL
-* status TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
-* UNIQUE(work_date, period_code)
+- id TEXT PK
+- work_date DATE NOT NULL
+- period_code TEXT NOT NULL
+- starts_at DATETIME NULL
+- ends_at DATETIME NULL
+- status TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
+- UNIQUE(work_date, period_code)
 
 ### work_plan_items
 
-* id TEXT PK
-* work_period_id TEXT NOT NULL FK work_periods(id)
-* collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
-* include_flag BOOLEAN NOT NULL DEFAULT true
-* sector_id TEXT NOT NULL
-* location_id TEXT NOT NULL
-* task_id TEXT NOT NULL
-* method_id TEXT NOT NULL
-* payment_value_snapshot NUMERIC NOT NULL
-* assignment_status TEXT NOT NULL
-* substituted_for_collaborator_id TEXT NULL
-* exception_type TEXT NULL
-* comments TEXT
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- work_period_id TEXT NOT NULL FK work_periods(id)
+- collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
+- include_flag BOOLEAN NOT NULL DEFAULT true
+- sector_id TEXT NOT NULL
+- location_id TEXT NOT NULL
+- task_id TEXT NOT NULL
+- method_id TEXT NOT NULL
+- payment_value_snapshot NUMERIC NOT NULL
+- assignment_status TEXT NOT NULL
+- substituted_for_collaborator_id TEXT NULL
+- exception_type TEXT NULL
+- comments TEXT
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### mine_well_productions
 
-* id TEXT PK
-* work_date DATE NOT NULL
-* period_code TEXT NOT NULL
-* location_id TEXT NOT NULL
-* grams_produced NUMERIC NOT NULL
-* comments TEXT
-* created_by TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
-* UNIQUE(work_date, period_code, location_id)
+- id TEXT PK
+- work_date DATE NOT NULL
+- period_code TEXT NOT NULL
+- location_id TEXT NOT NULL
+- grams_produced NUMERIC NOT NULL
+- comments TEXT
+- created_by TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
+- UNIQUE(work_date, period_code, location_id)
 
 ### gold_prices
 
-* id TEXT PK
-* quote_date DATE NOT NULL UNIQUE
-* quoted_at_time TEXT
-* price_brl_per_gram NUMERIC NOT NULL
-* source_name TEXT
-* comments TEXT
-* created_by TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- quote_date DATE NOT NULL UNIQUE
+- quoted_at_time TEXT
+- price_brl_per_gram NUMERIC NOT NULL
+- source_name TEXT
+- comments TEXT
+- created_by TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### price_list_items
 
-* id TEXT PK
-* code TEXT UNIQUE
-* name TEXT NOT NULL UNIQUE
-* description TEXT
-* category TEXT NOT NULL
-* price_brl NUMERIC NOT NULL
-* active BOOLEAN NOT NULL DEFAULT true
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- code TEXT UNIQUE
+- name TEXT NOT NULL UNIQUE
+- description TEXT
+- category TEXT NOT NULL
+- price_brl NUMERIC NOT NULL
+- active BOOLEAN NOT NULL DEFAULT true
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### expense_transactions
 
-* id TEXT PK
-* collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
-* expense_date DATE NOT NULL
-* currency_code TEXT NOT NULL
-* total_amount NUMERIC NOT NULL
-* category TEXT NOT NULL
-* collaborator_agreement BOOLEAN NOT NULL DEFAULT false
-* comments TEXT
-* created_by TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
+- expense_date DATE NOT NULL
+- currency_code TEXT NOT NULL
+- total_amount NUMERIC NOT NULL
+- category TEXT NOT NULL
+- collaborator_agreement BOOLEAN NOT NULL DEFAULT false
+- comments TEXT
+- created_by TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### expense_items
 
-* id TEXT PK
-* expense_id TEXT NOT NULL FK expense_transactions(id)
-* price_list_item_id TEXT NULL FK price_list_items(id)
-* item_name_snapshot TEXT NOT NULL
-* quantity NUMERIC NOT NULL
-* unit_price NUMERIC NOT NULL
-* total_price NUMERIC NOT NULL
-* comments TEXT
-* created_at DATETIME NOT NULL
+- id TEXT PK
+- expense_id TEXT NOT NULL FK expense_transactions(id)
+- price_list_item_id TEXT NULL FK price_list_items(id)
+- item_name_snapshot TEXT NOT NULL
+- quantity NUMERIC NOT NULL
+- unit_price NUMERIC NOT NULL
+- total_price NUMERIC NOT NULL
+- comments TEXT
+- created_at DATETIME NOT NULL
 
 ### earning_accrual_batches
 
-* id TEXT PK
-* work_period_id TEXT NOT NULL FK work_periods(id)
-* accrual_status TEXT NOT NULL
-* comments TEXT
-* created_by TEXT NOT NULL
-* created_at DATETIME NOT NULL
-* updated_at DATETIME NOT NULL
+- id TEXT PK
+- work_period_id TEXT NOT NULL FK work_periods(id)
+- accrual_status TEXT NOT NULL
+- comments TEXT
+- created_by TEXT NOT NULL
+- created_at DATETIME NOT NULL
+- updated_at DATETIME NOT NULL
 
 ### earning_accrual_items
 
-* id TEXT PK
-* accrual_batch_id TEXT NOT NULL FK earning_accrual_batches(id)
-* collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
-* method_id TEXT NOT NULL
-* currency_code TEXT NOT NULL
-* calculation_basis_json TEXT NOT NULL
-* gross_amount NUMERIC NOT NULL
-* transfer_amount NUMERIC NOT NULL DEFAULT 0
-* net_amount NUMERIC NOT NULL
-* ledger_entry_id TEXT NULL
-* status TEXT NOT NULL
-* comments TEXT
-* created_at DATETIME NOT NULL
+- id TEXT PK
+- accrual_batch_id TEXT NOT NULL FK earning_accrual_batches(id)
+- collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
+- method_id TEXT NOT NULL
+- currency_code TEXT NOT NULL
+- calculation_basis_json TEXT NOT NULL
+- gross_amount NUMERIC NOT NULL
+- transfer_amount NUMERIC NOT NULL DEFAULT 0
+- net_amount NUMERIC NOT NULL
+- ledger_entry_id TEXT NULL
+- status TEXT NOT NULL
+- comments TEXT
+- created_at DATETIME NOT NULL
 
 ### current_account_entries
 
-* id TEXT PK
-* reverted_entry_id TEXT NULL FK current_account_entries(id)
-* collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
-* entry_date DATE NOT NULL
-* source_type TEXT NOT NULL
-* source_id TEXT NULL
-* method_id TEXT NULL
-* currency_code TEXT NOT NULL
-* cd_flag TEXT NOT NULL
-* item_description TEXT NOT NULL
-* quantity NUMERIC NOT NULL DEFAULT 1
-* unit_price NUMERIC NOT NULL
-* total_price NUMERIC NOT NULL
-* comments TEXT
-* status TEXT NOT NULL DEFAULT 'active'
-* created_by TEXT NOT NULL
-* created_at DATETIME NOT NULL
+- id TEXT PK
+- reverted_entry_id TEXT NULL FK current_account_entries(id)
+- collaborator_id TEXT NOT NULL FK collaborator_journeys(id)
+- entry_date DATE NOT NULL
+- source_type TEXT NOT NULL
+- source_id TEXT NULL
+- method_id TEXT NULL
+- currency_code TEXT NOT NULL
+- cd_flag TEXT NOT NULL
+- item_description TEXT NOT NULL
+- quantity NUMERIC NOT NULL DEFAULT 1
+- unit_price NUMERIC NOT NULL
+- total_price NUMERIC NOT NULL
+- comments TEXT
+- status TEXT NOT NULL DEFAULT 'active'
+- created_by TEXT NOT NULL
+- created_at DATETIME NOT NULL
 
 ### audit_logs
 
-* id TEXT PK
-* actor_user_id TEXT NOT NULL
-* action TEXT NOT NULL
-* entity_type TEXT NOT NULL
-* entity_id TEXT NOT NULL
-* before_json TEXT
-* after_json TEXT
-* created_at DATETIME NOT NULL
+- id TEXT PK
+- actor_user_id TEXT NOT NULL
+- action TEXT NOT NULL
+- entity_type TEXT NOT NULL
+- entity_id TEXT NOT NULL
+- before_json TEXT
+- after_json TEXT
+- created_at DATETIME NOT NULL
 
 ---
 
@@ -904,89 +903,89 @@ All APIs should be versioned under `/api/v1`.
 
 ## 8.1 Auth
 
-* `POST /auth/login`
-* `POST /auth/logout`
-* `GET /auth/me`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/me`
 
 ## 8.2 People
 
-* `GET /people`
-* `POST /people`
-* `GET /people/:id`
-* `PUT /people/:id`
-* `GET /people/:id/journeys`
+- `GET /people`
+- `POST /people`
+- `GET /people/:id`
+- `PUT /people/:id`
+- `GET /people/:id/journeys`
 
 ## 8.3 Collaborator Journeys
 
-* `GET /collaborators`
-* `POST /collaborators`
-* `GET /collaborators/:id`
-* `PUT /collaborators/:id`
-* `POST /collaborators/:id/extend`
-* `POST /collaborators/:id/finish`
-* `GET /collaborators/:id/projection`
+- `GET /collaborators`
+- `POST /collaborators`
+- `GET /collaborators/:id`
+- `PUT /collaborators/:id`
+- `POST /collaborators/:id/extend`
+- `POST /collaborators/:id/finish`
+- `GET /collaborators/:id/projection`
 
 ## 8.4 Reference Data
 
-* `GET /reference-data/:type`
-* `POST /reference-data/:type`
-* `PUT /reference-data/:type/:id`
+- `GET /reference-data/:type`
+- `POST /reference-data/:type`
+- `PUT /reference-data/:type/:id`
 
 ## 8.5 Work Periods and Planning
 
-* `GET /work-periods`
-* `POST /work-periods`
-* `GET /work-periods/:id`
-* `POST /work-periods/:id/seed-from-previous`
-* `GET /work-periods/:id/plan`
-* `PUT /work-periods/:id/plan-items/:planItemId`
-* `POST /work-periods/:id/inform`
-* `POST /work-periods/:id/accrue`
+- `GET /work-periods`
+- `POST /work-periods`
+- `GET /work-periods/:id`
+- `POST /work-periods/:id/seed-from-previous`
+- `GET /work-periods/:id/plan`
+- `PUT /work-periods/:id/plan-items/:planItemId`
+- `POST /work-periods/:id/inform`
+- `POST /work-periods/:id/accrue`
 
 ## 8.6 Mine Production
 
-* `GET /mine-productions`
-* `POST /mine-productions`
-* `PUT /mine-productions/:id`
+- `GET /mine-productions`
+- `POST /mine-productions`
+- `PUT /mine-productions/:id`
 
 ## 8.7 Gold Prices
 
-* `GET /gold-prices`
-* `POST /gold-prices`
-* `PUT /gold-prices/:id`
-* `GET /gold-prices/latest`
+- `GET /gold-prices`
+- `POST /gold-prices`
+- `PUT /gold-prices/:id`
+- `GET /gold-prices/latest`
 
 ## 8.8 Price List
 
-* `GET /price-list`
-* `POST /price-list`
-* `PUT /price-list/:id`
-* `GET /price-list/:id/price-preview?currency=BRL|GOLD_GRAMS`
+- `GET /price-list`
+- `POST /price-list`
+- `PUT /price-list/:id`
+- `GET /price-list/:id/price-preview?currency=BRL|GOLD_GRAMS`
 
 ## 8.9 Expenses
 
-* `GET /expenses`
-* `POST /expenses`
-* `GET /expenses/:id`
-* `POST /expenses/:id/revert`
+- `GET /expenses`
+- `POST /expenses`
+- `GET /expenses/:id`
+- `POST /expenses/:id/revert`
 
 ## 8.10 Ledger / Current Account
 
-* `GET /current-accounts/:collaboratorId/summary`
-* `GET /current-accounts/:collaboratorId/entries`
-* `GET /current-accounts/:collaboratorId/entries?currency=BRL`
-* `GET /current-accounts/:collaboratorId/entries?currency=GOLD_GRAMS`
-* `POST /current-accounts/entries/:id/revert`
-* `POST /current-accounts/:collaboratorId/zero-gold`
-* `POST /current-accounts/:collaboratorId/close`
+- `GET /current-accounts/:collaboratorId/summary`
+- `GET /current-accounts/:collaboratorId/entries`
+- `GET /current-accounts/:collaboratorId/entries?currency=BRL`
+- `GET /current-accounts/:collaboratorId/entries?currency=GOLD_GRAMS`
+- `POST /current-accounts/entries/:id/revert`
+- `POST /current-accounts/:collaboratorId/zero-gold`
+- `POST /current-accounts/:collaboratorId/close`
 
 ## 8.11 Reports
 
-* `GET /reports/dashboard`
-* `GET /reports/collaborator-balances`
-* `GET /reports/journeys-ending-soon`
-* `GET /reports/pending-production-accruals`
-* `GET /reports/mercantile-sales`
+- `GET /reports/dashboard`
+- `GET /reports/collaborator-balances`
+- `GET /reports/journeys-ending-soon`
+- `GET /reports/pending-production-accruals`
+- `GET /reports/mercantile-sales`
 
 ---
 
@@ -994,10 +993,10 @@ All APIs should be versioned under `/api/v1`.
 
 The frontend should be a **React SPA** optimized for:
 
-* phone-first usage,
-* touch-friendly actions,
-* readable cards and summaries,
-* desktop expansion into split panes/tables.
+- phone-first usage,
+- touch-friendly actions,
+- readable cards and summaries,
+- desktop expansion into split panes/tables.
 
 ## 9.1 Main navigation
 
@@ -1014,12 +1013,12 @@ The frontend should be a **React SPA** optimized for:
 
 ## 9.2 Mobile-first UI principles
 
-* card-based layouts on small screens,
-* bottom-safe action bars for primary actions,
-* sticky summary panels,
-* large tap targets,
-* progressive disclosure for complex forms,
-* desktop upgrades to table/grid views.
+- card-based layouts on small screens,
+- bottom-safe action bars for primary actions,
+- sticky summary panels,
+- large tap targets,
+- progressive disclosure for complex forms,
+- desktop upgrades to table/grid views.
 
 ---
 
@@ -1027,56 +1026,56 @@ The frontend should be a **React SPA** optimized for:
 
 ## 10.1 Login Screen
 
-* username/email
-* password
-* sign in button
+- username/email
+- password
+- sign in button
 
 ## 10.2 Dashboard
 
 Widgets:
 
-* active collaborators count
-* journeys ending soon
-* pending accruals due to missing production
-* latest gold quote
-* today’s expenses total
-* negative balance alerts
+- active collaborators count
+- journeys ending soon
+- pending accruals due to missing production
+- latest gold quote
+- today’s expenses total
+- negative balance alerts
 
 ## 10.3 People List
 
-* search
-* status filter
-* add person
-* person cards/table
+- search
+- status filter
+- add person
+- person cards/table
 
 ## 10.4 Person Detail
 
-* person profile
-* contact info
-* status
-* journey history
-* create collaborator journey action
+- person profile
+- contact info
+- status
+- journey history
+- create collaborator journey action
 
 ## 10.5 Collaborator List
 
-* active/finished filter
-* payment method filter
-* location filter
-* projected-end range filter
+- active/finished filter
+- payment method filter
+- location filter
+- projected-end range filter
 
 ## 10.6 Collaborator Detail
 
 Sections:
 
-* identity summary
-* journey dates
-* payment model
-* assignment info
-* status
-* BRL balance summary
-* gold balance summary
-* projected earnings
-* actions: extend, zero gold, close journey, open ledger, create expense
+- identity summary
+- journey dates
+- payment model
+- assignment info
+- status
+- BRL balance summary
+- gold balance summary
+- projected earnings
+- actions: extend, zero gold, close journey, open ledger, create expense
 
 ## 10.7 Planning Workspace
 
@@ -1084,47 +1083,47 @@ Three-stage workflow:
 
 ### Plan Tab
 
-* load previous period plan
-* include/exclude toggles
-* add collaborators not in previous period
-* assign sector/location/task/method
-* mark sick/license/substitute
+- load previous period plan
+- include/exclude toggles
+- add collaborators not in previous period
+- assign sector/location/task/method
+- mark sick/license/substitute
 
 ### Inform Tab
 
-* print-friendly formatted assignment roster
-* filter included collaborators only
+- print-friendly formatted assignment roster
+- filter included collaborators only
 
 ### Accrual Tab
 
-* compare plan vs actual
-* mark worked/sick/license/absent
-* show production dependency warnings
-* post accrual batch
+- compare plan vs actual
+- mark worked/sick/license/absent
+- show production dependency warnings
+- post accrual batch
 
 ## 10.8 Mine Production Screen
 
-* date
-* period
-* well
-* grams produced
-* comments
-* list of recorded productions
+- date
+- period
+- well
+- grams produced
+- comments
+- list of recorded productions
 
 ## 10.9 Gold Price Screen
 
-* date
-* price BRL/gram
-* source
-* comments
-* latest price card
-* price history list
+- date
+- price BRL/gram
+- source
+- comments
+- latest price card
+- price history list
 
 ## 10.10 Price List Screen
 
-* list items
-* create/edit item
-* dynamic gold equivalent preview based on latest quote
+- list items
+- create/edit item
+- dynamic gold equivalent preview based on latest quote
 
 ## 10.11 Expense Entry Screen
 
@@ -1132,68 +1131,68 @@ This is one of the key screens.
 
 ### Left/Top summary panel
 
-* collaborator name
-* projected journey end
-* payment method
-* BRL balance
-* gold balance
-* projected earnings
-* substitution recipient information if relevant
+- collaborator name
+- projected journey end
+- payment method
+- BRL balance
+- gold balance
+- projected earnings
+- substitution recipient information if relevant
 
 ### Form panel
 
-* currency selector
-* category selector
-* multi-line item entry
-* quantity
-* unit price
-* total price
-* comments
-* collaborator agreement checkbox
-* save action
+- currency selector
+- category selector
+- multi-line item entry
+- quantity
+- unit price
+- total price
+- comments
+- collaborator agreement checkbox
+- save action
 
 ### Mobile behavior
 
-* summary shown first,
-* form stacked below,
-* sticky running total.
+- summary shown first,
+- form stacked below,
+- sticky running total.
 
 ## 10.12 Current Account Summary Screen
 
-* BRL credits
-* BRL debits
-* BRL balance
-* Gold credits
-* Gold debits
-* Gold balance
-* projected earnings
-* payout estimate
+- BRL credits
+- BRL debits
+- BRL balance
+- Gold credits
+- Gold debits
+- Gold balance
+- projected earnings
+- payout estimate
 
 ## 10.13 Current Account Detail Screen
 
-* filter by currency
-* filter by date
-* filter by source type
-* transaction timeline/cards on mobile
-* table on desktop
-* revert action for authorized users
+- filter by currency
+- filter by date
+- filter by source type
+- transaction timeline/cards on mobile
+- table on desktop
+- revert action for authorized users
 
 ## 10.14 Journey Close Screen
 
-* collaborator summary
-* current balances
-* projected end info
-* zero history
-* payout preview
-* confirm close action
+- collaborator summary
+- current balances
+- projected end info
+- zero history
+- payout preview
+- confirm close action
 
 ## 10.15 Reports
 
-* collaborator balances
-* negative balances
-* production-linked commissions pending
-* mercantile sales by category
-* collaborator journey calendar
+- collaborator balances
+- negative balances
+- production-linked commissions pending
+- mercantile sales by category
+- collaborator journey calendar
 
 ---
 
@@ -1283,26 +1282,26 @@ This is one of the key screens.
 
 Implement strategy pattern by payment method:
 
-* `DailyWageCalculator`
-* `SalaryCalculator`
-* `CommissionCalculator`
+- `DailyWageCalculator`
+- `SalaryCalculator`
+- `CommissionCalculator`
 
 Each receives:
 
-* collaborator journey
-* plan item
-* work period
-* production data if needed
-* latest relevant rules
+- collaborator journey
+- plan item
+- work period
+- production data if needed
+- latest relevant rules
 
 Returns:
 
-* currency
-* gross amount
-* transfer amount
-* net amount
-* basis metadata
-* hold reason if pending
+- currency
+- gross amount
+- transfer amount
+- net amount
+- basis metadata
+- hold reason if pending
 
 ## 12.2 Daily wage calculation
 
@@ -1330,18 +1329,18 @@ currency = GOLD_GRAMS
 
 For commissioned collaborator on sick day:
 
-* commissioned collaborator earns full commission credit,
-* commissioned collaborator receives a gold debit of 1 gram,
-* substitute daily wager receives gold credit of 1 gram,
-* substitute daily wager also receives BRL wage credit.
+- commissioned collaborator earns full commission credit,
+- commissioned collaborator receives a gold debit of 1 gram,
+- substitute daily wager receives gold credit of 1 gram,
+- substitute daily wager also receives BRL wage credit.
 
 ## 12.6 License substitution calculation
 
 For commissioned collaborator on license day:
 
-* commissioned collaborator receives half commission credit,
-* substitute daily wager receives half commission credit,
-* substitute daily wager receives no BRL wage credit for that substituted work.
+- commissioned collaborator receives half commission credit,
+- substitute daily wager receives half commission credit,
+- substitute daily wager receives no BRL wage credit for that substituted work.
 
 ---
 
@@ -1349,25 +1348,25 @@ For commissioned collaborator on license day:
 
 ## 13.1 Supported categories
 
-* canteen
-* pix
-* flights
-* pay_daily_wager
-* diverse
+- canteen
+- pix
+- flights
+- pay_daily_wager
+- diverse
 
 ## 13.2 Pricing behavior
 
-* BRL entries use entered or catalog BRL price.
-* Gold entries use either entered gold price or gold-equivalent from current quote.
-* Every line stores a snapshot of quantity, unit price, and total price.
+- BRL entries use entered or catalog BRL price.
+- Gold entries use either entered gold price or gold-equivalent from current quote.
+- Every line stores a snapshot of quantity, unit price, and total price.
 
 ## 13.3 Validation rules
 
-* currency required
-* at least one item
-* total must equal sum of lines
-* PIX only in BRL
-* agreement checkbox required
+- currency required
+- at least one item
+- total must equal sum of lines
+- PIX only in BRL
+- agreement checkbox required
 
 ---
 
@@ -1395,18 +1394,18 @@ projected_earnings = posted_earnings_to_date + estimated_remaining_earnings_to_p
 
 ### Estimated remaining earnings by method
 
-* daily wages: remaining eligible workdays × daily rate
-* salary: remaining days × normalized daily salary
-* commission: estimated based on configurable rolling average production or last known average
+- daily wages: remaining eligible workdays × daily rate
+- salary: remaining days × normalized daily salary
+- commission: estimated based on configurable rolling average production or last known average
 
 Because commission projection is uncertain, the UI should label it explicitly as estimated and show basis.
 
 ## 14.3 Reversal rules
 
-* original entry stays immutable
-* reversal entry mirrors source, currency, quantity, and amount
-* reversal flips credit/debit
-* both entries become linked
+- original entry stays immutable
+- reversal entry mirrors source, currency, quantity, and amount
+- reversal flips credit/debit
+- both entries become linked
 
 ---
 
@@ -1414,51 +1413,51 @@ Because commission projection is uncertain, the UI should label it explicitly as
 
 ## 15.1 Recommended approach
 
-* Fiber JWT authentication for API
-* Refresh token support optional later
-* Password-based login for internal users
-* Role-based authorization middleware
+- Fiber JWT authentication for API
+- Refresh token support optional later
+- Password-based login for internal users
+- Role-based authorization middleware
 
 ## 15.2 Authorization matrix
 
 ### Administrator
 
-* full CRUD on everything
-* close journey
-* zero gold
-* revert entries
-* manage reference data
+- full CRUD on everything
+- close journey
+- zero gold
+- revert entries
+- manage reference data
 
 ### Planner
 
-* work periods
-* planning
-* inform
-* accrual
-* view collaborator summaries
+- work periods
+- planning
+- inform
+- accrual
+- view collaborator summaries
 
 ### Mercantile Operator
 
-* create expenses
-* view collaborator summaries
-* view price list
-* cannot close journey or revert accruals
+- create expenses
+- view collaborator summaries
+- view price list
+- cannot close journey or revert accruals
 
 ### Finance Viewer
 
-* read-only access to balances and reports
+- read-only access to balances and reports
 
 ## 15.3 Audit requirements
 
 Audit all:
 
-* login/logout
-* journey creation/extension/close
-* accrual posting
-* expense posting
-* reversals
-* zero operations
-* reference-data changes
+- login/logout
+- journey creation/extension/close
+- accrual posting
+- expense posting
+- reversals
+- zero operations
+- reference-data changes
 
 ---
 
@@ -1596,11 +1595,11 @@ Audit all:
 
 Recommended UI stack:
 
-* React + TypeScript
-* React Router
-* TanStack Query
-* React Hook Form + Zod
-* Tailwind CSS or Bootstrap 5
+- React + TypeScript
+- React Router
+- TanStack Query
+- React Hook Form + Zod
+- Tailwind CSS or Bootstrap 5
 
 Because you asked for React and mobile-first, **React + TypeScript + Tailwind** is the cleanest modern option.
 
@@ -1610,41 +1609,41 @@ Because you asked for React and mobile-first, **React + TypeScript + Tailwind** 
 
 ### Person
 
-* required: name
-* unique: name, phone, email, cpf, pix_key
+- required: name
+- unique: name, phone, email, cpf, pix_key
 
 ### Collaborator Journey
 
-* person required
-* start date required
-* payment method required
-* payment value > 0
-* location/task/sector required
+- person required
+- start date required
+- payment method required
+- payment value > 0
+- location/task/sector required
 
 ### Production
 
-* date required
-* period required
-* well required
-* grams produced >= 0
+- date required
+- period required
+- well required
+- grams produced >= 0
 
 ### Gold Price
 
-* one quote per date
-* price > 0
+- one quote per date
+- price > 0
 
 ### Expense
 
-* collaborator required
-* currency required
-* at least one item
-* quantity > 0
-* unit price >= 0
-* total must reconcile
+- collaborator required
+- currency required
+- at least one item
+- quantity > 0
+- unit price >= 0
+- total must reconcile
 
 ### Reversal
 
-* original entry must be active and not already fully reversed unless partial reversal is intentionally supported later
+- original entry must be active and not already fully reversed unless partial reversal is intentionally supported later
 
 ---
 
@@ -1669,10 +1668,10 @@ Recommended initial reports:
 
 ## 20.1 Backend tests
 
-* unit tests for calculators and services
-* repository tests against SQLite test DB
-* Fiber handler tests with httptest
-* golden JSON responses for critical endpoints if useful
+- unit tests for calculators and services
+- repository tests against SQLite test DB
+- Fiber handler tests with httptest
+- golden JSON responses for critical endpoints if useful
 
 ### Highest-priority business-rule tests
 
@@ -1694,9 +1693,9 @@ Recommended initial reports:
 
 ## 20.2 Frontend tests
 
-* component tests for summary cards and forms
-* integration tests for key workflows
-* responsive layout checks
+- component tests for summary cards and forms
+- integration tests for key workflows
+- responsive layout checks
 
 ## 20.3 End-to-end tests
 
@@ -1718,32 +1717,32 @@ Recommended Playwright scenarios:
 
 Use a single deployable service:
 
-* Fiber backend serving API
-* React frontend built as static assets
-* SQLite file stored on durable disk
-* daily backups
+- Fiber backend serving API
+- React frontend built as static assets
+- SQLite file stored on durable disk
+- daily backups
 
 ## 21.2 Docker layout
 
-* one app container
-* one mounted volume for SQLite DB
-* one mounted volume for backups/logs
+- one app container
+- one mounted volume for SQLite DB
+- one mounted volume for backups/logs
 
 ## 21.3 Backup strategy
 
 Because SQLite is requested and operations are financially important:
 
-* nightly DB backup
-* pre-deploy backup
-* exportable CSV/Excel reports for finance audit
+- nightly DB backup
+- pre-deploy backup
+- exportable CSV/Excel reports for finance audit
 
 ## 21.4 Future evolution
 
 If the system grows, extract these first:
 
-* reporting
-* auth
-* pricing/integration adapters
+- reporting
+- auth
+- pricing/integration adapters
 
 ---
 
@@ -1752,54 +1751,45 @@ If the system grows, extract these first:
 To ship safely, the MVP should include:
 
 ### MVP Module 1
-
-* auth
-* people
-* collaborator journeys
-* reference data
+- auth
+- people
+- collaborator journeys
+- reference data
 
 ### MVP Module 2
-
-* work periods
-* planning
-* mine production
-* gold prices
+- work periods
+- planning
+- mine production
+- gold prices
 
 ### MVP Module 3
-
-* earnings accrual engine
-* expense entry
-* ledger summary/detail
+- earnings accrual engine
+- expense entry
+- ledger summary/detail
 
 ### MVP Module 4
-
-* reversals
-* zero gold
-* close journey
-* reports
+- reversals
+- zero gold
+- close journey
+- reports
 
 ---
 
 ## 23. Main Risks and How the Design Handles Them
 
 ### Risk 1: business-rule ambiguity
-
 Handled via explicit calculator strategies and audit metadata.
 
 ### Risk 2: dual-currency confusion
-
 Handled by one-currency-per-ledger-entry and independent balance summaries.
 
 ### Risk 3: remote-site operational mistakes
-
 Handled by reversal-based accounting, not deletion.
 
 ### Risk 4: missing production data
-
 Handled via pending accrual batches.
 
 ### Risk 5: overcomplicated architecture too early
-
 Handled by modular monolith first.
 
 ---
@@ -1808,13 +1798,13 @@ Handled by modular monolith first.
 
 Build this as a **modular monolith** with:
 
-* Fiber backend
-* SQLite + GORM
-* React + TypeScript frontend
-* immutable ledger design
-* explicit planning/accrual workflow
-* reversible financial postings
-* strong audit trail
+- Fiber backend
+- SQLite + GORM
+- React + TypeScript frontend
+- immutable ledger design
+- explicit planning/accrual workflow
+- reversible financial postings
+- strong audit trail
 
 This is the right architecture for the current requirements and leaves room for future extraction and scaling.
 
@@ -1869,49 +1859,48 @@ audit_logs ──> users
 
 #### Identity and contract
 
-* **Person 1:N CollaboratorJourney**
-
-  * One person can have many work journeys over time.
-  * Only one active journey per person is recommended.
+- **Person 1:N CollaboratorJourney**
+  - One person can have many work journeys over time.
+  - Only one active journey per person is recommended.
 
 #### Planning
 
-* **WorkPeriod 1:N WorkPlanItem**
-* **CollaboratorJourney 1:N WorkPlanItem**
-* **CollaboratorJourney 0..N substitute roles in WorkPlanItem** via `substituted_for_collaborator_id`
+- **WorkPeriod 1:N WorkPlanItem**
+- **CollaboratorJourney 1:N WorkPlanItem**
+- **CollaboratorJourney 0..N substitute roles in WorkPlanItem** via `substituted_for_collaborator_id`
 
 #### Production and accrual
 
-* **WorkPeriod 1:N MineWellProduction**
-* **WorkPeriod 1:N EarningAccrualBatch**
-* **EarningAccrualBatch 1:N EarningAccrualItem**
-* **CollaboratorJourney 1:N EarningAccrualItem**
+- **WorkPeriod 1:N MineWellProduction**
+- **WorkPeriod 1:N EarningAccrualBatch**
+- **EarningAccrualBatch 1:N EarningAccrualItem**
+- **CollaboratorJourney 1:N EarningAccrualItem**
 
 #### Expenses
 
-* **CollaboratorJourney 1:N ExpenseTransaction**
-* **ExpenseTransaction 1:N ExpenseItem**
-* **PriceListItem 0..N ExpenseItem**
+- **CollaboratorJourney 1:N ExpenseTransaction**
+- **ExpenseTransaction 1:N ExpenseItem**
+- **PriceListItem 0..N ExpenseItem**
 
 #### Ledger
 
-* **CollaboratorJourney 1:N CurrentAccountEntry**
-* **CurrentAccountEntry 0..N self-reference** through `reverted_entry_id`
+- **CollaboratorJourney 1:N CurrentAccountEntry**
+- **CurrentAccountEntry 0..N self-reference** through `reverted_entry_id`
 
 #### Reference data
 
 The following entities point to `reference_data` rows:
 
-* people.status_id
-* collaborator_journeys.payment_method_id
-* collaborator_journeys.sector_id
-* collaborator_journeys.location_id
-* collaborator_journeys.task_id
-* collaborator_journeys.status_id
-* work_plan_items.sector_id
-* work_plan_items.location_id
-* work_plan_items.task_id
-* work_plan_items.method_id
+- people.status_id
+- collaborator_journeys.payment_method_id
+- collaborator_journeys.sector_id
+- collaborator_journeys.location_id
+- collaborator_journeys.task_id
+- collaborator_journeys.status_id
+- work_plan_items.sector_id
+- work_plan_items.location_id
+- work_plan_items.task_id
+- work_plan_items.method_id
 
 ---
 
@@ -1925,16 +1914,16 @@ This section defines the implementation-grade schema for SQLite + GORM.
 
 Use string IDs (ULID recommended) for all primary keys:
 
-* good for offline-safe generation,
-* sortable by time,
-* easier than auto-increment merges if imports happen later.
+- good for offline-safe generation,
+- sortable by time,
+- easier than auto-increment merges if imports happen later.
 
 ### Timestamps
 
 All mutable business tables should have:
 
-* created_at
-* updated_at
+- created_at
+- updated_at
 
 ### Soft delete policy
 
@@ -1942,10 +1931,10 @@ Do **not** soft-delete financial or historical records.
 
 Use:
 
-* `status`
-* `active`
-* `closed_at`
-* reversal records
+- `status`
+- `active`
+- `closed_at`
+- reversal records
 
 instead of deletion.
 
@@ -1959,8 +1948,8 @@ For SQLite, GORM will map decimal-like values to numeric/text depending on imple
 
 Recommended handling:
 
-* Go type: decimal library or integer minor units where appropriate
-* DB type labels: `NUMERIC`
+- Go type: decimal library or integer minor units where appropriate
+- DB type labels: `NUMERIC`
 
 For this schema document, all accounting amounts are shown as `NUMERIC(18,6)` conceptually.
 
@@ -1972,56 +1961,56 @@ For this schema document, all accounting amounts are shown as `NUMERIC(18,6)` co
 
 Purpose: internal application users.
 
-| Column        | Type     | Null | Notes        |
-| ------------- | -------- | ---: | ------------ |
-| id            | TEXT     |   no | PK           |
-| username      | TEXT     |   no | unique       |
-| email         | TEXT     |   no | unique       |
-| password_hash | TEXT     |   no |              |
-| display_name  | TEXT     |   no |              |
-| active        | BOOLEAN  |   no | default true |
-| last_login_at | DATETIME |  yes |              |
-| created_at    | DATETIME |   no |              |
-| updated_at    | DATETIME |   no |              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| username | TEXT | no | unique |
+| email | TEXT | no | unique |
+| password_hash | TEXT | no | |
+| display_name | TEXT | no | |
+| active | BOOLEAN | no | default true |
+| last_login_at | DATETIME | yes | |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(username)
-* unique(email)
+- unique(username)
+- unique(email)
 
 ---
 
 ### roles
 
-| Column     | Type     | Null | Notes  |
-| ---------- | -------- | ---: | ------ |
-| id         | TEXT     |   no | PK     |
-| code       | TEXT     |   no | unique |
-| label      | TEXT     |   no |        |
-| created_at | DATETIME |   no |        |
-| updated_at | DATETIME |   no |        |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| code | TEXT | no | unique |
+| label | TEXT | no | |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Suggested seed values:
 
-* ADMIN
-* PLANNER
-* MERCANTILE_OPERATOR
-* FINANCE_VIEWER
+- ADMIN
+- PLANNER
+- MERCANTILE_OPERATOR
+- FINANCE_VIEWER
 
 ---
 
 ### user_roles
 
-| Column     | Type     | Null | Notes        |
-| ---------- | -------- | ---: | ------------ |
-| id         | TEXT     |   no | PK           |
-| user_id    | TEXT     |   no | FK users(id) |
-| role_id    | TEXT     |   no | FK roles(id) |
-| created_at | DATETIME |   no |              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| user_id | TEXT | no | FK users(id) |
+| role_id | TEXT | no | FK roles(id) |
+| created_at | DATETIME | no | |
 
 Indexes:
 
-* unique(user_id, role_id)
+- unique(user_id, role_id)
 
 ---
 
@@ -2029,67 +2018,67 @@ Indexes:
 
 Purpose: extensible lookup storage.
 
-| Column        | Type     | Null | Notes                       |
-| ------------- | -------- | ---: | --------------------------- |
-| id            | TEXT     |   no | PK                          |
-| type          | TEXT     |   no | e.g. sector, location, task |
-| code          | TEXT     |   no | stable internal code        |
-| label         | TEXT     |   no | UI label                    |
-| description   | TEXT     |  yes |                             |
-| active        | BOOLEAN  |   no | default true                |
-| sort_order    | INTEGER  |   no | default 0                   |
-| metadata_json | TEXT     |  yes | optional rules              |
-| created_at    | DATETIME |   no |                             |
-| updated_at    | DATETIME |   no |                             |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| type | TEXT | no | e.g. sector, location, task |
+| code | TEXT | no | stable internal code |
+| label | TEXT | no | UI label |
+| description | TEXT | yes | |
+| active | BOOLEAN | no | default true |
+| sort_order | INTEGER | no | default 0 |
+| metadata_json | TEXT | yes | optional rules |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(type, code)
-* index(type, active, sort_order)
+- unique(type, code)
+- index(type, active, sort_order)
 
 Suggested seeded `type` values:
 
-* sector
-* location
-* task
-* method
-* person_status
-* collaborator_status
-* expense_category
-* period_code
-* ledger_currency
-* ledger_cd_flag
+- sector
+- location
+- task
+- method
+- person_status
+- collaborator_status
+- expense_category
+- period_code
+- ledger_currency
+- ledger_cd_flag
 
 ---
 
 ### people
 
-| Column                  | Type     | Null | Notes                                     |
-| ----------------------- | -------- | ---: | ----------------------------------------- |
-| id                      | TEXT     |   no | PK                                        |
-| name                    | TEXT     |   no | unique                                    |
-| address                 | TEXT     |  yes |                                           |
-| phone                   | TEXT     |  yes | unique if not null                        |
-| email                   | TEXT     |  yes | unique if not null                        |
-| cpf                     | TEXT     |  yes | unique if not null                        |
-| bank_data               | TEXT     |  yes |                                           |
-| pix_key                 | TEXT     |  yes | unique if not null                        |
-| emergency_contact_name  | TEXT     |  yes |                                           |
-| emergency_contact_phone | TEXT     |  yes |                                           |
-| emergency_contact_notes | TEXT     |  yes |                                           |
-| status_id               | TEXT     |   no | FK reference_data(id), type=person_status |
-| notes                   | TEXT     |  yes |                                           |
-| created_at              | DATETIME |   no |                                           |
-| updated_at              | DATETIME |   no |                                           |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| name | TEXT | no | unique |
+| address | TEXT | yes | |
+| phone | TEXT | yes | unique if not null |
+| email | TEXT | yes | unique if not null |
+| cpf | TEXT | yes | unique if not null |
+| bank_data | TEXT | yes | |
+| pix_key | TEXT | yes | unique if not null |
+| emergency_contact_name | TEXT | yes | |
+| emergency_contact_phone | TEXT | yes | |
+| emergency_contact_notes | TEXT | yes | |
+| status_id | TEXT | no | FK reference_data(id), type=person_status |
+| notes | TEXT | yes | |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(name)
-* unique(phone)
-* unique(email)
-* unique(cpf)
-* unique(pix_key)
-* index(status_id)
+- unique(name)
+- unique(phone)
+- unique(email)
+- unique(cpf)
+- unique(pix_key)
+- index(status_id)
 
 ---
 
@@ -2097,37 +2086,37 @@ Indexes:
 
 Purpose: a contractual work journey for one person.
 
-| Column             | Type     | Null | Notes                                                |
-| ------------------ | -------- | ---: | ---------------------------------------------------- |
-| id                 | TEXT     |   no | PK                                                   |
-| person_id          | TEXT     |   no | FK people(id)                                        |
-| journey_start_date | DATE     |   no |                                                      |
-| default_end_date   | DATE     |   no | start + 90 days                                      |
-| extension_days     | INTEGER  |   no | default 0                                            |
-| projected_end_date | DATE     |   no | default_end + extension                              |
-| payment_method_id  | TEXT     |   no | FK reference_data(id), type=method                   |
-| payment_value      | NUMERIC  |   no | daily wage, monthly salary, or commission percentage |
-| sector_id          | TEXT     |   no | FK reference_data(id), type=sector                   |
-| location_id        | TEXT     |   no | FK reference_data(id), type=location                 |
-| task_id            | TEXT     |   no | FK reference_data(id), type=task                     |
-| status_id          | TEXT     |   no | FK reference_data(id), type=collaborator_status      |
-| notes              | TEXT     |  yes |                                                      |
-| closed_at          | DATETIME |  yes |                                                      |
-| created_at         | DATETIME |   no |                                                      |
-| updated_at         | DATETIME |   no |                                                      |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| person_id | TEXT | no | FK people(id) |
+| journey_start_date | DATE | no | |
+| default_end_date | DATE | no | start + 90 days |
+| extension_days | INTEGER | no | default 0 |
+| projected_end_date | DATE | no | default_end + extension |
+| payment_method_id | TEXT | no | FK reference_data(id), type=method |
+| payment_value | NUMERIC | no | daily wage, monthly salary, or commission percentage |
+| sector_id | TEXT | no | FK reference_data(id), type=sector |
+| location_id | TEXT | no | FK reference_data(id), type=location |
+| task_id | TEXT | no | FK reference_data(id), type=task |
+| status_id | TEXT | no | FK reference_data(id), type=collaborator_status |
+| notes | TEXT | yes | |
+| closed_at | DATETIME | yes | |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* index(person_id)
-* index(status_id)
-* index(projected_end_date)
-* index(location_id)
-* index(payment_method_id)
-* recommended partial uniqueness in app logic: one active journey per person
+- index(person_id)
+- index(status_id)
+- index(projected_end_date)
+- index(location_id)
+- index(payment_method_id)
+- recommended partial uniqueness in app logic: one active journey per person
 
 Important application constraint:
 
-* a person should not have more than one active collaborator journey at the same time.
+- a person should not have more than one active collaborator journey at the same time.
 
 Because SQLite partial uniqueness is awkward in portable GORM migrations, enforce this in service logic.
 
@@ -2137,22 +2126,22 @@ Because SQLite partial uniqueness is awkward in portable GORM migrations, enforc
 
 Purpose: operational 12-hour periods used for planning, informing, accrual, and production alignment.
 
-| Column                     | Type     | Null | Notes                              |
-| -------------------------- | -------- | ---: | ---------------------------------- |
-| id                         | TEXT     |   no | PK                                 |
-| work_date                  | DATE     |   no |                                    |
-| period_code                | TEXT     |   no | e.g. DAY, NIGHT or P1, P2          |
-| starts_at                  | DATETIME |  yes |                                    |
-| ends_at                    | DATETIME |  yes |                                    |
-| status                     | TEXT     |   no | planned, informed, accrued, locked |
-| seeded_from_work_period_id | TEXT     |  yes | self FK optional                   |
-| created_at                 | DATETIME |   no |                                    |
-| updated_at                 | DATETIME |   no |                                    |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| work_date | DATE | no | |
+| period_code | TEXT | no | e.g. DAY, NIGHT or P1, P2 |
+| starts_at | DATETIME | yes | |
+| ends_at | DATETIME | yes | |
+| status | TEXT | no | planned, informed, accrued, locked |
+| seeded_from_work_period_id | TEXT | yes | self FK optional |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(work_date, period_code)
-* index(status)
+- unique(work_date, period_code)
+- index(status)
 
 ---
 
@@ -2160,31 +2149,31 @@ Indexes:
 
 Purpose: collaborator assignments for a work period.
 
-| Column                          | Type     | Null | Notes                                            |
-| ------------------------------- | -------- | ---: | ------------------------------------------------ |
-| id                              | TEXT     |   no | PK                                               |
-| work_period_id                  | TEXT     |   no | FK work_periods(id)                              |
-| collaborator_id                 | TEXT     |   no | FK collaborator_journeys(id)                     |
-| include_flag                    | BOOLEAN  |   no | default true                                     |
-| sector_id                       | TEXT     |   no | FK reference_data(id)                            |
-| location_id                     | TEXT     |   no | FK reference_data(id)                            |
-| task_id                         | TEXT     |   no | FK reference_data(id)                            |
-| method_id                       | TEXT     |   no | FK reference_data(id)                            |
-| payment_value_snapshot          | NUMERIC  |   no | immutable planning snapshot                      |
-| assignment_status               | TEXT     |   no | planned, worked, sick, license, absent, excluded |
-| substituted_for_collaborator_id | TEXT     |  yes | FK collaborator_journeys(id)                     |
-| exception_type                  | TEXT     |  yes | none, sick_substitution, license_substitution    |
-| comments                        | TEXT     |  yes |                                                  |
-| created_at                      | DATETIME |   no |                                                  |
-| updated_at                      | DATETIME |   no |                                                  |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| work_period_id | TEXT | no | FK work_periods(id) |
+| collaborator_id | TEXT | no | FK collaborator_journeys(id) |
+| include_flag | BOOLEAN | no | default true |
+| sector_id | TEXT | no | FK reference_data(id) |
+| location_id | TEXT | no | FK reference_data(id) |
+| task_id | TEXT | no | FK reference_data(id) |
+| method_id | TEXT | no | FK reference_data(id) |
+| payment_value_snapshot | NUMERIC | no | immutable planning snapshot |
+| assignment_status | TEXT | no | planned, worked, sick, license, absent, excluded |
+| substituted_for_collaborator_id | TEXT | yes | FK collaborator_journeys(id) |
+| exception_type | TEXT | yes | none, sick_substitution, license_substitution |
+| comments | TEXT | yes | |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* index(work_period_id)
-* index(collaborator_id)
-* index(location_id)
-* index(substituted_for_collaborator_id)
-* recommended unique(work_period_id, collaborator_id)
+- index(work_period_id)
+- index(collaborator_id)
+- index(location_id)
+- index(substituted_for_collaborator_id)
+- recommended unique(work_period_id, collaborator_id)
 
 ---
 
@@ -2192,28 +2181,28 @@ Indexes:
 
 Purpose: recorded production per well for a given date/period.
 
-| Column         | Type     | Null | Notes                                |
-| -------------- | -------- | ---: | ------------------------------------ |
-| id             | TEXT     |   no | PK                                   |
-| work_period_id | TEXT     |   no | FK work_periods(id)                  |
-| work_date      | DATE     |   no | denormalized for querying            |
-| period_code    | TEXT     |   no | denormalized for querying            |
-| location_id    | TEXT     |   no | FK reference_data(id), type=location |
-| grams_produced | NUMERIC  |   no |                                      |
-| comments       | TEXT     |  yes |                                      |
-| created_by     | TEXT     |   no | FK users(id)                         |
-| created_at     | DATETIME |   no |                                      |
-| updated_at     | DATETIME |   no |                                      |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| work_period_id | TEXT | no | FK work_periods(id) |
+| work_date | DATE | no | denormalized for querying |
+| period_code | TEXT | no | denormalized for querying |
+| location_id | TEXT | no | FK reference_data(id), type=location |
+| grams_produced | NUMERIC | no | |
+| comments | TEXT | yes | |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(work_date, period_code, location_id)
-* index(work_period_id)
-* index(location_id)
+- unique(work_date, period_code, location_id)
+- index(work_period_id)
+- index(location_id)
 
 Note:
 
-* `location_id` should point only to mine-well-capable locations. This is best enforced in application rules or `metadata_json` on reference_data.
+- `location_id` should point only to mine-well-capable locations. This is best enforced in application rules or `metadata_json` on reference_data.
 
 ---
 
@@ -2221,22 +2210,22 @@ Note:
 
 Purpose: daily BRL per gram quote.
 
-| Column             | Type     | Null | Notes           |
-| ------------------ | -------- | ---: | --------------- |
-| id                 | TEXT     |   no | PK              |
-| quote_date         | DATE     |   no | unique          |
-| quoted_at_time     | TEXT     |  yes | e.g. 11:00      |
-| price_brl_per_gram | NUMERIC  |   no |                 |
-| source_name        | TEXT     |  yes | approved source |
-| comments           | TEXT     |  yes |                 |
-| created_by         | TEXT     |   no | FK users(id)    |
-| created_at         | DATETIME |   no |                 |
-| updated_at         | DATETIME |   no |                 |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| quote_date | DATE | no | unique |
+| quoted_at_time | TEXT | yes | e.g. 11:00 |
+| price_brl_per_gram | NUMERIC | no | |
+| source_name | TEXT | yes | approved source |
+| comments | TEXT | yes | |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(quote_date)
-* index(quote_date desc)
+- unique(quote_date)
+- index(quote_date desc)
 
 ---
 
@@ -2244,27 +2233,27 @@ Indexes:
 
 Purpose: mercantile catalog.
 
-| Column      | Type     | Null | Notes                                        |
-| ----------- | -------- | ---: | -------------------------------------------- |
-| id          | TEXT     |   no | PK                                           |
-| code        | TEXT     |  yes | unique if used                               |
-| name        | TEXT     |   no | unique                                       |
-| description | TEXT     |  yes |                                              |
-| category_id | TEXT     |   no | FK reference_data(id), type=expense_category |
-| price_brl   | NUMERIC  |   no | base price in BRL                            |
-| active      | BOOLEAN  |   no | default true                                 |
-| created_at  | DATETIME |   no |                                              |
-| updated_at  | DATETIME |   no |                                              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| code | TEXT | yes | unique if used |
+| name | TEXT | no | unique |
+| description | TEXT | yes | |
+| category_id | TEXT | no | FK reference_data(id), type=expense_category |
+| price_brl | NUMERIC | no | base price in BRL |
+| active | BOOLEAN | no | default true |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* unique(name)
-* unique(code)
-* index(category_id, active)
+- unique(name)
+- unique(code)
+- index(category_id, active)
 
 Note:
 
-* Gold price equivalent is computed dynamically or snapshotted at expense time, not stored here as a permanent column.
+- Gold price equivalent is computed dynamically or snapshotted at expense time, not stored here as a permanent column.
 
 ---
 
@@ -2272,28 +2261,28 @@ Note:
 
 Purpose: expense header.
 
-| Column                 | Type     | Null | Notes                                        |
-| ---------------------- | -------- | ---: | -------------------------------------------- |
-| id                     | TEXT     |   no | PK                                           |
-| collaborator_id        | TEXT     |   no | FK collaborator_journeys(id)                 |
-| expense_date           | DATE     |   no |                                              |
-| currency_code          | TEXT     |   no | BRL or GOLD_GRAMS                            |
-| total_amount           | NUMERIC  |   no | sum of items                                 |
-| category_id            | TEXT     |   no | FK reference_data(id), type=expense_category |
-| gold_price_id          | TEXT     |  yes | FK gold_prices(id), when relevant            |
-| collaborator_agreement | BOOLEAN  |   no | default false                                |
-| comments               | TEXT     |  yes |                                              |
-| posted_ledger_group_id | TEXT     |  yes | optional grouping token                      |
-| created_by             | TEXT     |   no | FK users(id)                                 |
-| created_at             | DATETIME |   no |                                              |
-| updated_at             | DATETIME |   no |                                              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| collaborator_id | TEXT | no | FK collaborator_journeys(id) |
+| expense_date | DATE | no | |
+| currency_code | TEXT | no | BRL or GOLD_GRAMS |
+| total_amount | NUMERIC | no | sum of items |
+| category_id | TEXT | no | FK reference_data(id), type=expense_category |
+| gold_price_id | TEXT | yes | FK gold_prices(id), when relevant |
+| collaborator_agreement | BOOLEAN | no | default false |
+| comments | TEXT | yes | |
+| posted_ledger_group_id | TEXT | yes | optional grouping token |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* index(collaborator_id)
-* index(expense_date)
-* index(category_id)
-* index(currency_code)
+- index(collaborator_id)
+- index(expense_date)
+- index(category_id)
+- index(currency_code)
 
 ---
 
@@ -2301,22 +2290,22 @@ Indexes:
 
 Purpose: expense lines.
 
-| Column             | Type     | Null | Notes                        |
-| ------------------ | -------- | ---: | ---------------------------- |
-| id                 | TEXT     |   no | PK                           |
-| expense_id         | TEXT     |   no | FK expense_transactions(id)  |
-| price_list_item_id | TEXT     |  yes | FK price_list_items(id)      |
-| item_name_snapshot | TEXT     |   no | preserves historical meaning |
-| quantity           | NUMERIC  |   no |                              |
-| unit_price         | NUMERIC  |   no | in selected currency         |
-| total_price        | NUMERIC  |   no |                              |
-| comments           | TEXT     |  yes |                              |
-| created_at         | DATETIME |   no |                              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| expense_id | TEXT | no | FK expense_transactions(id) |
+| price_list_item_id | TEXT | yes | FK price_list_items(id) |
+| item_name_snapshot | TEXT | no | preserves historical meaning |
+| quantity | NUMERIC | no | |
+| unit_price | NUMERIC | no | in selected currency |
+| total_price | NUMERIC | no | |
+| comments | TEXT | yes | |
+| created_at | DATETIME | no | |
 
 Indexes:
 
-* index(expense_id)
-* index(price_list_item_id)
+- index(expense_id)
+- index(price_list_item_id)
 
 ---
 
@@ -2324,21 +2313,21 @@ Indexes:
 
 Purpose: posting run for one work period.
 
-| Column         | Type     | Null | Notes                                                         |
-| -------------- | -------- | ---: | ------------------------------------------------------------- |
-| id             | TEXT     |   no | PK                                                            |
-| work_period_id | TEXT     |   no | FK work_periods(id)                                           |
-| accrual_status | TEXT     |   no | draft, pending_production, posted, partially_posted, reverted |
-| comments       | TEXT     |  yes |                                                               |
-| created_by     | TEXT     |   no | FK users(id)                                                  |
-| created_at     | DATETIME |   no |                                                               |
-| updated_at     | DATETIME |   no |                                                               |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| work_period_id | TEXT | no | FK work_periods(id) |
+| accrual_status | TEXT | no | draft, pending_production, posted, partially_posted, reverted |
+| comments | TEXT | yes | |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
+| updated_at | DATETIME | no | |
 
 Indexes:
 
-* index(work_period_id)
-* index(accrual_status)
-* recommended unique(work_period_id) for one principal batch per period in MVP
+- index(work_period_id)
+- index(accrual_status)
+- recommended unique(work_period_id) for one principal batch per period in MVP
 
 ---
 
@@ -2346,34 +2335,34 @@ Indexes:
 
 Purpose: collaborator-by-collaborator accrual results.
 
-| Column                 | Type     | Null | Notes                                                     |
-| ---------------------- | -------- | ---: | --------------------------------------------------------- |
-| id                     | TEXT     |   no | PK                                                        |
-| accrual_batch_id       | TEXT     |   no | FK earning_accrual_batches(id)                            |
-| collaborator_id        | TEXT     |   no | FK collaborator_journeys(id)                              |
-| work_plan_item_id      | TEXT     |  yes | FK work_plan_items(id)                                    |
-| method_id              | TEXT     |   no | FK reference_data(id)                                     |
-| currency_code          | TEXT     |   no | BRL or GOLD_GRAMS                                         |
-| calculation_basis_json | TEXT     |   no | snapshot of formula inputs                                |
-| gross_amount           | NUMERIC  |   no | before transfer/split                                     |
-| transfer_amount        | NUMERIC  |   no | amount transferred to substitute etc.                     |
-| net_amount             | NUMERIC  |   no | amount owed to collaborator                               |
-| hold_reason            | TEXT     |  yes | e.g. missing production                                   |
-| ledger_entry_id        | TEXT     |  yes | FK current_account_entries(id), main credit if one-to-one |
-| status                 | TEXT     |   no | pending, posted, held, reverted                           |
-| comments               | TEXT     |  yes |                                                           |
-| created_at             | DATETIME |   no |                                                           |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| accrual_batch_id | TEXT | no | FK earning_accrual_batches(id) |
+| collaborator_id | TEXT | no | FK collaborator_journeys(id) |
+| work_plan_item_id | TEXT | yes | FK work_plan_items(id) |
+| method_id | TEXT | no | FK reference_data(id) |
+| currency_code | TEXT | no | BRL or GOLD_GRAMS |
+| calculation_basis_json | TEXT | no | snapshot of formula inputs |
+| gross_amount | NUMERIC | no | before transfer/split |
+| transfer_amount | NUMERIC | no | amount transferred to substitute etc. |
+| net_amount | NUMERIC | no | amount owed to collaborator |
+| hold_reason | TEXT | yes | e.g. missing production |
+| ledger_entry_id | TEXT | yes | FK current_account_entries(id), main credit if one-to-one |
+| status | TEXT | no | pending, posted, held, reverted |
+| comments | TEXT | yes | |
+| created_at | DATETIME | no | |
 
 Indexes:
 
-* index(accrual_batch_id)
-* index(collaborator_id)
-* index(status)
-* index(work_plan_item_id)
+- index(accrual_batch_id)
+- index(collaborator_id)
+- index(status)
+- index(work_plan_item_id)
 
 Note:
 
-* special sick/license cases can create more than one ledger entry, so `ledger_entry_id` here is optional convenience only. The authoritative financial data remains in `current_account_entries`.
+- special sick/license cases can create more than one ledger entry, so `ledger_entry_id` here is optional convenience only. The authoritative financial data remains in `current_account_entries`.
 
 ---
 
@@ -2381,40 +2370,40 @@ Note:
 
 Purpose: immutable dual-currency ledger.
 
-| Column            | Type     | Null | Notes                                                                          |
-| ----------------- | -------- | ---: | ------------------------------------------------------------------------------ |
-| id                | TEXT     |   no | PK                                                                             |
-| reverted_entry_id | TEXT     |  yes | self FK                                                                        |
-| collaborator_id   | TEXT     |   no | FK collaborator_journeys(id)                                                   |
-| entry_date        | DATE     |   no |                                                                                |
-| source_type       | TEXT     |   no | earning_accrual, expense, reversal, zero_out, journey_close, manual_adjustment |
-| source_id         | TEXT     |  yes | origin record ID                                                               |
-| ledger_group_id   | TEXT     |  yes | groups multi-line posting                                                      |
-| method_id         | TEXT     |  yes | FK reference_data(id), when relevant                                           |
-| currency_code     | TEXT     |   no | BRL or GOLD_GRAMS                                                              |
-| cd_flag           | TEXT     |   no | CREDIT or DEBIT                                                                |
-| item_description  | TEXT     |   no | user-readable reason                                                           |
-| quantity          | NUMERIC  |   no | usually 1 for credits                                                          |
-| unit_price        | NUMERIC  |   no |                                                                                |
-| total_price       | NUMERIC  |   no |                                                                                |
-| comments          | TEXT     |  yes |                                                                                |
-| status            | TEXT     |   no | active, reversed                                                               |
-| created_by        | TEXT     |   no | FK users(id)                                                                   |
-| created_at        | DATETIME |   no |                                                                                |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| reverted_entry_id | TEXT | yes | self FK |
+| collaborator_id | TEXT | no | FK collaborator_journeys(id) |
+| entry_date | DATE | no | |
+| source_type | TEXT | no | earning_accrual, expense, reversal, zero_out, journey_close, manual_adjustment |
+| source_id | TEXT | yes | origin record ID |
+| ledger_group_id | TEXT | yes | groups multi-line posting |
+| method_id | TEXT | yes | FK reference_data(id), when relevant |
+| currency_code | TEXT | no | BRL or GOLD_GRAMS |
+| cd_flag | TEXT | no | CREDIT or DEBIT |
+| item_description | TEXT | no | user-readable reason |
+| quantity | NUMERIC | no | usually 1 for credits |
+| unit_price | NUMERIC | no | |
+| total_price | NUMERIC | no | |
+| comments | TEXT | yes | |
+| status | TEXT | no | active, reversed |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
 
 Indexes:
 
-* index(collaborator_id, entry_date)
-* index(currency_code, cd_flag)
-* index(source_type, source_id)
-* index(ledger_group_id)
-* index(reverted_entry_id)
+- index(collaborator_id, entry_date)
+- index(currency_code, cd_flag)
+- index(source_type, source_id)
+- index(ledger_group_id)
+- index(reverted_entry_id)
 
 Important rules:
 
-* no updates to financial meaning after posting
-* reversal must create a new opposite entry
-* `status` marks visibility state but does not remove the row
+- no updates to financial meaning after posting
+- reversal must create a new opposite entry
+- `status` marks visibility state but does not remove the row
 
 ---
 
@@ -2422,22 +2411,22 @@ Important rules:
 
 Purpose: operational and financial audit trail.
 
-| Column        | Type     | Null | Notes                                           |
-| ------------- | -------- | ---: | ----------------------------------------------- |
-| id            | TEXT     |   no | PK                                              |
-| actor_user_id | TEXT     |   no | FK users(id)                                    |
-| action        | TEXT     |   no | CREATE, UPDATE, POST, REVERT, CLOSE, LOGIN etc. |
-| entity_type   | TEXT     |   no |                                                 |
-| entity_id     | TEXT     |   no |                                                 |
-| before_json   | TEXT     |  yes |                                                 |
-| after_json    | TEXT     |  yes |                                                 |
-| created_at    | DATETIME |   no |                                                 |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| actor_user_id | TEXT | no | FK users(id) |
+| action | TEXT | no | CREATE, UPDATE, POST, REVERT, CLOSE, LOGIN etc. |
+| entity_type | TEXT | no | |
+| entity_id | TEXT | no | |
+| before_json | TEXT | yes | |
+| after_json | TEXT | yes | |
+| created_at | DATETIME | no | |
 
 Indexes:
 
-* index(actor_user_id)
-* index(entity_type, entity_id)
-* index(created_at)
+- index(actor_user_id)
+- index(entity_type, entity_id)
+- index(created_at)
 
 ---
 
@@ -2449,15 +2438,15 @@ These are not mandatory for v1, but I recommend reserving them in the design.
 
 Purpose: optional posting batch header for multi-line postings.
 
-| Column       | Type     | Null | Notes        |
-| ------------ | -------- | ---: | ------------ |
-| id           | TEXT     |   no | PK           |
-| source_type  | TEXT     |   no |              |
-| source_id    | TEXT     |  yes |              |
-| posting_date | DATE     |   no |              |
-| comments     | TEXT     |  yes |              |
-| created_by   | TEXT     |   no | FK users(id) |
-| created_at   | DATETIME |   no |              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| source_type | TEXT | no | |
+| source_id | TEXT | yes | |
+| posting_date | DATE | no | |
+| comments | TEXT | yes | |
+| created_by | TEXT | no | FK users(id) |
+| created_at | DATETIME | no | |
 
 This helps for grouping multiple entries generated from one accrual or expense.
 
@@ -2465,22 +2454,22 @@ This helps for grouping multiple entries generated from one accrual or expense.
 
 Purpose: configurable operational rules.
 
-| Column      | Type     | Null | Notes        |
-| ----------- | -------- | ---: | ------------ |
-| id          | TEXT     |   no | PK           |
-| key         | TEXT     |   no | unique       |
-| value       | TEXT     |   no |              |
-| description | TEXT     |  yes |              |
-| updated_by  | TEXT     |   no | FK users(id) |
-| updated_at  | DATETIME |   no |              |
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| id | TEXT | no | PK |
+| key | TEXT | no | unique |
+| value | TEXT | no | |
+| description | TEXT | yes | |
+| updated_by | TEXT | no | FK users(id) |
+| updated_at | DATETIME | no | |
 
 Recommended keys:
 
-* `journey_default_days = 90`
-* `return_wait_days = 30`
-* `salary_daily_divisor = 30`
-* `max_sick_days = 3`
-* `commission_projection_basis = rolling_average`
+- `journey_default_days = 90`
+- `return_wait_days = 30`
+- `salary_daily_divisor = 30`
+- `max_sick_days = 3`
+- `commission_projection_basis = rolling_average`
 
 ---
 
@@ -2510,37 +2499,31 @@ Recommended keys:
 ## 27.5 Suggested GORM model relationships
 
 ### Person
-
-* has many CollaboratorJourneys
+- has many CollaboratorJourneys
 
 ### CollaboratorJourney
-
-* belongs to Person
-* has many WorkPlanItems
-* has many ExpenseTransactions
-* has many EarningAccrualItems
-* has many CurrentAccountEntries
+- belongs to Person
+- has many WorkPlanItems
+- has many ExpenseTransactions
+- has many EarningAccrualItems
+- has many CurrentAccountEntries
 
 ### WorkPeriod
-
-* has many WorkPlanItems
-* has many MineWellProductions
-* has one or many EarningAccrualBatches
+- has many WorkPlanItems
+- has many MineWellProductions
+- has one or many EarningAccrualBatches
 
 ### ExpenseTransaction
-
-* belongs to CollaboratorJourney
-* has many ExpenseItems
+- belongs to CollaboratorJourney
+- has many ExpenseItems
 
 ### EarningAccrualBatch
-
-* belongs to WorkPeriod
-* has many EarningAccrualItems
+- belongs to WorkPeriod
+- has many EarningAccrualItems
 
 ### CurrentAccountEntry
-
-* belongs to CollaboratorJourney
-* optionally belongs to a reverted original entry
+- belongs to CollaboratorJourney
+- optionally belongs to a reverted original entry
 
 ---
 
@@ -2575,12 +2558,12 @@ This gives enough structure to build the backend cleanly without premature compl
 
 To keep v1 stable, the schema does **not** yet include:
 
-* payroll export tables
-* file attachments
-* offline sync conflict tables
-* multiple companies/tenants
-* accounting journal export to external finance systems
-* approval workflows beyond role authorization
+- payroll export tables
+- file attachments
+- offline sync conflict tables
+- multiple companies/tenants
+- accounting journal export to external finance systems
+- approval workflows beyond role authorization
 
 Those can be added later without breaking the main ledger design.
 
@@ -2634,17 +2617,17 @@ package models
 import "time"
 
 type BaseModel struct {
-        ID        string    `gorm:"type:text;primaryKey" json:"id"`
-        CreatedAt time.Time `gorm:"not null" json:"createdAt"`
-        UpdatedAt time.Time `gorm:"not null" json:"updatedAt"`
+	ID        string    `gorm:"type:text;primaryKey" json:"id"`
+	CreatedAt time.Time `gorm:"not null" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"not null" json:"updatedAt"`
 }
 ```
 
 Recommended supporting conventions in application code:
 
-* generate ULIDs in a GORM `BeforeCreate` hook or in service layer
-* enable SQLite foreign keys on connection open
-* use a decimal library in DTO/service logic for financial arithmetic
+- generate ULIDs in a GORM `BeforeCreate` hook or in service layer
+- enable SQLite foreign keys on connection open
+- use a decimal library in DTO/service logic for financial arithmetic
 
 ---
 
@@ -2656,30 +2639,30 @@ package models
 import "time"
 
 type User struct {
-        BaseModel
-        Username     string     `gorm:"type:text;not null;uniqueIndex" json:"username"`
-        Email        string     `gorm:"type:text;not null;uniqueIndex" json:"email"`
-        PasswordHash string     `gorm:"type:text;not null" json:"-"`
-        DisplayName  string     `gorm:"type:text;not null" json:"displayName"`
-        Active       bool       `gorm:"not null;default:true" json:"active"`
-        LastLoginAt  *time.Time `gorm:"type:datetime" json:"lastLoginAt,omitempty"`
-        Roles        []Role     `gorm:"many2many:user_roles;" json:"roles,omitempty"`
+	BaseModel
+	Username     string     `gorm:"type:text;not null;uniqueIndex" json:"username"`
+	Email        string     `gorm:"type:text;not null;uniqueIndex" json:"email"`
+	PasswordHash string     `gorm:"type:text;not null" json:"-"`
+	DisplayName  string     `gorm:"type:text;not null" json:"displayName"`
+	Active       bool       `gorm:"not null;default:true" json:"active"`
+	LastLoginAt  *time.Time `gorm:"type:datetime" json:"lastLoginAt,omitempty"`
+	Roles        []Role     `gorm:"many2many:user_roles;" json:"roles,omitempty"`
 }
 
 type Role struct {
-        BaseModel
-        Code  string `gorm:"type:text;not null;uniqueIndex" json:"code"`
-        Label string `gorm:"type:text;not null" json:"label"`
+	BaseModel
+	Code  string `gorm:"type:text;not null;uniqueIndex" json:"code"`
+	Label string `gorm:"type:text;not null" json:"label"`
 }
 
 type UserRole struct {
-        ID        string    `gorm:"type:text;primaryKey" json:"id"`
-        UserID    string    `gorm:"type:text;not null;uniqueIndex:ux_user_role" json:"userId"`
-        RoleID    string    `gorm:"type:text;not null;uniqueIndex:ux_user_role" json:"roleId"`
-        CreatedAt time.Time `gorm:"not null" json:"createdAt"`
+	ID        string    `gorm:"type:text;primaryKey" json:"id"`
+	UserID    string    `gorm:"type:text;not null;uniqueIndex:ux_user_role" json:"userId"`
+	RoleID    string    `gorm:"type:text;not null;uniqueIndex:ux_user_role" json:"roleId"`
+	CreatedAt time.Time `gorm:"not null" json:"createdAt"`
 
-        User User `gorm:"foreignKey:UserID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"-"`
-        Role Role `gorm:"foreignKey:RoleID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"-"`
+	User User `gorm:"foreignKey:UserID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"-"`
+	Role Role `gorm:"foreignKey:RoleID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"-"`
 }
 ```
 
@@ -2691,14 +2674,14 @@ type UserRole struct {
 package models
 
 type ReferenceData struct {
-        BaseModel
-        Type         string `gorm:"type:text;not null;uniqueIndex:ux_reference_type_code;index:idx_reference_type_active_sort,priority:1" json:"type"`
-        Code         string `gorm:"type:text;not null;uniqueIndex:ux_reference_type_code" json:"code"`
-        Label        string `gorm:"type:text;not null" json:"label"`
-        Description  string `gorm:"type:text" json:"description,omitempty"`
-        Active       bool   `gorm:"not null;default:true;index:idx_reference_type_active_sort,priority:2" json:"active"`
-        SortOrder    int    `gorm:"not null;default:0;index:idx_reference_type_active_sort,priority:3" json:"sortOrder"`
-        MetadataJSON string `gorm:"type:text" json:"metadataJson,omitempty"`
+	BaseModel
+	Type         string `gorm:"type:text;not null;uniqueIndex:ux_reference_type_code;index:idx_reference_type_active_sort,priority:1" json:"type"`
+	Code         string `gorm:"type:text;not null;uniqueIndex:ux_reference_type_code" json:"code"`
+	Label        string `gorm:"type:text;not null" json:"label"`
+	Description  string `gorm:"type:text" json:"description,omitempty"`
+	Active       bool   `gorm:"not null;default:true;index:idx_reference_type_active_sort,priority:2" json:"active"`
+	SortOrder    int    `gorm:"not null;default:0;index:idx_reference_type_active_sort,priority:3" json:"sortOrder"`
+	MetadataJSON string `gorm:"type:text" json:"metadataJson,omitempty"`
 }
 ```
 
@@ -2710,21 +2693,21 @@ type ReferenceData struct {
 package models
 
 type Person struct {
-        BaseModel
-        Name                  string                 `gorm:"type:text;not null;uniqueIndex" json:"name"`
-        Address               string                 `gorm:"type:text" json:"address,omitempty"`
-        Phone                 *string                `gorm:"type:text;uniqueIndex" json:"phone,omitempty"`
-        Email                 *string                `gorm:"type:text;uniqueIndex" json:"email,omitempty"`
-        CPF                   *string                `gorm:"column:cpf;type:text;uniqueIndex" json:"cpf,omitempty"`
-        BankData              string                 `gorm:"type:text" json:"bankData,omitempty"`
-        PIXKey                *string                `gorm:"column:pix_key;type:text;uniqueIndex" json:"pixKey,omitempty"`
-        EmergencyContactName  string                 `gorm:"type:text" json:"emergencyContactName,omitempty"`
-        EmergencyContactPhone string                 `gorm:"type:text" json:"emergencyContactPhone,omitempty"`
-        EmergencyContactNotes string                 `gorm:"type:text" json:"emergencyContactNotes,omitempty"`
-        StatusID              string                 `gorm:"type:text;not null;index" json:"statusId"`
-        Notes                 string                 `gorm:"type:text" json:"notes,omitempty"`
-        Status                ReferenceData          `gorm:"foreignKey:StatusID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"status,omitempty"`
-        Journeys              []CollaboratorJourney  `gorm:"foreignKey:PersonID" json:"journeys,omitempty"`
+	BaseModel
+	Name                  string                 `gorm:"type:text;not null;uniqueIndex" json:"name"`
+	Address               string                 `gorm:"type:text" json:"address,omitempty"`
+	Phone                 *string                `gorm:"type:text;uniqueIndex" json:"phone,omitempty"`
+	Email                 *string                `gorm:"type:text;uniqueIndex" json:"email,omitempty"`
+	CPF                   *string                `gorm:"column:cpf;type:text;uniqueIndex" json:"cpf,omitempty"`
+	BankData              string                 `gorm:"type:text" json:"bankData,omitempty"`
+	PIXKey                *string                `gorm:"column:pix_key;type:text;uniqueIndex" json:"pixKey,omitempty"`
+	EmergencyContactName  string                 `gorm:"type:text" json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string                 `gorm:"type:text" json:"emergencyContactPhone,omitempty"`
+	EmergencyContactNotes string                 `gorm:"type:text" json:"emergencyContactNotes,omitempty"`
+	StatusID              string                 `gorm:"type:text;not null;index" json:"statusId"`
+	Notes                 string                 `gorm:"type:text" json:"notes,omitempty"`
+	Status                ReferenceData          `gorm:"foreignKey:StatusID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"status,omitempty"`
+	Journeys              []CollaboratorJourney  `gorm:"foreignKey:PersonID" json:"journeys,omitempty"`
 }
 ```
 
@@ -2738,27 +2721,27 @@ package models
 import "time"
 
 type CollaboratorJourney struct {
-        BaseModel
-        PersonID          string        `gorm:"type:text;not null;index" json:"personId"`
-        JourneyStartDate  time.Time     `gorm:"type:date;not null" json:"journeyStartDate"`
-        DefaultEndDate    time.Time     `gorm:"type:date;not null" json:"defaultEndDate"`
-        ExtensionDays     int           `gorm:"not null;default:0" json:"extensionDays"`
-        ProjectedEndDate  time.Time     `gorm:"type:date;not null;index" json:"projectedEndDate"`
-        PaymentMethodID   string        `gorm:"type:text;not null;index" json:"paymentMethodId"`
-        PaymentValue      float64       `gorm:"type:numeric;not null" json:"paymentValue"`
-        SectorID          string        `gorm:"type:text;not null" json:"sectorId"`
-        LocationID        string        `gorm:"type:text;not null;index" json:"locationId"`
-        TaskID            string        `gorm:"type:text;not null" json:"taskId"`
-        StatusID          string        `gorm:"type:text;not null;index" json:"statusId"`
-        Notes             string        `gorm:"type:text" json:"notes,omitempty"`
-        ClosedAt          *time.Time    `gorm:"type:datetime" json:"closedAt,omitempty"`
+	BaseModel
+	PersonID          string        `gorm:"type:text;not null;index" json:"personId"`
+	JourneyStartDate  time.Time     `gorm:"type:date;not null" json:"journeyStartDate"`
+	DefaultEndDate    time.Time     `gorm:"type:date;not null" json:"defaultEndDate"`
+	ExtensionDays     int           `gorm:"not null;default:0" json:"extensionDays"`
+	ProjectedEndDate  time.Time     `gorm:"type:date;not null;index" json:"projectedEndDate"`
+	PaymentMethodID   string        `gorm:"type:text;not null;index" json:"paymentMethodId"`
+	PaymentValue      float64       `gorm:"type:numeric;not null" json:"paymentValue"`
+	SectorID          string        `gorm:"type:text;not null" json:"sectorId"`
+	LocationID        string        `gorm:"type:text;not null;index" json:"locationId"`
+	TaskID            string        `gorm:"type:text;not null" json:"taskId"`
+	StatusID          string        `gorm:"type:text;not null;index" json:"statusId"`
+	Notes             string        `gorm:"type:text" json:"notes,omitempty"`
+	ClosedAt          *time.Time    `gorm:"type:datetime" json:"closedAt,omitempty"`
 
-        Person            Person        `gorm:"foreignKey:PersonID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"person,omitempty"`
-        PaymentMethod     ReferenceData `gorm:"foreignKey:PaymentMethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"paymentMethod,omitempty"`
-        Sector            ReferenceData `gorm:"foreignKey:SectorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"sector,omitempty"`
-        Location          ReferenceData `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
-        Task              ReferenceData `gorm:"foreignKey:TaskID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"task,omitempty"`
-        Status            ReferenceData `gorm:"foreignKey:StatusID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"status,omitempty"`
+	Person            Person        `gorm:"foreignKey:PersonID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"person,omitempty"`
+	PaymentMethod     ReferenceData `gorm:"foreignKey:PaymentMethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"paymentMethod,omitempty"`
+	Sector            ReferenceData `gorm:"foreignKey:SectorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"sector,omitempty"`
+	Location          ReferenceData `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
+	Task              ReferenceData `gorm:"foreignKey:TaskID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"task,omitempty"`
+	Status            ReferenceData `gorm:"foreignKey:StatusID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"status,omitempty"`
 }
 ```
 
@@ -2772,39 +2755,39 @@ package models
 import "time"
 
 type WorkPeriod struct {
-        BaseModel
-        WorkDate               time.Time  `gorm:"type:date;not null;uniqueIndex:ux_work_period_date_code" json:"workDate"`
-        PeriodCode             string     `gorm:"type:text;not null;uniqueIndex:ux_work_period_date_code;index" json:"periodCode"`
-        StartsAt               *time.Time `gorm:"type:datetime" json:"startsAt,omitempty"`
-        EndsAt                 *time.Time `gorm:"type:datetime" json:"endsAt,omitempty"`
-        Status                 string     `gorm:"type:text;not null;index" json:"status"`
-        SeededFromWorkPeriodID *string    `gorm:"type:text" json:"seededFromWorkPeriodId,omitempty"`
-        SeededFromWorkPeriod   *WorkPeriod `gorm:"foreignKey:SeededFromWorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"seededFromWorkPeriod,omitempty"`
-        PlanItems              []WorkPlanItem `gorm:"foreignKey:WorkPeriodID" json:"planItems,omitempty"`
+	BaseModel
+	WorkDate               time.Time  `gorm:"type:date;not null;uniqueIndex:ux_work_period_date_code" json:"workDate"`
+	PeriodCode             string     `gorm:"type:text;not null;uniqueIndex:ux_work_period_date_code;index" json:"periodCode"`
+	StartsAt               *time.Time `gorm:"type:datetime" json:"startsAt,omitempty"`
+	EndsAt                 *time.Time `gorm:"type:datetime" json:"endsAt,omitempty"`
+	Status                 string     `gorm:"type:text;not null;index" json:"status"`
+	SeededFromWorkPeriodID *string    `gorm:"type:text" json:"seededFromWorkPeriodId,omitempty"`
+	SeededFromWorkPeriod   *WorkPeriod `gorm:"foreignKey:SeededFromWorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"seededFromWorkPeriod,omitempty"`
+	PlanItems              []WorkPlanItem `gorm:"foreignKey:WorkPeriodID" json:"planItems,omitempty"`
 }
 
 type WorkPlanItem struct {
-        BaseModel
-        WorkPeriodID                 string        `gorm:"type:text;not null;uniqueIndex:ux_work_period_collaborator;index" json:"workPeriodId"`
-        CollaboratorID               string        `gorm:"type:text;not null;uniqueIndex:ux_work_period_collaborator;index" json:"collaboratorId"`
-        IncludeFlag                  bool          `gorm:"not null;default:true" json:"includeFlag"`
-        SectorID                     string        `gorm:"type:text;not null" json:"sectorId"`
-        LocationID                   string        `gorm:"type:text;not null;index" json:"locationId"`
-        TaskID                       string        `gorm:"type:text;not null" json:"taskId"`
-        MethodID                     string        `gorm:"type:text;not null" json:"methodId"`
-        PaymentValueSnapshot         float64       `gorm:"type:numeric;not null" json:"paymentValueSnapshot"`
-        AssignmentStatus             string        `gorm:"type:text;not null" json:"assignmentStatus"`
-        SubstitutedForCollaboratorID *string       `gorm:"type:text;index" json:"substitutedForCollaboratorId,omitempty"`
-        ExceptionType                *string       `gorm:"type:text" json:"exceptionType,omitempty"`
-        Comments                     string        `gorm:"type:text" json:"comments,omitempty"`
+	BaseModel
+	WorkPeriodID                 string        `gorm:"type:text;not null;uniqueIndex:ux_work_period_collaborator;index" json:"workPeriodId"`
+	CollaboratorID               string        `gorm:"type:text;not null;uniqueIndex:ux_work_period_collaborator;index" json:"collaboratorId"`
+	IncludeFlag                  bool          `gorm:"not null;default:true" json:"includeFlag"`
+	SectorID                     string        `gorm:"type:text;not null" json:"sectorId"`
+	LocationID                   string        `gorm:"type:text;not null;index" json:"locationId"`
+	TaskID                       string        `gorm:"type:text;not null" json:"taskId"`
+	MethodID                     string        `gorm:"type:text;not null" json:"methodId"`
+	PaymentValueSnapshot         float64       `gorm:"type:numeric;not null" json:"paymentValueSnapshot"`
+	AssignmentStatus             string        `gorm:"type:text;not null" json:"assignmentStatus"`
+	SubstitutedForCollaboratorID *string       `gorm:"type:text;index" json:"substitutedForCollaboratorId,omitempty"`
+	ExceptionType                *string       `gorm:"type:text" json:"exceptionType,omitempty"`
+	Comments                     string        `gorm:"type:text" json:"comments,omitempty"`
 
-        WorkPeriod                   WorkPeriod          `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
-        Collaborator                 CollaboratorJourney `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
-        Sector                       ReferenceData       `gorm:"foreignKey:SectorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"sector,omitempty"`
-        Location                     ReferenceData       `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
-        Task                         ReferenceData       `gorm:"foreignKey:TaskID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"task,omitempty"`
-        Method                       ReferenceData       `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
-        SubstitutedForCollaborator   *CollaboratorJourney `gorm:"foreignKey:SubstitutedForCollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"substitutedForCollaborator,omitempty"`
+	WorkPeriod                   WorkPeriod          `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
+	Collaborator                 CollaboratorJourney `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
+	Sector                       ReferenceData       `gorm:"foreignKey:SectorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"sector,omitempty"`
+	Location                     ReferenceData       `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
+	Task                         ReferenceData       `gorm:"foreignKey:TaskID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"task,omitempty"`
+	Method                       ReferenceData       `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
+	SubstitutedForCollaborator   *CollaboratorJourney `gorm:"foreignKey:SubstitutedForCollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"substitutedForCollaborator,omitempty"`
 }
 ```
 
@@ -2818,30 +2801,30 @@ package models
 import "time"
 
 type MineWellProduction struct {
-        BaseModel
-        WorkPeriodID   string     `gorm:"type:text;not null;index" json:"workPeriodId"`
-        WorkDate       time.Time  `gorm:"type:date;not null;uniqueIndex:ux_production_date_period_location" json:"workDate"`
-        PeriodCode     string     `gorm:"type:text;not null;uniqueIndex:ux_production_date_period_location" json:"periodCode"`
-        LocationID     string     `gorm:"type:text;not null;uniqueIndex:ux_production_date_period_location;index" json:"locationId"`
-        GramsProduced  float64    `gorm:"type:numeric;not null" json:"gramsProduced"`
-        Comments       string     `gorm:"type:text" json:"comments,omitempty"`
-        CreatedBy      string     `gorm:"type:text;not null" json:"createdBy"`
+	BaseModel
+	WorkPeriodID   string     `gorm:"type:text;not null;index" json:"workPeriodId"`
+	WorkDate       time.Time  `gorm:"type:date;not null;uniqueIndex:ux_production_date_period_location" json:"workDate"`
+	PeriodCode     string     `gorm:"type:text;not null;uniqueIndex:ux_production_date_period_location" json:"periodCode"`
+	LocationID     string     `gorm:"type:text;not null;uniqueIndex:ux_production_date_period_location;index" json:"locationId"`
+	GramsProduced  float64    `gorm:"type:numeric;not null" json:"gramsProduced"`
+	Comments       string     `gorm:"type:text" json:"comments,omitempty"`
+	CreatedBy      string     `gorm:"type:text;not null" json:"createdBy"`
 
-        WorkPeriod     WorkPeriod    `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
-        Location       ReferenceData `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
-        Creator        User          `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
+	WorkPeriod     WorkPeriod    `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
+	Location       ReferenceData `gorm:"foreignKey:LocationID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"location,omitempty"`
+	Creator        User          `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
 }
 
 type GoldPrice struct {
-        BaseModel
-        QuoteDate         time.Time `gorm:"type:date;not null;uniqueIndex" json:"quoteDate"`
-        QuotedAtTime      string    `gorm:"type:text" json:"quotedAtTime,omitempty"`
-        PriceBRLPerGram   float64   `gorm:"column:price_brl_per_gram;type:numeric;not null" json:"priceBRLPerGram"`
-        SourceName        string    `gorm:"type:text" json:"sourceName,omitempty"`
-        Comments          string    `gorm:"type:text" json:"comments,omitempty"`
-        CreatedBy         string    `gorm:"type:text;not null" json:"createdBy"`
+	BaseModel
+	QuoteDate         time.Time `gorm:"type:date;not null;uniqueIndex" json:"quoteDate"`
+	QuotedAtTime      string    `gorm:"type:text" json:"quotedAtTime,omitempty"`
+	PriceBRLPerGram   float64   `gorm:"column:price_brl_per_gram;type:numeric;not null" json:"priceBRLPerGram"`
+	SourceName        string    `gorm:"type:text" json:"sourceName,omitempty"`
+	Comments          string    `gorm:"type:text" json:"comments,omitempty"`
+	CreatedBy         string    `gorm:"type:text;not null" json:"createdBy"`
 
-        Creator           User      `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
+	Creator           User      `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
 }
 ```
 
@@ -2855,49 +2838,49 @@ package models
 import "time"
 
 type PriceListItem struct {
-        BaseModel
-        Code        *string       `gorm:"type:text;uniqueIndex" json:"code,omitempty"`
-        Name        string        `gorm:"type:text;not null;uniqueIndex" json:"name"`
-        Description string        `gorm:"type:text" json:"description,omitempty"`
-        CategoryID  string        `gorm:"type:text;not null;index:idx_price_list_category_active,priority:1" json:"categoryId"`
-        PriceBRL    float64       `gorm:"column:price_brl;type:numeric;not null" json:"priceBRL"`
-        Active      bool          `gorm:"not null;default:true;index:idx_price_list_category_active,priority:2" json:"active"`
+	BaseModel
+	Code        *string       `gorm:"type:text;uniqueIndex" json:"code,omitempty"`
+	Name        string        `gorm:"type:text;not null;uniqueIndex" json:"name"`
+	Description string        `gorm:"type:text" json:"description,omitempty"`
+	CategoryID  string        `gorm:"type:text;not null;index:idx_price_list_category_active,priority:1" json:"categoryId"`
+	PriceBRL    float64       `gorm:"column:price_brl;type:numeric;not null" json:"priceBRL"`
+	Active      bool          `gorm:"not null;default:true;index:idx_price_list_category_active,priority:2" json:"active"`
 
-        Category    ReferenceData `gorm:"foreignKey:CategoryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"category,omitempty"`
+	Category    ReferenceData `gorm:"foreignKey:CategoryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"category,omitempty"`
 }
 
 type ExpenseTransaction struct {
-        BaseModel
-        CollaboratorID         string               `gorm:"type:text;not null;index" json:"collaboratorId"`
-        ExpenseDate            time.Time            `gorm:"type:date;not null;index" json:"expenseDate"`
-        CurrencyCode           string               `gorm:"type:text;not null;index" json:"currencyCode"`
-        TotalAmount            float64              `gorm:"type:numeric;not null" json:"totalAmount"`
-        CategoryID             string               `gorm:"type:text;not null;index" json:"categoryId"`
-        GoldPriceID            *string              `gorm:"type:text" json:"goldPriceId,omitempty"`
-        CollaboratorAgreement  bool                 `gorm:"not null;default:false" json:"collaboratorAgreement"`
-        Comments               string               `gorm:"type:text" json:"comments,omitempty"`
-        PostedLedgerGroupID    *string              `gorm:"type:text" json:"postedLedgerGroupId,omitempty"`
-        CreatedBy              string               `gorm:"type:text;not null" json:"createdBy"`
+	BaseModel
+	CollaboratorID         string               `gorm:"type:text;not null;index" json:"collaboratorId"`
+	ExpenseDate            time.Time            `gorm:"type:date;not null;index" json:"expenseDate"`
+	CurrencyCode           string               `gorm:"type:text;not null;index" json:"currencyCode"`
+	TotalAmount            float64              `gorm:"type:numeric;not null" json:"totalAmount"`
+	CategoryID             string               `gorm:"type:text;not null;index" json:"categoryId"`
+	GoldPriceID            *string              `gorm:"type:text" json:"goldPriceId,omitempty"`
+	CollaboratorAgreement  bool                 `gorm:"not null;default:false" json:"collaboratorAgreement"`
+	Comments               string               `gorm:"type:text" json:"comments,omitempty"`
+	PostedLedgerGroupID    *string              `gorm:"type:text" json:"postedLedgerGroupId,omitempty"`
+	CreatedBy              string               `gorm:"type:text;not null" json:"createdBy"`
 
-        Collaborator           CollaboratorJourney  `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
-        Category               ReferenceData        `gorm:"foreignKey:CategoryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"category,omitempty"`
-        GoldPrice              *GoldPrice           `gorm:"foreignKey:GoldPriceID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"goldPrice,omitempty"`
-        Creator                User                 `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
-        Items                  []ExpenseItem        `gorm:"foreignKey:ExpenseID" json:"items,omitempty"`
+	Collaborator           CollaboratorJourney  `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
+	Category               ReferenceData        `gorm:"foreignKey:CategoryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"category,omitempty"`
+	GoldPrice              *GoldPrice           `gorm:"foreignKey:GoldPriceID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"goldPrice,omitempty"`
+	Creator                User                 `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
+	Items                  []ExpenseItem        `gorm:"foreignKey:ExpenseID" json:"items,omitempty"`
 }
 
 type ExpenseItem struct {
-        BaseModel
-        ExpenseID          string         `gorm:"type:text;not null;index" json:"expenseId"`
-        PriceListItemID    *string        `gorm:"type:text;index" json:"priceListItemId,omitempty"`
-        ItemNameSnapshot   string         `gorm:"type:text;not null" json:"itemNameSnapshot"`
-        Quantity           float64        `gorm:"type:numeric;not null" json:"quantity"`
-        UnitPrice          float64        `gorm:"type:numeric;not null" json:"unitPrice"`
-        TotalPrice         float64        `gorm:"type:numeric;not null" json:"totalPrice"`
-        Comments           string         `gorm:"type:text" json:"comments,omitempty"`
+	BaseModel
+	ExpenseID          string         `gorm:"type:text;not null;index" json:"expenseId"`
+	PriceListItemID    *string        `gorm:"type:text;index" json:"priceListItemId,omitempty"`
+	ItemNameSnapshot   string         `gorm:"type:text;not null" json:"itemNameSnapshot"`
+	Quantity           float64        `gorm:"type:numeric;not null" json:"quantity"`
+	UnitPrice          float64        `gorm:"type:numeric;not null" json:"unitPrice"`
+	TotalPrice         float64        `gorm:"type:numeric;not null" json:"totalPrice"`
+	Comments           string         `gorm:"type:text" json:"comments,omitempty"`
 
-        Expense            ExpenseTransaction `gorm:"foreignKey:ExpenseID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"expense,omitempty"`
-        PriceListItem      *PriceListItem     `gorm:"foreignKey:PriceListItemID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"priceListItem,omitempty"`
+	Expense            ExpenseTransaction `gorm:"foreignKey:ExpenseID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"expense,omitempty"`
+	PriceListItem      *PriceListItem     `gorm:"foreignKey:PriceListItemID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"priceListItem,omitempty"`
 }
 ```
 
@@ -2909,37 +2892,37 @@ type ExpenseItem struct {
 package models
 
 type EarningAccrualBatch struct {
-        BaseModel
-        WorkPeriodID   string               `gorm:"type:text;not null;uniqueIndex;index" json:"workPeriodId"`
-        AccrualStatus  string               `gorm:"type:text;not null;index" json:"accrualStatus"`
-        Comments       string               `gorm:"type:text" json:"comments,omitempty"`
-        CreatedBy      string               `gorm:"type:text;not null" json:"createdBy"`
+	BaseModel
+	WorkPeriodID   string               `gorm:"type:text;not null;uniqueIndex;index" json:"workPeriodId"`
+	AccrualStatus  string               `gorm:"type:text;not null;index" json:"accrualStatus"`
+	Comments       string               `gorm:"type:text" json:"comments,omitempty"`
+	CreatedBy      string               `gorm:"type:text;not null" json:"createdBy"`
 
-        WorkPeriod     WorkPeriod           `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
-        Creator        User                 `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
-        Items          []EarningAccrualItem `gorm:"foreignKey:AccrualBatchID" json:"items,omitempty"`
+	WorkPeriod     WorkPeriod           `gorm:"foreignKey:WorkPeriodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPeriod,omitempty"`
+	Creator        User                 `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
+	Items          []EarningAccrualItem `gorm:"foreignKey:AccrualBatchID" json:"items,omitempty"`
 }
 
 type EarningAccrualItem struct {
-        BaseModel
-        AccrualBatchID       string               `gorm:"type:text;not null;index" json:"accrualBatchId"`
-        CollaboratorID       string               `gorm:"type:text;not null;index" json:"collaboratorId"`
-        WorkPlanItemID       *string              `gorm:"type:text;index" json:"workPlanItemId,omitempty"`
-        MethodID             string               `gorm:"type:text;not null" json:"methodId"`
-        CurrencyCode         string               `gorm:"type:text;not null" json:"currencyCode"`
-        CalculationBasisJSON string               `gorm:"type:text;not null" json:"calculationBasisJson"`
-        GrossAmount          float64              `gorm:"type:numeric;not null" json:"grossAmount"`
-        TransferAmount       float64              `gorm:"type:numeric;not null;default:0" json:"transferAmount"`
-        NetAmount            float64              `gorm:"type:numeric;not null" json:"netAmount"`
-        HoldReason           *string              `gorm:"type:text" json:"holdReason,omitempty"`
-        LedgerEntryID        *string              `gorm:"type:text;index" json:"ledgerEntryId,omitempty"`
-        Status               string               `gorm:"type:text;not null;index" json:"status"`
-        Comments             string               `gorm:"type:text" json:"comments,omitempty"`
+	BaseModel
+	AccrualBatchID       string               `gorm:"type:text;not null;index" json:"accrualBatchId"`
+	CollaboratorID       string               `gorm:"type:text;not null;index" json:"collaboratorId"`
+	WorkPlanItemID       *string              `gorm:"type:text;index" json:"workPlanItemId,omitempty"`
+	MethodID             string               `gorm:"type:text;not null" json:"methodId"`
+	CurrencyCode         string               `gorm:"type:text;not null" json:"currencyCode"`
+	CalculationBasisJSON string               `gorm:"type:text;not null" json:"calculationBasisJson"`
+	GrossAmount          float64              `gorm:"type:numeric;not null" json:"grossAmount"`
+	TransferAmount       float64              `gorm:"type:numeric;not null;default:0" json:"transferAmount"`
+	NetAmount            float64              `gorm:"type:numeric;not null" json:"netAmount"`
+	HoldReason           *string              `gorm:"type:text" json:"holdReason,omitempty"`
+	LedgerEntryID        *string              `gorm:"type:text;index" json:"ledgerEntryId,omitempty"`
+	Status               string               `gorm:"type:text;not null;index" json:"status"`
+	Comments             string               `gorm:"type:text" json:"comments,omitempty"`
 
-        AccrualBatch         EarningAccrualBatch  `gorm:"foreignKey:AccrualBatchID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"accrualBatch,omitempty"`
-        Collaborator         CollaboratorJourney  `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
-        WorkPlanItem         *WorkPlanItem        `gorm:"foreignKey:WorkPlanItemID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPlanItem,omitempty"`
-        Method               ReferenceData        `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
+	AccrualBatch         EarningAccrualBatch  `gorm:"foreignKey:AccrualBatchID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"accrualBatch,omitempty"`
+	Collaborator         CollaboratorJourney  `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
+	WorkPlanItem         *WorkPlanItem        `gorm:"foreignKey:WorkPlanItemID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"workPlanItem,omitempty"`
+	Method               ReferenceData        `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
 }
 ```
 
@@ -2953,28 +2936,28 @@ package models
 import "time"
 
 type CurrentAccountEntry struct {
-        BaseModel
-        RevertedEntryID  *string               `gorm:"type:text;index" json:"revertedEntryId,omitempty"`
-        CollaboratorID   string                `gorm:"type:text;not null;index:idx_ledger_collaborator_entry_date,priority:1" json:"collaboratorId"`
-        EntryDate        time.Time             `gorm:"type:date;not null;index:idx_ledger_collaborator_entry_date,priority:2" json:"entryDate"`
-        SourceType       string                `gorm:"type:text;not null;index:idx_ledger_source,priority:1" json:"sourceType"`
-        SourceID         *string               `gorm:"type:text;index:idx_ledger_source,priority:2" json:"sourceId,omitempty"`
-        LedgerGroupID    *string               `gorm:"type:text;index" json:"ledgerGroupId,omitempty"`
-        MethodID         *string               `gorm:"type:text" json:"methodId,omitempty"`
-        CurrencyCode     string                `gorm:"type:text;not null;index:idx_ledger_currency_cd,priority:1" json:"currencyCode"`
-        CDFlag           string                `gorm:"column:cd_flag;type:text;not null;index:idx_ledger_currency_cd,priority:2" json:"cdFlag"`
-        ItemDescription  string                `gorm:"type:text;not null" json:"itemDescription"`
-        Quantity         float64               `gorm:"type:numeric;not null;default:1" json:"quantity"`
-        UnitPrice        float64               `gorm:"type:numeric;not null" json:"unitPrice"`
-        TotalPrice       float64               `gorm:"type:numeric;not null" json:"totalPrice"`
-        Comments         string                `gorm:"type:text" json:"comments,omitempty"`
-        Status           string                `gorm:"type:text;not null;default:active" json:"status"`
-        CreatedBy        string                `gorm:"type:text;not null" json:"createdBy"`
+	BaseModel
+	RevertedEntryID  *string               `gorm:"type:text;index" json:"revertedEntryId,omitempty"`
+	CollaboratorID   string                `gorm:"type:text;not null;index:idx_ledger_collaborator_entry_date,priority:1" json:"collaboratorId"`
+	EntryDate        time.Time             `gorm:"type:date;not null;index:idx_ledger_collaborator_entry_date,priority:2" json:"entryDate"`
+	SourceType       string                `gorm:"type:text;not null;index:idx_ledger_source,priority:1" json:"sourceType"`
+	SourceID         *string               `gorm:"type:text;index:idx_ledger_source,priority:2" json:"sourceId,omitempty"`
+	LedgerGroupID    *string               `gorm:"type:text;index" json:"ledgerGroupId,omitempty"`
+	MethodID         *string               `gorm:"type:text" json:"methodId,omitempty"`
+	CurrencyCode     string                `gorm:"type:text;not null;index:idx_ledger_currency_cd,priority:1" json:"currencyCode"`
+	CDFlag           string                `gorm:"column:cd_flag;type:text;not null;index:idx_ledger_currency_cd,priority:2" json:"cdFlag"`
+	ItemDescription  string                `gorm:"type:text;not null" json:"itemDescription"`
+	Quantity         float64               `gorm:"type:numeric;not null;default:1" json:"quantity"`
+	UnitPrice        float64               `gorm:"type:numeric;not null" json:"unitPrice"`
+	TotalPrice       float64               `gorm:"type:numeric;not null" json:"totalPrice"`
+	Comments         string                `gorm:"type:text" json:"comments,omitempty"`
+	Status           string                `gorm:"type:text;not null;default:active" json:"status"`
+	CreatedBy        string                `gorm:"type:text;not null" json:"createdBy"`
 
-        RevertedEntry    *CurrentAccountEntry  `gorm:"foreignKey:RevertedEntryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"revertedEntry,omitempty"`
-        Collaborator     CollaboratorJourney   `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
-        Method           *ReferenceData        `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
-        Creator          User                  `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
+	RevertedEntry    *CurrentAccountEntry  `gorm:"foreignKey:RevertedEntryID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"revertedEntry,omitempty"`
+	Collaborator     CollaboratorJourney   `gorm:"foreignKey:CollaboratorID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"collaborator,omitempty"`
+	Method           *ReferenceData        `gorm:"foreignKey:MethodID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"method,omitempty"`
+	Creator          User                  `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"creator,omitempty"`
 }
 ```
 
@@ -2986,26 +2969,26 @@ type CurrentAccountEntry struct {
 package models
 
 type AuditLog struct {
-        BaseModel
-        ActorUserID string `gorm:"type:text;not null;index" json:"actorUserId"`
-        Action      string `gorm:"type:text;not null" json:"action"`
-        EntityType  string `gorm:"type:text;not null;index:idx_audit_entity,priority:1" json:"entityType"`
-        EntityID    string `gorm:"type:text;not null;index:idx_audit_entity,priority:2" json:"entityId"`
-        BeforeJSON  string `gorm:"type:text" json:"beforeJson,omitempty"`
-        AfterJSON   string `gorm:"type:text" json:"afterJson,omitempty"`
+	BaseModel
+	ActorUserID string `gorm:"type:text;not null;index" json:"actorUserId"`
+	Action      string `gorm:"type:text;not null" json:"action"`
+	EntityType  string `gorm:"type:text;not null;index:idx_audit_entity,priority:1" json:"entityType"`
+	EntityID    string `gorm:"type:text;not null;index:idx_audit_entity,priority:2" json:"entityId"`
+	BeforeJSON  string `gorm:"type:text" json:"beforeJson,omitempty"`
+	AfterJSON   string `gorm:"type:text" json:"afterJson,omitempty"`
 
-        Actor       User   `gorm:"foreignKey:ActorUserID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"actor,omitempty"`
+	Actor       User   `gorm:"foreignKey:ActorUserID;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"actor,omitempty"`
 }
 
 type SystemSetting struct {
-        ID          string `gorm:"type:text;primaryKey" json:"id"`
-        Key         string `gorm:"type:text;not null;uniqueIndex" json:"key"`
-        Value       string `gorm:"type:text;not null" json:"value"`
-        Description string `gorm:"type:text" json:"description,omitempty"`
-        UpdatedBy   string `gorm:"type:text;not null" json:"updatedBy"`
-        UpdatedAt   int64  `gorm:"not null" json:"updatedAt"`
+	ID          string `gorm:"type:text;primaryKey" json:"id"`
+	Key         string `gorm:"type:text;not null;uniqueIndex" json:"key"`
+	Value       string `gorm:"type:text;not null" json:"value"`
+	Description string `gorm:"type:text" json:"description,omitempty"`
+	UpdatedBy   string `gorm:"type:text;not null" json:"updatedBy"`
+	UpdatedAt   int64  `gorm:"not null" json:"updatedAt"`
 
-        Updater     User   `gorm:"foreignKey:UpdatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"updater,omitempty"`
+	Updater     User   `gorm:"foreignKey:UpdatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"updater,omitempty"`
 }
 ```
 
@@ -3015,14 +2998,14 @@ A cleaner version is:
 
 ```go
 type SystemSetting struct {
-        ID          string    `gorm:"type:text;primaryKey" json:"id"`
-        Key         string    `gorm:"type:text;not null;uniqueIndex" json:"key"`
-        Value       string    `gorm:"type:text;not null" json:"value"`
-        Description string    `gorm:"type:text" json:"description,omitempty"`
-        UpdatedBy   string    `gorm:"type:text;not null" json:"updatedBy"`
-        UpdatedAt   time.Time `gorm:"not null" json:"updatedAt"`
+	ID          string    `gorm:"type:text;primaryKey" json:"id"`
+	Key         string    `gorm:"type:text;not null;uniqueIndex" json:"key"`
+	Value       string    `gorm:"type:text;not null" json:"value"`
+	Description string    `gorm:"type:text" json:"description,omitempty"`
+	UpdatedBy   string    `gorm:"type:text;not null" json:"updatedBy"`
+	UpdatedAt   time.Time `gorm:"not null" json:"updatedAt"`
 
-        Updater     User      `gorm:"foreignKey:UpdatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"updater,omitempty"`
+	Updater     User      `gorm:"foreignKey:UpdatedBy;constraint:OnUpdate:Restrict,OnDelete:Restrict;" json:"updater,omitempty"`
 }
 ```
 
@@ -3032,24 +3015,24 @@ type SystemSetting struct {
 
 ```go
 models := []any{
-        &User{},
-        &Role{},
-        &UserRole{},
-        &ReferenceData{},
-        &Person{},
-        &CollaboratorJourney{},
-        &WorkPeriod{},
-        &WorkPlanItem{},
-        &MineWellProduction{},
-        &GoldPrice{},
-        &PriceListItem{},
-        &ExpenseTransaction{},
-        &ExpenseItem{},
-        &EarningAccrualBatch{},
-        &EarningAccrualItem{},
-        &CurrentAccountEntry{},
-        &AuditLog{},
-        &SystemSetting{},
+	&User{},
+	&Role{},
+	&UserRole{},
+	&ReferenceData{},
+	&Person{},
+	&CollaboratorJourney{},
+	&WorkPeriod{},
+	&WorkPlanItem{},
+	&MineWellProduction{},
+	&GoldPrice{},
+	&PriceListItem{},
+	&ExpenseTransaction{},
+	&ExpenseItem{},
+	&EarningAccrualBatch{},
+	&EarningAccrualItem{},
+	&CurrentAccountEntry{},
+	&AuditLog{},
+	&SystemSetting{},
 }
 ```
 
@@ -3627,21 +3610,21 @@ Recommended route registration layout:
 
 ```go
 func RegisterRoutes(app *fiber.App, deps Dependencies) {
-        api := app.Group("/api")
-        v1 := api.Group("/v1")
+	api := app.Group("/api")
+	v1 := api.Group("/v1")
 
-        RegisterAuthRoutes(v1, deps.AuthHandler)
-        RegisterPeopleRoutes(v1, deps.PeopleHandler, deps.AuthMiddleware)
-        RegisterCollaboratorRoutes(v1, deps.CollaboratorHandler, deps.AuthMiddleware)
-        RegisterReferenceDataRoutes(v1, deps.ReferenceDataHandler, deps.AuthMiddleware)
-        RegisterWorkPeriodRoutes(v1, deps.WorkPeriodHandler, deps.AuthMiddleware)
-        RegisterPlanningRoutes(v1, deps.PlanningHandler, deps.AuthMiddleware)
-        RegisterMineProductionRoutes(v1, deps.MineProductionHandler, deps.AuthMiddleware)
-        RegisterGoldPriceRoutes(v1, deps.GoldPriceHandler, deps.AuthMiddleware)
-        RegisterPriceListRoutes(v1, deps.PriceListHandler, deps.AuthMiddleware)
-        RegisterExpenseRoutes(v1, deps.ExpenseHandler, deps.AuthMiddleware)
-        RegisterCurrentAccountRoutes(v1, deps.CurrentAccountHandler, deps.AuthMiddleware)
-        RegisterReportRoutes(v1, deps.ReportHandler, deps.AuthMiddleware)
+	RegisterAuthRoutes(v1, deps.AuthHandler)
+	RegisterPeopleRoutes(v1, deps.PeopleHandler, deps.AuthMiddleware)
+	RegisterCollaboratorRoutes(v1, deps.CollaboratorHandler, deps.AuthMiddleware)
+	RegisterReferenceDataRoutes(v1, deps.ReferenceDataHandler, deps.AuthMiddleware)
+	RegisterWorkPeriodRoutes(v1, deps.WorkPeriodHandler, deps.AuthMiddleware)
+	RegisterPlanningRoutes(v1, deps.PlanningHandler, deps.AuthMiddleware)
+	RegisterMineProductionRoutes(v1, deps.MineProductionHandler, deps.AuthMiddleware)
+	RegisterGoldPriceRoutes(v1, deps.GoldPriceHandler, deps.AuthMiddleware)
+	RegisterPriceListRoutes(v1, deps.PriceListHandler, deps.AuthMiddleware)
+	RegisterExpenseRoutes(v1, deps.ExpenseHandler, deps.AuthMiddleware)
+	RegisterCurrentAccountRoutes(v1, deps.CurrentAccountHandler, deps.AuthMiddleware)
+	RegisterReportRoutes(v1, deps.ReportHandler, deps.AuthMiddleware)
 }
 ```
 
@@ -3659,10 +3642,10 @@ GET    /api/v1/auth/me
 
 ```go
 func RegisterAuthRoutes(v1 fiber.Router, h *auth.Handler) {
-        r := v1.Group("/auth")
-        r.Post("/login", h.Login)
-        r.Post("/logout", h.Logout)
-        r.Get("/me", h.Me)
+	r := v1.Group("/auth")
+	r.Post("/login", h.Login)
+	r.Post("/logout", h.Logout)
+	r.Get("/me", h.Me)
 }
 ```
 
@@ -3682,12 +3665,12 @@ GET    /api/v1/people/:id/journeys
 
 ```go
 func RegisterPeopleRoutes(v1 fiber.Router, h *people.Handler, auth fiber.Handler) {
-        r := v1.Group("/people", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
-        r.Get("/:id/journeys", h.ListJourneys)
+	r := v1.Group("/people", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
+	r.Get("/:id/journeys", h.ListJourneys)
 }
 ```
 
@@ -3709,14 +3692,14 @@ GET    /api/v1/collaborators/:id/projection
 
 ```go
 func RegisterCollaboratorRoutes(v1 fiber.Router, h *collaborators.Handler, auth fiber.Handler) {
-        r := v1.Group("/collaborators", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
-        r.Post("/:id/extend", h.Extend)
-        r.Post("/:id/finish", h.Finish)
-        r.Get("/:id/projection", h.GetProjection)
+	r := v1.Group("/collaborators", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
+	r.Post("/:id/extend", h.Extend)
+	r.Post("/:id/finish", h.Finish)
+	r.Get("/:id/projection", h.GetProjection)
 }
 ```
 
@@ -3735,11 +3718,11 @@ PUT    /api/v1/reference-data/:type/:id
 
 ```go
 func RegisterReferenceDataRoutes(v1 fiber.Router, h *referencedata.Handler, auth fiber.Handler) {
-        r := v1.Group("/reference-data", auth)
-        r.Get("/", h.ListTypes)
-        r.Get("/:type", h.ListByType)
-        r.Post("/:type", h.Create)
-        r.Put("/:type/:id", h.Update)
+	r := v1.Group("/reference-data", auth)
+	r.Get("/", h.ListTypes)
+	r.Get("/:type", h.ListByType)
+	r.Post("/:type", h.Create)
+	r.Put("/:type/:id", h.Update)
 }
 ```
 
@@ -3758,11 +3741,11 @@ PUT    /api/v1/work-periods/:id
 
 ```go
 func RegisterWorkPeriodRoutes(v1 fiber.Router, h *workperiods.Handler, auth fiber.Handler) {
-        r := v1.Group("/work-periods", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
+	r := v1.Group("/work-periods", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
 }
 ```
 
@@ -3783,13 +3766,13 @@ GET    /api/v1/work-periods/:id/accrual
 
 ```go
 func RegisterPlanningRoutes(v1 fiber.Router, h *planning.Handler, auth fiber.Handler) {
-        r := v1.Group("/work-periods", auth)
-        r.Post("/:id/plan/seed-from-previous", h.SeedFromPrevious)
-        r.Get("/:id/plan", h.GetPlan)
-        r.Put("/:id/plan-items/:planItemId", h.UpdatePlanItem)
-        r.Post("/:id/inform", h.MarkInformed)
-        r.Post("/:id/accrue", h.Accrue)
-        r.Get("/:id/accrual", h.GetAccrual)
+	r := v1.Group("/work-periods", auth)
+	r.Post("/:id/plan/seed-from-previous", h.SeedFromPrevious)
+	r.Get("/:id/plan", h.GetPlan)
+	r.Put("/:id/plan-items/:planItemId", h.UpdatePlanItem)
+	r.Post("/:id/inform", h.MarkInformed)
+	r.Post("/:id/accrue", h.Accrue)
+	r.Get("/:id/accrual", h.GetAccrual)
 }
 ```
 
@@ -3808,11 +3791,11 @@ PUT    /api/v1/mine-productions/:id
 
 ```go
 func RegisterMineProductionRoutes(v1 fiber.Router, h *mineproduction.Handler, auth fiber.Handler) {
-        r := v1.Group("/mine-productions", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
+	r := v1.Group("/mine-productions", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
 }
 ```
 
@@ -3832,12 +3815,12 @@ PUT    /api/v1/gold-prices/:id
 
 ```go
 func RegisterGoldPriceRoutes(v1 fiber.Router, h *goldprices.Handler, auth fiber.Handler) {
-        r := v1.Group("/gold-prices", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/latest", h.GetLatest)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
+	r := v1.Group("/gold-prices", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/latest", h.GetLatest)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
 }
 ```
 
@@ -3857,12 +3840,12 @@ GET    /api/v1/price-list/:id/price-preview?currency=BRL|GOLD_GRAMS
 
 ```go
 func RegisterPriceListRoutes(v1 fiber.Router, h *pricelist.Handler, auth fiber.Handler) {
-        r := v1.Group("/price-list", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Put("/:id", h.Update)
-        r.Get("/:id/price-preview", h.GetPricePreview)
+	r := v1.Group("/price-list", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Put("/:id", h.Update)
+	r.Get("/:id/price-preview", h.GetPricePreview)
 }
 ```
 
@@ -3881,11 +3864,11 @@ POST   /api/v1/expenses/:id/revert
 
 ```go
 func RegisterExpenseRoutes(v1 fiber.Router, h *expenses.Handler, auth fiber.Handler) {
-        r := v1.Group("/expenses", auth)
-        r.Get("/", h.List)
-        r.Post("/", h.Create)
-        r.Get("/:id", h.GetByID)
-        r.Post("/:id/revert", h.Revert)
+	r := v1.Group("/expenses", auth)
+	r.Get("/", h.List)
+	r.Post("/", h.Create)
+	r.Get("/:id", h.GetByID)
+	r.Post("/:id/revert", h.Revert)
 }
 ```
 
@@ -3904,7 +3887,14 @@ POST   /api/v1/current-accounts/:collaboratorId/close
 ### Handler registration
 
 ```go
-curr
+func RegisterCurrentAccountRoutes(v1 fiber.Router, h *currentaccounts.Handler, auth fiber.Handler) {
+	r := v1.Group("/current-accounts", auth)
+	r.Get("/:collaboratorId/summary", h.GetSummary)
+	r.Get("/:collaboratorId/entries", h.ListEntries)
+	r.Post("/entries/:entryId/revert", h.RevertEntry)
+	r.Post("/:collaboratorId/zero-gold", h.ZeroGold)
+	r.Post("/:collaboratorId/close", h.CloseJourney)
+}
 ```
 
 ---
@@ -3923,12 +3913,12 @@ GET    /api/v1/reports/mercantile-sales
 
 ```go
 func RegisterReportRoutes(v1 fiber.Router, h *reports.Handler, auth fiber.Handler) {
-        r := v1.Group("/reports", auth)
-        r.Get("/dashboard", h.Dashboard)
-        r.Get("/collaborator-balances", h.CollaboratorBalances)
-        r.Get("/journeys-ending-soon", h.JourneysEndingSoon)
-        r.Get("/pending-production-accruals", h.PendingProductionAccruals)
-        r.Get("/mercantile-sales", h.MercantileSales)
+	r := v1.Group("/reports", auth)
+	r.Get("/dashboard", h.Dashboard)
+	r.Get("/collaborator-balances", h.CollaboratorBalances)
+	r.Get("/journeys-ending-soon", h.JourneysEndingSoon)
+	r.Get("/pending-production-accruals", h.PendingProductionAccruals)
+	r.Get("/mercantile-sales", h.MercantileSales)
 }
 ```
 
@@ -3948,22 +3938,22 @@ Recommended package:
 package dto
 
 type APIResponse[T any] struct {
-        Data  T          `json:"data,omitempty"`
-        Error *APIError  `json:"error,omitempty"`
-        Meta  *Meta      `json:"meta,omitempty"`
+	Data  T          `json:"data,omitempty"`
+	Error *APIError  `json:"error,omitempty"`
+	Meta  *Meta      `json:"meta,omitempty"`
 }
 
 type APIError struct {
-        Code    string            `json:"code"`
-        Message string            `json:"message"`
-        Fields  map[string]string `json:"fields,omitempty"`
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Fields  map[string]string `json:"fields,omitempty"`
 }
 
 type Meta struct {
-        Page       int   `json:"page,omitempty"`
-        PageSize   int   `json:"pageSize,omitempty"`
-        TotalRows  int64 `json:"totalRows,omitempty"`
-        TotalPages int   `json:"totalPages,omitempty"`
+	Page       int   `json:"page,omitempty"`
+	PageSize   int   `json:"pageSize,omitempty"`
+	TotalRows  int64 `json:"totalRows,omitempty"`
+	TotalPages int   `json:"totalPages,omitempty"`
 }
 ```
 
@@ -3973,10 +3963,10 @@ type Meta struct {
 package dto
 
 type PageRequest struct {
-        Page     int    `query:"page" json:"page"`
-        PageSize int    `query:"pageSize" json:"pageSize"`
-        Search   string `query:"search" json:"search,omitempty"`
-        Sort     string `query:"sort" json:"sort,omitempty"`
+	Page     int    `query:"page" json:"page"`
+	PageSize int    `query:"pageSize" json:"pageSize"`
+	Search   string `query:"search" json:"search,omitempty"`
+	Sort     string `query:"sort" json:"sort,omitempty"`
 }
 ```
 
@@ -3986,8 +3976,8 @@ type PageRequest struct {
 package dto
 
 type DateRangeFilter struct {
-        FromDate string `query:"fromDate" json:"fromDate,omitempty"`
-        ToDate   string `query:"toDate" json:"toDate,omitempty"`
+	FromDate string `query:"fromDate" json:"fromDate,omitempty"`
+	ToDate   string `query:"toDate" json:"toDate,omitempty"`
 }
 ```
 
@@ -3999,21 +3989,21 @@ type DateRangeFilter struct {
 package auth
 
 type LoginRequest struct {
-        Username string `json:"username" validate:"required"`
-        Password string `json:"password" validate:"required"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type LoginResponse struct {
-        AccessToken string       `json:"accessToken"`
-        User        CurrentUserDTO `json:"user"`
+	AccessToken string       `json:"accessToken"`
+	User        CurrentUserDTO `json:"user"`
 }
 
 type CurrentUserDTO struct {
-        ID          string   `json:"id"`
-        Username    string   `json:"username"`
-        Email       string   `json:"email"`
-        DisplayName string   `json:"displayName"`
-        Roles       []string `json:"roles"`
+	ID          string   `json:"id"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email"`
+	DisplayName string   `json:"displayName"`
+	Roles       []string `json:"roles"`
 }
 ```
 
@@ -4025,59 +4015,59 @@ type CurrentUserDTO struct {
 package people
 
 type PersonDTO struct {
-        ID                    string `json:"id"`
-        Name                  string `json:"name"`
-        Address               string `json:"address,omitempty"`
-        Phone                 string `json:"phone,omitempty"`
-        Email                 string `json:"email,omitempty"`
-        CPF                   string `json:"cpf,omitempty"`
-        BankData              string `json:"bankData,omitempty"`
-        PIXKey                string `json:"pixKey,omitempty"`
-        EmergencyContactName  string `json:"emergencyContactName,omitempty"`
-        EmergencyContactPhone string `json:"emergencyContactPhone,omitempty"`
-        EmergencyContactNotes string `json:"emergencyContactNotes,omitempty"`
-        StatusID              string `json:"statusId"`
-        StatusLabel           string `json:"statusLabel,omitempty"`
-        Notes                 string `json:"notes,omitempty"`
-        CreatedAt             string `json:"createdAt"`
-        UpdatedAt             string `json:"updatedAt"`
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Address               string `json:"address,omitempty"`
+	Phone                 string `json:"phone,omitempty"`
+	Email                 string `json:"email,omitempty"`
+	CPF                   string `json:"cpf,omitempty"`
+	BankData              string `json:"bankData,omitempty"`
+	PIXKey                string `json:"pixKey,omitempty"`
+	EmergencyContactName  string `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactNotes string `json:"emergencyContactNotes,omitempty"`
+	StatusID              string `json:"statusId"`
+	StatusLabel           string `json:"statusLabel,omitempty"`
+	Notes                 string `json:"notes,omitempty"`
+	CreatedAt             string `json:"createdAt"`
+	UpdatedAt             string `json:"updatedAt"`
 }
 
 type CreatePersonRequest struct {
-        Name                  string  `json:"name" validate:"required"`
-        Address               string  `json:"address,omitempty"`
-        Phone                 *string `json:"phone,omitempty"`
-        Email                 *string `json:"email,omitempty"`
-        CPF                   *string `json:"cpf,omitempty"`
-        BankData              string  `json:"bankData,omitempty"`
-        PIXKey                *string `json:"pixKey,omitempty"`
-        EmergencyContactName  string  `json:"emergencyContactName,omitempty"`
-        EmergencyContactPhone string  `json:"emergencyContactPhone,omitempty"`
-        EmergencyContactNotes string  `json:"emergencyContactNotes,omitempty"`
-        StatusID              string  `json:"statusId" validate:"required"`
-        Notes                 string  `json:"notes,omitempty"`
+	Name                  string  `json:"name" validate:"required"`
+	Address               string  `json:"address,omitempty"`
+	Phone                 *string `json:"phone,omitempty"`
+	Email                 *string `json:"email,omitempty"`
+	CPF                   *string `json:"cpf,omitempty"`
+	BankData              string  `json:"bankData,omitempty"`
+	PIXKey                *string `json:"pixKey,omitempty"`
+	EmergencyContactName  string  `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string  `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactNotes string  `json:"emergencyContactNotes,omitempty"`
+	StatusID              string  `json:"statusId" validate:"required"`
+	Notes                 string  `json:"notes,omitempty"`
 }
 
 type UpdatePersonRequest struct {
-        Name                  string  `json:"name" validate:"required"`
-        Address               string  `json:"address,omitempty"`
-        Phone                 *string `json:"phone,omitempty"`
-        Email                 *string `json:"email,omitempty"`
-        CPF                   *string `json:"cpf,omitempty"`
-        BankData              string  `json:"bankData,omitempty"`
-        PIXKey                *string `json:"pixKey,omitempty"`
-        EmergencyContactName  string  `json:"emergencyContactName,omitempty"`
-        EmergencyContactPhone string  `json:"emergencyContactPhone,omitempty"`
-        EmergencyContactNotes string  `json:"emergencyContactNotes,omitempty"`
-        StatusID              string  `json:"statusId" validate:"required"`
-        Notes                 string  `json:"notes,omitempty"`
+	Name                  string  `json:"name" validate:"required"`
+	Address               string  `json:"address,omitempty"`
+	Phone                 *string `json:"phone,omitempty"`
+	Email                 *string `json:"email,omitempty"`
+	CPF                   *string `json:"cpf,omitempty"`
+	BankData              string  `json:"bankData,omitempty"`
+	PIXKey                *string `json:"pixKey,omitempty"`
+	EmergencyContactName  string  `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string  `json:"emergencyContactPhone,omitempty"`
+	EmergencyContactNotes string  `json:"emergencyContactNotes,omitempty"`
+	StatusID              string  `json:"statusId" validate:"required"`
+	Notes                 string  `json:"notes,omitempty"`
 }
 
 type PersonListFilter struct {
-        Search   string `query:"search"`
-        StatusID string `query:"statusId"`
-        Page     int    `query:"page"`
-        PageSize int    `query:"pageSize"`
+	Search   string `query:"search"`
+	StatusID string `query:"statusId"`
+	Page     int    `query:"page"`
+	PageSize int    `query:"pageSize"`
 }
 ```
 
@@ -4089,81 +4079,81 @@ type PersonListFilter struct {
 package collaborators
 
 type CollaboratorDTO struct {
-        ID                string  `json:"id"`
-        PersonID          string  `json:"personId"`
-        PersonName        string  `json:"personName,omitempty"`
-        JourneyStartDate  string  `json:"journeyStartDate"`
-        DefaultEndDate    string  `json:"defaultEndDate"`
-        ExtensionDays     int     `json:"extensionDays"`
-        ProjectedEndDate  string  `json:"projectedEndDate"`
-        PaymentMethodID   string  `json:"paymentMethodId"`
-        PaymentMethodCode string  `json:"paymentMethodCode,omitempty"`
-        PaymentMethodName string  `json:"paymentMethodName,omitempty"`
-        PaymentValue      float64 `json:"paymentValue"`
-        SectorID          string  `json:"sectorId"`
-        SectorLabel       string  `json:"sectorLabel,omitempty"`
-        LocationID        string  `json:"locationId"`
-        LocationLabel     string  `json:"locationLabel,omitempty"`
-        TaskID            string  `json:"taskId"`
-        TaskLabel         string  `json:"taskLabel,omitempty"`
-        StatusID          string  `json:"statusId"`
-        StatusLabel       string  `json:"statusLabel,omitempty"`
-        Notes             string  `json:"notes,omitempty"`
-        ClosedAt          string  `json:"closedAt,omitempty"`
+	ID                string  `json:"id"`
+	PersonID          string  `json:"personId"`
+	PersonName        string  `json:"personName,omitempty"`
+	JourneyStartDate  string  `json:"journeyStartDate"`
+	DefaultEndDate    string  `json:"defaultEndDate"`
+	ExtensionDays     int     `json:"extensionDays"`
+	ProjectedEndDate  string  `json:"projectedEndDate"`
+	PaymentMethodID   string  `json:"paymentMethodId"`
+	PaymentMethodCode string  `json:"paymentMethodCode,omitempty"`
+	PaymentMethodName string  `json:"paymentMethodName,omitempty"`
+	PaymentValue      float64 `json:"paymentValue"`
+	SectorID          string  `json:"sectorId"`
+	SectorLabel       string  `json:"sectorLabel,omitempty"`
+	LocationID        string  `json:"locationId"`
+	LocationLabel     string  `json:"locationLabel,omitempty"`
+	TaskID            string  `json:"taskId"`
+	TaskLabel         string  `json:"taskLabel,omitempty"`
+	StatusID          string  `json:"statusId"`
+	StatusLabel       string  `json:"statusLabel,omitempty"`
+	Notes             string  `json:"notes,omitempty"`
+	ClosedAt          string  `json:"closedAt,omitempty"`
 }
 
 type CreateCollaboratorRequest struct {
-        PersonID         string  `json:"personId" validate:"required"`
-        JourneyStartDate string  `json:"journeyStartDate" validate:"required"`
-        PaymentMethodID  string  `json:"paymentMethodId" validate:"required"`
-        PaymentValue     float64 `json:"paymentValue" validate:"required,gt=0"`
-        SectorID         string  `json:"sectorId" validate:"required"`
-        LocationID       string  `json:"locationId" validate:"required"`
-        TaskID           string  `json:"taskId" validate:"required"`
-        StatusID         string  `json:"statusId" validate:"required"`
-        Notes            string  `json:"notes,omitempty"`
-        OverrideWaitRule bool    `json:"overrideWaitRule,omitempty"`
+	PersonID         string  `json:"personId" validate:"required"`
+	JourneyStartDate string  `json:"journeyStartDate" validate:"required"`
+	PaymentMethodID  string  `json:"paymentMethodId" validate:"required"`
+	PaymentValue     float64 `json:"paymentValue" validate:"required,gt=0"`
+	SectorID         string  `json:"sectorId" validate:"required"`
+	LocationID       string  `json:"locationId" validate:"required"`
+	TaskID           string  `json:"taskId" validate:"required"`
+	StatusID         string  `json:"statusId" validate:"required"`
+	Notes            string  `json:"notes,omitempty"`
+	OverrideWaitRule bool    `json:"overrideWaitRule,omitempty"`
 }
 
 type UpdateCollaboratorRequest struct {
-        PaymentMethodID string  `json:"paymentMethodId" validate:"required"`
-        PaymentValue    float64 `json:"paymentValue" validate:"required,gt=0"`
-        SectorID        string  `json:"sectorId" validate:"required"`
-        LocationID      string  `json:"locationId" validate:"required"`
-        TaskID          string  `json:"taskId" validate:"required"`
-        StatusID        string  `json:"statusId" validate:"required"`
-        Notes           string  `json:"notes,omitempty"`
+	PaymentMethodID string  `json:"paymentMethodId" validate:"required"`
+	PaymentValue    float64 `json:"paymentValue" validate:"required,gt=0"`
+	SectorID        string  `json:"sectorId" validate:"required"`
+	LocationID      string  `json:"locationId" validate:"required"`
+	TaskID          string  `json:"taskId" validate:"required"`
+	StatusID        string  `json:"statusId" validate:"required"`
+	Notes           string  `json:"notes,omitempty"`
 }
 
 type ExtendJourneyRequest struct {
-        AdditionalDays int    `json:"additionalDays" validate:"required,gt=0"`
-        Reason         string `json:"reason,omitempty"`
+	AdditionalDays int    `json:"additionalDays" validate:"required,gt=0"`
+	Reason         string `json:"reason,omitempty"`
 }
 
 type FinishJourneyRequest struct {
-        FinishDate string `json:"finishDate" validate:"required"`
-        Reason     string `json:"reason,omitempty"`
+	FinishDate string `json:"finishDate" validate:"required"`
+	Reason     string `json:"reason,omitempty"`
 }
 
 type CollaboratorProjectionDTO struct {
-        CollaboratorID               string  `json:"collaboratorId"`
-        CurrencyCode                 string  `json:"currencyCode"`
-        PostedEarningsToDate         float64 `json:"postedEarningsToDate"`
-        EstimatedRemainingEarnings   float64 `json:"estimatedRemainingEarnings"`
-        ProjectedTotalEarnings       float64 `json:"projectedTotalEarnings"`
-        ProjectionBasis              string  `json:"projectionBasis"`
-        ProjectedThroughDate         string  `json:"projectedThroughDate"`
+	CollaboratorID               string  `json:"collaboratorId"`
+	CurrencyCode                 string  `json:"currencyCode"`
+	PostedEarningsToDate         float64 `json:"postedEarningsToDate"`
+	EstimatedRemainingEarnings   float64 `json:"estimatedRemainingEarnings"`
+	ProjectedTotalEarnings       float64 `json:"projectedTotalEarnings"`
+	ProjectionBasis              string  `json:"projectionBasis"`
+	ProjectedThroughDate         string  `json:"projectedThroughDate"`
 }
 
 type CollaboratorListFilter struct {
-        Search          string `query:"search"`
-        StatusID        string `query:"statusId"`
-        LocationID      string `query:"locationId"`
-        PaymentMethodID string `query:"paymentMethodId"`
-        EndingFromDate  string `query:"endingFromDate"`
-        EndingToDate    string `query:"endingToDate"`
-        Page            int    `query:"page"`
-        PageSize        int    `query:"pageSize"`
+	Search          string `query:"search"`
+	StatusID        string `query:"statusId"`
+	LocationID      string `query:"locationId"`
+	PaymentMethodID string `query:"paymentMethodId"`
+	EndingFromDate  string `query:"endingFromDate"`
+	EndingToDate    string `query:"endingToDate"`
+	Page            int    `query:"page"`
+	PageSize        int    `query:"pageSize"`
 }
 ```
 
@@ -4175,31 +4165,31 @@ type CollaboratorListFilter struct {
 package referencedata
 
 type ReferenceDataDTO struct {
-        ID           string `json:"id"`
-        Type         string `json:"type"`
-        Code         string `json:"code"`
-        Label        string `json:"label"`
-        Description  string `json:"description,omitempty"`
-        Active       bool   `json:"active"`
-        SortOrder    int    `json:"sortOrder"`
-        MetadataJSON string `json:"metadataJson,omitempty"`
+	ID           string `json:"id"`
+	Type         string `json:"type"`
+	Code         string `json:"code"`
+	Label        string `json:"label"`
+	Description  string `json:"description,omitempty"`
+	Active       bool   `json:"active"`
+	SortOrder    int    `json:"sortOrder"`
+	MetadataJSON string `json:"metadataJson,omitempty"`
 }
 
 type CreateReferenceDataRequest struct {
-        Code         string `json:"code" validate:"required"`
-        Label        string `json:"label" validate:"required"`
-        Description  string `json:"description,omitempty"`
-        Active       bool   `json:"active"`
-        SortOrder    int    `json:"sortOrder"`
-        MetadataJSON string `json:"metadataJson,omitempty"`
+	Code         string `json:"code" validate:"required"`
+	Label        string `json:"label" validate:"required"`
+	Description  string `json:"description,omitempty"`
+	Active       bool   `json:"active"`
+	SortOrder    int    `json:"sortOrder"`
+	MetadataJSON string `json:"metadataJson,omitempty"`
 }
 
 type UpdateReferenceDataRequest struct {
-        Label        string `json:"label" validate:"required"`
-        Description  string `json:"description,omitempty"`
-        Active       bool   `json:"active"`
-        SortOrder    int    `json:"sortOrder"`
-        MetadataJSON string `json:"metadataJson,omitempty"`
+	Label        string `json:"label" validate:"required"`
+	Description  string `json:"description,omitempty"`
+	Active       bool   `json:"active"`
+	SortOrder    int    `json:"sortOrder"`
+	MetadataJSON string `json:"metadataJson,omitempty"`
 }
 ```
 
@@ -4211,26 +4201,26 @@ type UpdateReferenceDataRequest struct {
 package workperiods
 
 type WorkPeriodDTO struct {
-        ID                     string `json:"id"`
-        WorkDate               string `json:"workDate"`
-        PeriodCode             string `json:"periodCode"`
-        StartsAt               string `json:"startsAt,omitempty"`
-        EndsAt                 string `json:"endsAt,omitempty"`
-        Status                 string `json:"status"`
-        SeededFromWorkPeriodID string `json:"seededFromWorkPeriodId,omitempty"`
+	ID                     string `json:"id"`
+	WorkDate               string `json:"workDate"`
+	PeriodCode             string `json:"periodCode"`
+	StartsAt               string `json:"startsAt,omitempty"`
+	EndsAt                 string `json:"endsAt,omitempty"`
+	Status                 string `json:"status"`
+	SeededFromWorkPeriodID string `json:"seededFromWorkPeriodId,omitempty"`
 }
 
 type CreateWorkPeriodRequest struct {
-        WorkDate   string `json:"workDate" validate:"required"`
-        PeriodCode string `json:"periodCode" validate:"required"`
-        StartsAt   string `json:"startsAt,omitempty"`
-        EndsAt     string `json:"endsAt,omitempty"`
+	WorkDate   string `json:"workDate" validate:"required"`
+	PeriodCode string `json:"periodCode" validate:"required"`
+	StartsAt   string `json:"startsAt,omitempty"`
+	EndsAt     string `json:"endsAt,omitempty"`
 }
 
 type UpdateWorkPeriodRequest struct {
-        StartsAt string `json:"startsAt,omitempty"`
-        EndsAt   string `json:"endsAt,omitempty"`
-        Status   string `json:"status" validate:"required"`
+	StartsAt string `json:"startsAt,omitempty"`
+	EndsAt   string `json:"endsAt,omitempty"`
+	Status   string `json:"status" validate:"required"`
 }
 ```
 
@@ -4238,81 +4228,81 @@ type UpdateWorkPeriodRequest struct {
 package planning
 
 type PlanItemDTO struct {
-        ID                           string  `json:"id"`
-        WorkPeriodID                 string  `json:"workPeriodId"`
-        CollaboratorID               string  `json:"collaboratorId"`
-        CollaboratorName             string  `json:"collaboratorName,omitempty"`
-        IncludeFlag                  bool    `json:"includeFlag"`
-        SectorID                     string  `json:"sectorId"`
-        SectorLabel                  string  `json:"sectorLabel,omitempty"`
-        LocationID                   string  `json:"locationId"`
-        LocationLabel                string  `json:"locationLabel,omitempty"`
-        TaskID                       string  `json:"taskId"`
-        TaskLabel                    string  `json:"taskLabel,omitempty"`
-        MethodID                     string  `json:"methodId"`
-        MethodLabel                  string  `json:"methodLabel,omitempty"`
-        PaymentValueSnapshot         float64 `json:"paymentValueSnapshot"`
-        AssignmentStatus             string  `json:"assignmentStatus"`
-        SubstitutedForCollaboratorID string  `json:"substitutedForCollaboratorId,omitempty"`
-        SubstitutedForName           string  `json:"substitutedForName,omitempty"`
-        ExceptionType                string  `json:"exceptionType,omitempty"`
-        Comments                     string  `json:"comments,omitempty"`
+	ID                           string  `json:"id"`
+	WorkPeriodID                 string  `json:"workPeriodId"`
+	CollaboratorID               string  `json:"collaboratorId"`
+	CollaboratorName             string  `json:"collaboratorName,omitempty"`
+	IncludeFlag                  bool    `json:"includeFlag"`
+	SectorID                     string  `json:"sectorId"`
+	SectorLabel                  string  `json:"sectorLabel,omitempty"`
+	LocationID                   string  `json:"locationId"`
+	LocationLabel                string  `json:"locationLabel,omitempty"`
+	TaskID                       string  `json:"taskId"`
+	TaskLabel                    string  `json:"taskLabel,omitempty"`
+	MethodID                     string  `json:"methodId"`
+	MethodLabel                  string  `json:"methodLabel,omitempty"`
+	PaymentValueSnapshot         float64 `json:"paymentValueSnapshot"`
+	AssignmentStatus             string  `json:"assignmentStatus"`
+	SubstitutedForCollaboratorID string  `json:"substitutedForCollaboratorId,omitempty"`
+	SubstitutedForName           string  `json:"substitutedForName,omitempty"`
+	ExceptionType                string  `json:"exceptionType,omitempty"`
+	Comments                     string  `json:"comments,omitempty"`
 }
 
 type WorkPlanDTO struct {
-        WorkPeriod WorkPeriodSummaryDTO `json:"workPeriod"`
-        Items      []PlanItemDTO        `json:"items"`
+	WorkPeriod WorkPeriodSummaryDTO `json:"workPeriod"`
+	Items      []PlanItemDTO        `json:"items"`
 }
 
 type WorkPeriodSummaryDTO struct {
-        ID         string `json:"id"`
-        WorkDate   string `json:"workDate"`
-        PeriodCode string `json:"periodCode"`
-        Status     string `json:"status"`
+	ID         string `json:"id"`
+	WorkDate   string `json:"workDate"`
+	PeriodCode string `json:"periodCode"`
+	Status     string `json:"status"`
 }
 
 type SeedFromPreviousRequest struct {
-        PreviousWorkPeriodID string `json:"previousWorkPeriodId,omitempty"`
+	PreviousWorkPeriodID string `json:"previousWorkPeriodId,omitempty"`
 }
 
 type UpdatePlanItemRequest struct {
-        IncludeFlag                  bool    `json:"includeFlag"`
-        SectorID                     string  `json:"sectorId" validate:"required"`
-        LocationID                   string  `json:"locationId" validate:"required"`
-        TaskID                       string  `json:"taskId" validate:"required"`
-        MethodID                     string  `json:"methodId" validate:"required"`
-        PaymentValueSnapshot         float64 `json:"paymentValueSnapshot" validate:"required"`
-        AssignmentStatus             string  `json:"assignmentStatus" validate:"required"`
-        SubstitutedForCollaboratorID *string `json:"substitutedForCollaboratorId,omitempty"`
-        ExceptionType                *string `json:"exceptionType,omitempty"`
-        Comments                     string  `json:"comments,omitempty"`
+	IncludeFlag                  bool    `json:"includeFlag"`
+	SectorID                     string  `json:"sectorId" validate:"required"`
+	LocationID                   string  `json:"locationId" validate:"required"`
+	TaskID                       string  `json:"taskId" validate:"required"`
+	MethodID                     string  `json:"methodId" validate:"required"`
+	PaymentValueSnapshot         float64 `json:"paymentValueSnapshot" validate:"required"`
+	AssignmentStatus             string  `json:"assignmentStatus" validate:"required"`
+	SubstitutedForCollaboratorID *string `json:"substitutedForCollaboratorId,omitempty"`
+	ExceptionType                *string `json:"exceptionType,omitempty"`
+	Comments                     string  `json:"comments,omitempty"`
 }
 
 type AccrueWorkPeriodRequest struct {
-        Comments string `json:"comments,omitempty"`
+	Comments string `json:"comments,omitempty"`
 }
 
 type AccrualBatchDTO struct {
-        ID            string            `json:"id"`
-        WorkPeriodID  string            `json:"workPeriodId"`
-        AccrualStatus string            `json:"accrualStatus"`
-        Comments      string            `json:"comments,omitempty"`
-        Items         []AccrualItemDTO  `json:"items"`
+	ID            string            `json:"id"`
+	WorkPeriodID  string            `json:"workPeriodId"`
+	AccrualStatus string            `json:"accrualStatus"`
+	Comments      string            `json:"comments,omitempty"`
+	Items         []AccrualItemDTO  `json:"items"`
 }
 
 type AccrualItemDTO struct {
-        ID                   string  `json:"id"`
-        CollaboratorID       string  `json:"collaboratorId"`
-        CollaboratorName     string  `json:"collaboratorName,omitempty"`
-        MethodID             string  `json:"methodId"`
-        MethodLabel          string  `json:"methodLabel,omitempty"`
-        CurrencyCode         string  `json:"currencyCode"`
-        GrossAmount          float64 `json:"grossAmount"`
-        TransferAmount       float64 `json:"transferAmount"`
-        NetAmount            float64 `json:"netAmount"`
-        HoldReason           string  `json:"holdReason,omitempty"`
-        Status               string  `json:"status"`
-        Comments             string  `json:"comments,omitempty"`
+	ID                   string  `json:"id"`
+	CollaboratorID       string  `json:"collaboratorId"`
+	CollaboratorName     string  `json:"collaboratorName,omitempty"`
+	MethodID             string  `json:"methodId"`
+	MethodLabel          string  `json:"methodLabel,omitempty"`
+	CurrencyCode         string  `json:"currencyCode"`
+	GrossAmount          float64 `json:"grossAmount"`
+	TransferAmount       float64 `json:"transferAmount"`
+	NetAmount            float64 `json:"netAmount"`
+	HoldReason           string  `json:"holdReason,omitempty"`
+	Status               string  `json:"status"`
+	Comments             string  `json:"comments,omitempty"`
 }
 ```
 
@@ -4324,35 +4314,35 @@ type AccrualItemDTO struct {
 package mineproduction
 
 type MineWellProductionDTO struct {
-        ID             string  `json:"id"`
-        WorkPeriodID   string  `json:"workPeriodId"`
-        WorkDate       string  `json:"workDate"`
-        PeriodCode     string  `json:"periodCode"`
-        LocationID     string  `json:"locationId"`
-        LocationLabel  string  `json:"locationLabel,omitempty"`
-        GramsProduced  float64 `json:"gramsProduced"`
-        Comments       string  `json:"comments,omitempty"`
-        CreatedBy      string  `json:"createdBy"`
+	ID             string  `json:"id"`
+	WorkPeriodID   string  `json:"workPeriodId"`
+	WorkDate       string  `json:"workDate"`
+	PeriodCode     string  `json:"periodCode"`
+	LocationID     string  `json:"locationId"`
+	LocationLabel  string  `json:"locationLabel,omitempty"`
+	GramsProduced  float64 `json:"gramsProduced"`
+	Comments       string  `json:"comments,omitempty"`
+	CreatedBy      string  `json:"createdBy"`
 }
 
 type CreateMineWellProductionRequest struct {
-        WorkPeriodID  string  `json:"workPeriodId" validate:"required"`
-        LocationID    string  `json:"locationId" validate:"required"`
-        GramsProduced float64 `json:"gramsProduced" validate:"gte=0"`
-        Comments      string  `json:"comments,omitempty"`
+	WorkPeriodID  string  `json:"workPeriodId" validate:"required"`
+	LocationID    string  `json:"locationId" validate:"required"`
+	GramsProduced float64 `json:"gramsProduced" validate:"gte=0"`
+	Comments      string  `json:"comments,omitempty"`
 }
 
 type UpdateMineWellProductionRequest struct {
-        GramsProduced float64 `json:"gramsProduced" validate:"gte=0"`
-        Comments      string  `json:"comments,omitempty"`
+	GramsProduced float64 `json:"gramsProduced" validate:"gte=0"`
+	Comments      string  `json:"comments,omitempty"`
 }
 
 type MineProductionListFilter struct {
-        FromDate   string `query:"fromDate"`
-        ToDate     string `query:"toDate"`
-        LocationID string `query:"locationId"`
-        Page       int    `query:"page"`
-        PageSize   int    `query:"pageSize"`
+	FromDate   string `query:"fromDate"`
+	ToDate     string `query:"toDate"`
+	LocationID string `query:"locationId"`
+	Page       int    `query:"page"`
+	PageSize   int    `query:"pageSize"`
 }
 ```
 
@@ -4364,28 +4354,28 @@ type MineProductionListFilter struct {
 package goldprices
 
 type GoldPriceDTO struct {
-        ID                string  `json:"id"`
-        QuoteDate         string  `json:"quoteDate"`
-        QuotedAtTime      string  `json:"quotedAtTime,omitempty"`
-        PriceBRLPerGram   float64 `json:"priceBRLPerGram"`
-        SourceName        string  `json:"sourceName,omitempty"`
-        Comments          string  `json:"comments,omitempty"`
-        CreatedBy         string  `json:"createdBy"`
+	ID                string  `json:"id"`
+	QuoteDate         string  `json:"quoteDate"`
+	QuotedAtTime      string  `json:"quotedAtTime,omitempty"`
+	PriceBRLPerGram   float64 `json:"priceBRLPerGram"`
+	SourceName        string  `json:"sourceName,omitempty"`
+	Comments          string  `json:"comments,omitempty"`
+	CreatedBy         string  `json:"createdBy"`
 }
 
 type CreateGoldPriceRequest struct {
-        QuoteDate       string  `json:"quoteDate" validate:"required"`
-        QuotedAtTime    string  `json:"quotedAtTime,omitempty"`
-        PriceBRLPerGram float64 `json:"priceBRLPerGram" validate:"required,gt=0"`
-        SourceName      string  `json:"sourceName,omitempty"`
-        Comments        string  `json:"comments,omitempty"`
+	QuoteDate       string  `json:"quoteDate" validate:"required"`
+	QuotedAtTime    string  `json:"quotedAtTime,omitempty"`
+	PriceBRLPerGram float64 `json:"priceBRLPerGram" validate:"required,gt=0"`
+	SourceName      string  `json:"sourceName,omitempty"`
+	Comments        string  `json:"comments,omitempty"`
 }
 
 type UpdateGoldPriceRequest struct {
-        QuotedAtTime    string  `json:"quotedAtTime,omitempty"`
-        PriceBRLPerGram float64 `json:"priceBRLPerGram" validate:"required,gt=0"`
-        SourceName      string  `json:"sourceName,omitempty"`
-        Comments        string  `json:"comments,omitempty"`
+	QuotedAtTime    string  `json:"quotedAtTime,omitempty"`
+	PriceBRLPerGram float64 `json:"priceBRLPerGram" validate:"required,gt=0"`
+	SourceName      string  `json:"sourceName,omitempty"`
+	Comments        string  `json:"comments,omitempty"`
 }
 ```
 
@@ -4397,41 +4387,41 @@ type UpdateGoldPriceRequest struct {
 package pricelist
 
 type PriceListItemDTO struct {
-        ID             string  `json:"id"`
-        Code           string  `json:"code,omitempty"`
-        Name           string  `json:"name"`
-        Description    string  `json:"description,omitempty"`
-        CategoryID     string  `json:"categoryId"`
-        CategoryLabel  string  `json:"categoryLabel,omitempty"`
-        PriceBRL       float64 `json:"priceBRL"`
-        Active         bool    `json:"active"`
+	ID             string  `json:"id"`
+	Code           string  `json:"code,omitempty"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description,omitempty"`
+	CategoryID     string  `json:"categoryId"`
+	CategoryLabel  string  `json:"categoryLabel,omitempty"`
+	PriceBRL       float64 `json:"priceBRL"`
+	Active         bool    `json:"active"`
 }
 
 type CreatePriceListItemRequest struct {
-        Code        *string `json:"code,omitempty"`
-        Name        string  `json:"name" validate:"required"`
-        Description string  `json:"description,omitempty"`
-        CategoryID  string  `json:"categoryId" validate:"required"`
-        PriceBRL    float64 `json:"priceBRL" validate:"required,gte=0"`
-        Active      bool    `json:"active"`
+	Code        *string `json:"code,omitempty"`
+	Name        string  `json:"name" validate:"required"`
+	Description string  `json:"description,omitempty"`
+	CategoryID  string  `json:"categoryId" validate:"required"`
+	PriceBRL    float64 `json:"priceBRL" validate:"required,gte=0"`
+	Active      bool    `json:"active"`
 }
 
 type UpdatePriceListItemRequest struct {
-        Code        *string `json:"code,omitempty"`
-        Name        string  `json:"name" validate:"required"`
-        Description string  `json:"description,omitempty"`
-        CategoryID  string  `json:"categoryId" validate:"required"`
-        PriceBRL    float64 `json:"priceBRL" validate:"required,gte=0"`
-        Active      bool    `json:"active"`
+	Code        *string `json:"code,omitempty"`
+	Name        string  `json:"name" validate:"required"`
+	Description string  `json:"description,omitempty"`
+	CategoryID  string  `json:"categoryId" validate:"required"`
+	PriceBRL    float64 `json:"priceBRL" validate:"required,gte=0"`
+	Active      bool    `json:"active"`
 }
 
 type PricePreviewDTO struct {
-        ItemID              string  `json:"itemId"`
-        CurrencyCode        string  `json:"currencyCode"`
-        PriceBRL            float64 `json:"priceBRL"`
-        GoldPriceBRLPerGram float64 `json:"goldPriceBRLPerGram,omitempty"`
-        PriceGoldGrams      float64 `json:"priceGoldGrams,omitempty"`
-        QuoteDate           string  `json:"quoteDate,omitempty"`
+	ItemID              string  `json:"itemId"`
+	CurrencyCode        string  `json:"currencyCode"`
+	PriceBRL            float64 `json:"priceBRL"`
+	GoldPriceBRLPerGram float64 `json:"goldPriceBRLPerGram,omitempty"`
+	PriceGoldGrams      float64 `json:"priceGoldGrams,omitempty"`
+	QuoteDate           string  `json:"quoteDate,omitempty"`
 }
 ```
 
@@ -4443,60 +4433,60 @@ type PricePreviewDTO struct {
 package expenses
 
 type ExpenseTransactionDTO struct {
-        ID                    string           `json:"id"`
-        CollaboratorID         string           `json:"collaboratorId"`
-        CollaboratorName       string           `json:"collaboratorName,omitempty"`
-        ExpenseDate            string           `json:"expenseDate"`
-        CurrencyCode           string           `json:"currencyCode"`
-        TotalAmount            float64          `json:"totalAmount"`
-        CategoryID             string           `json:"categoryId"`
-        CategoryLabel          string           `json:"categoryLabel,omitempty"`
-        GoldPriceID            string           `json:"goldPriceId,omitempty"`
-        CollaboratorAgreement  bool             `json:"collaboratorAgreement"`
-        Comments               string           `json:"comments,omitempty"`
-        Items                  []ExpenseItemDTO `json:"items"`
+	ID                    string           `json:"id"`
+	CollaboratorID         string           `json:"collaboratorId"`
+	CollaboratorName       string           `json:"collaboratorName,omitempty"`
+	ExpenseDate            string           `json:"expenseDate"`
+	CurrencyCode           string           `json:"currencyCode"`
+	TotalAmount            float64          `json:"totalAmount"`
+	CategoryID             string           `json:"categoryId"`
+	CategoryLabel          string           `json:"categoryLabel,omitempty"`
+	GoldPriceID            string           `json:"goldPriceId,omitempty"`
+	CollaboratorAgreement  bool             `json:"collaboratorAgreement"`
+	Comments               string           `json:"comments,omitempty"`
+	Items                  []ExpenseItemDTO `json:"items"`
 }
 
 type ExpenseItemDTO struct {
-        ID                 string  `json:"id"`
-        PriceListItemID    string  `json:"priceListItemId,omitempty"`
-        ItemNameSnapshot   string  `json:"itemNameSnapshot"`
-        Quantity           float64 `json:"quantity"`
-        UnitPrice          float64 `json:"unitPrice"`
-        TotalPrice         float64 `json:"totalPrice"`
-        Comments           string  `json:"comments,omitempty"`
+	ID                 string  `json:"id"`
+	PriceListItemID    string  `json:"priceListItemId,omitempty"`
+	ItemNameSnapshot   string  `json:"itemNameSnapshot"`
+	Quantity           float64 `json:"quantity"`
+	UnitPrice          float64 `json:"unitPrice"`
+	TotalPrice         float64 `json:"totalPrice"`
+	Comments           string  `json:"comments,omitempty"`
 }
 
 type CreateExpenseRequest struct {
-        CollaboratorID        string                     `json:"collaboratorId" validate:"required"`
-        ExpenseDate           string                     `json:"expenseDate" validate:"required"`
-        CurrencyCode          string                     `json:"currencyCode" validate:"required"`
-        CategoryID            string                     `json:"categoryId" validate:"required"`
-        CollaboratorAgreement bool                       `json:"collaboratorAgreement" validate:"eq=true"`
-        Comments              string                     `json:"comments,omitempty"`
-        Items                 []CreateExpenseItemRequest `json:"items" validate:"required,min=1,dive"`
+	CollaboratorID        string                     `json:"collaboratorId" validate:"required"`
+	ExpenseDate           string                     `json:"expenseDate" validate:"required"`
+	CurrencyCode          string                     `json:"currencyCode" validate:"required"`
+	CategoryID            string                     `json:"categoryId" validate:"required"`
+	CollaboratorAgreement bool                       `json:"collaboratorAgreement" validate:"eq=true"`
+	Comments              string                     `json:"comments,omitempty"`
+	Items                 []CreateExpenseItemRequest `json:"items" validate:"required,min=1,dive"`
 }
 
 type CreateExpenseItemRequest struct {
-        PriceListItemID  *string `json:"priceListItemId,omitempty"`
-        ItemName         string  `json:"itemName" validate:"required"`
-        Quantity         float64 `json:"quantity" validate:"required,gt=0"`
-        UnitPrice        float64 `json:"unitPrice" validate:"required,gte=0"`
-        Comments         string  `json:"comments,omitempty"`
+	PriceListItemID  *string `json:"priceListItemId,omitempty"`
+	ItemName         string  `json:"itemName" validate:"required"`
+	Quantity         float64 `json:"quantity" validate:"required,gt=0"`
+	UnitPrice        float64 `json:"unitPrice" validate:"required,gte=0"`
+	Comments         string  `json:"comments,omitempty"`
 }
 
 type RevertExpenseRequest struct {
-        Reason string `json:"reason" validate:"required"`
+	Reason string `json:"reason" validate:"required"`
 }
 
 type ExpenseListFilter struct {
-        CollaboratorID string `query:"collaboratorId"`
-        CurrencyCode   string `query:"currencyCode"`
-        CategoryID     string `query:"categoryId"`
-        FromDate       string `query:"fromDate"`
-        ToDate         string `query:"toDate"`
-        Page           int    `query:"page"`
-        PageSize       int    `query:"pageSize"`
+	CollaboratorID string `query:"collaboratorId"`
+	CurrencyCode   string `query:"currencyCode"`
+	CategoryID     string `query:"categoryId"`
+	FromDate       string `query:"fromDate"`
+	ToDate         string `query:"toDate"`
+	Page           int    `query:"page"`
+	PageSize       int    `query:"pageSize"`
 }
 ```
 
@@ -4508,72 +4498,72 @@ type ExpenseListFilter struct {
 package currentaccounts
 
 type CurrentAccountSummaryDTO struct {
-        CollaboratorID         string  `json:"collaboratorId"`
-        CollaboratorName       string  `json:"collaboratorName,omitempty"`
-        JourneyStartDate       string  `json:"journeyStartDate"`
-        ProjectedEndDate       string  `json:"projectedEndDate"`
-        PaymentMethodCode      string  `json:"paymentMethodCode"`
-        BRLCredits             float64 `json:"brlCredits"`
-        BRLDebits              float64 `json:"brlDebits"`
-        BRLBalance             float64 `json:"brlBalance"`
-        GoldCredits            float64 `json:"goldCredits"`
-        GoldDebits             float64 `json:"goldDebits"`
-        GoldBalance            float64 `json:"goldBalance"`
-        ProjectedEarningsValue float64 `json:"projectedEarningsValue"`
-        ProjectedCurrencyCode  string  `json:"projectedCurrencyCode"`
-        ProjectionBasis        string  `json:"projectionBasis,omitempty"`
+	CollaboratorID         string  `json:"collaboratorId"`
+	CollaboratorName       string  `json:"collaboratorName,omitempty"`
+	JourneyStartDate       string  `json:"journeyStartDate"`
+	ProjectedEndDate       string  `json:"projectedEndDate"`
+	PaymentMethodCode      string  `json:"paymentMethodCode"`
+	BRLCredits             float64 `json:"brlCredits"`
+	BRLDebits              float64 `json:"brlDebits"`
+	BRLBalance             float64 `json:"brlBalance"`
+	GoldCredits            float64 `json:"goldCredits"`
+	GoldDebits             float64 `json:"goldDebits"`
+	GoldBalance            float64 `json:"goldBalance"`
+	ProjectedEarningsValue float64 `json:"projectedEarningsValue"`
+	ProjectedCurrencyCode  string  `json:"projectedCurrencyCode"`
+	ProjectionBasis        string  `json:"projectionBasis,omitempty"`
 }
 
 type CurrentAccountEntryDTO struct {
-        ID               string  `json:"id"`
-        RevertedEntryID  string  `json:"revertedEntryId,omitempty"`
-        CollaboratorID   string  `json:"collaboratorId"`
-        EntryDate        string  `json:"entryDate"`
-        SourceType       string  `json:"sourceType"`
-        SourceID         string  `json:"sourceId,omitempty"`
-        LedgerGroupID    string  `json:"ledgerGroupId,omitempty"`
-        MethodID         string  `json:"methodId,omitempty"`
-        CurrencyCode     string  `json:"currencyCode"`
-        CDFlag           string  `json:"cdFlag"`
-        ItemDescription  string  `json:"itemDescription"`
-        Quantity         float64 `json:"quantity"`
-        UnitPrice        float64 `json:"unitPrice"`
-        TotalPrice       float64 `json:"totalPrice"`
-        Comments         string  `json:"comments,omitempty"`
-        Status           string  `json:"status"`
-        CreatedBy        string  `json:"createdBy"`
-        CreatedAt        string  `json:"createdAt"`
+	ID               string  `json:"id"`
+	RevertedEntryID  string  `json:"revertedEntryId,omitempty"`
+	CollaboratorID   string  `json:"collaboratorId"`
+	EntryDate        string  `json:"entryDate"`
+	SourceType       string  `json:"sourceType"`
+	SourceID         string  `json:"sourceId,omitempty"`
+	LedgerGroupID    string  `json:"ledgerGroupId,omitempty"`
+	MethodID         string  `json:"methodId,omitempty"`
+	CurrencyCode     string  `json:"currencyCode"`
+	CDFlag           string  `json:"cdFlag"`
+	ItemDescription  string  `json:"itemDescription"`
+	Quantity         float64 `json:"quantity"`
+	UnitPrice        float64 `json:"unitPrice"`
+	TotalPrice       float64 `json:"totalPrice"`
+	Comments         string  `json:"comments,omitempty"`
+	Status           string  `json:"status"`
+	CreatedBy        string  `json:"createdBy"`
+	CreatedAt        string  `json:"createdAt"`
 }
 
 type CurrentAccountEntryFilter struct {
-        CurrencyCode string `query:"currencyCode"`
-        SourceType   string `query:"sourceType"`
-        FromDate     string `query:"fromDate"`
-        ToDate       string `query:"toDate"`
-        Page         int    `query:"page"`
-        PageSize     int    `query:"pageSize"`
+	CurrencyCode string `query:"currencyCode"`
+	SourceType   string `query:"sourceType"`
+	FromDate     string `query:"fromDate"`
+	ToDate       string `query:"toDate"`
+	Page         int    `query:"page"`
+	PageSize     int    `query:"pageSize"`
 }
 
 type RevertLedgerEntryRequest struct {
-        Reason string `json:"reason" validate:"required"`
+	Reason string `json:"reason" validate:"required"`
 }
 
 type ZeroGoldRequest struct {
-        AmountGoldGrams float64 `json:"amountGoldGrams" validate:"required,gt=0"`
-        Comments        string  `json:"comments,omitempty"`
+	AmountGoldGrams float64 `json:"amountGoldGrams" validate:"required,gt=0"`
+	Comments        string  `json:"comments,omitempty"`
 }
 
 type CloseJourneyRequest struct {
-        CloseDate string `json:"closeDate" validate:"required"`
-        Comments  string `json:"comments,omitempty"`
+	CloseDate string `json:"closeDate" validate:"required"`
+	Comments  string `json:"comments,omitempty"`
 }
 
 type CloseJourneyPreviewDTO struct {
-        CollaboratorID string  `json:"collaboratorId"`
-        BRLBalance     float64 `json:"brlBalance"`
-        GoldBalance    float64 `json:"goldBalance"`
-        CanClose        bool    `json:"canClose"`
-        Warnings        []string `json:"warnings,omitempty"`
+	CollaboratorID string  `json:"collaboratorId"`
+	BRLBalance     float64 `json:"brlBalance"`
+	GoldBalance    float64 `json:"goldBalance"`
+	CanClose        bool    `json:"canClose"`
+	Warnings        []string `json:"warnings,omitempty"`
 }
 ```
 
@@ -4585,47 +4575,47 @@ type CloseJourneyPreviewDTO struct {
 package reports
 
 type DashboardDTO struct {
-        ActiveCollaboratorsCount       int64   `json:"activeCollaboratorsCount"`
-        JourneysEndingSoonCount        int64   `json:"journeysEndingSoonCount"`
-        PendingAccrualsCount           int64   `json:"pendingAccrualsCount"`
-        LatestGoldPriceBRLPerGram      float64 `json:"latestGoldPriceBRLPerGram"`
-        LatestGoldPriceDate            string  `json:"latestGoldPriceDate,omitempty"`
-        TodayExpensesBRL               float64 `json:"todayExpensesBRL"`
-        TodayExpensesGold              float64 `json:"todayExpensesGold"`
-        NegativeBRLBalanceCount        int64   `json:"negativeBRLBalanceCount"`
-        NegativeGoldBalanceCount       int64   `json:"negativeGoldBalanceCount"`
+	ActiveCollaboratorsCount       int64   `json:"activeCollaboratorsCount"`
+	JourneysEndingSoonCount        int64   `json:"journeysEndingSoonCount"`
+	PendingAccrualsCount           int64   `json:"pendingAccrualsCount"`
+	LatestGoldPriceBRLPerGram      float64 `json:"latestGoldPriceBRLPerGram"`
+	LatestGoldPriceDate            string  `json:"latestGoldPriceDate,omitempty"`
+	TodayExpensesBRL               float64 `json:"todayExpensesBRL"`
+	TodayExpensesGold              float64 `json:"todayExpensesGold"`
+	NegativeBRLBalanceCount        int64   `json:"negativeBRLBalanceCount"`
+	NegativeGoldBalanceCount       int64   `json:"negativeGoldBalanceCount"`
 }
 
 type CollaboratorBalanceReportRowDTO struct {
-        CollaboratorID   string  `json:"collaboratorId"`
-        CollaboratorName string  `json:"collaboratorName"`
-        BRLBalance       float64 `json:"brlBalance"`
-        GoldBalance      float64 `json:"goldBalance"`
-        ProjectedEndDate string  `json:"projectedEndDate"`
-        StatusLabel      string  `json:"statusLabel"`
+	CollaboratorID   string  `json:"collaboratorId"`
+	CollaboratorName string  `json:"collaboratorName"`
+	BRLBalance       float64 `json:"brlBalance"`
+	GoldBalance      float64 `json:"goldBalance"`
+	ProjectedEndDate string  `json:"projectedEndDate"`
+	StatusLabel      string  `json:"statusLabel"`
 }
 
 type JourneysEndingSoonRowDTO struct {
-        CollaboratorID   string `json:"collaboratorId"`
-        CollaboratorName string `json:"collaboratorName"`
-        ProjectedEndDate string `json:"projectedEndDate"`
-        DaysRemaining    int    `json:"daysRemaining"`
+	CollaboratorID   string `json:"collaboratorId"`
+	CollaboratorName string `json:"collaboratorName"`
+	ProjectedEndDate string `json:"projectedEndDate"`
+	DaysRemaining    int    `json:"daysRemaining"`
 }
 
 type PendingProductionAccrualRowDTO struct {
-        WorkPeriodID string `json:"workPeriodId"`
-        WorkDate     string `json:"workDate"`
-        PeriodCode   string `json:"periodCode"`
-        LocationID   string `json:"locationId"`
-        LocationName string `json:"locationName"`
-        Reason       string `json:"reason"`
+	WorkPeriodID string `json:"workPeriodId"`
+	WorkDate     string `json:"workDate"`
+	PeriodCode   string `json:"periodCode"`
+	LocationID   string `json:"locationId"`
+	LocationName string `json:"locationName"`
+	Reason       string `json:"reason"`
 }
 
 type MercantileSalesRowDTO struct {
-        CategoryID    string  `json:"categoryId"`
-        CategoryLabel string  `json:"categoryLabel"`
-        CurrencyCode  string  `json:"currencyCode"`
-        TotalAmount   float64 `json:"totalAmount"`
+	CategoryID    string  `json:"categoryId"`
+	CategoryLabel string  `json:"categoryLabel"`
+	CurrencyCode  string  `json:"currencyCode"`
+	TotalAmount   float64 `json:"totalAmount"`
 }
 ```
 
@@ -4651,9 +4641,9 @@ package auth
 import "context"
 
 type Service interface {
-        Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
-        GetCurrentUser(ctx context.Context, userID string) (*CurrentUserDTO, error)
-        Logout(ctx context.Context, userID string) error
+	Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
+	GetCurrentUser(ctx context.Context, userID string) (*CurrentUserDTO, error)
+	Logout(ctx context.Context, userID string) error
 }
 ```
 
@@ -4667,11 +4657,11 @@ package people
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter PersonListFilter) ([]PersonDTO, int64, error)
-        Create(ctx context.Context, req CreatePersonRequest, actorUserID string) (*PersonDTO, error)
-        GetByID(ctx context.Context, id string) (*PersonDTO, error)
-        Update(ctx context.Context, id string, req UpdatePersonRequest, actorUserID string) (*PersonDTO, error)
-        ListJourneys(ctx context.Context, personID string) ([]collaborators.CollaboratorDTO, error)
+	List(ctx context.Context, filter PersonListFilter) ([]PersonDTO, int64, error)
+	Create(ctx context.Context, req CreatePersonRequest, actorUserID string) (*PersonDTO, error)
+	GetByID(ctx context.Context, id string) (*PersonDTO, error)
+	Update(ctx context.Context, id string, req UpdatePersonRequest, actorUserID string) (*PersonDTO, error)
+	ListJourneys(ctx context.Context, personID string) ([]collaborators.CollaboratorDTO, error)
 }
 ```
 
@@ -4685,13 +4675,13 @@ package collaborators
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter CollaboratorListFilter) ([]CollaboratorDTO, int64, error)
-        Create(ctx context.Context, req CreateCollaboratorRequest, actorUserID string) (*CollaboratorDTO, error)
-        GetByID(ctx context.Context, id string) (*CollaboratorDTO, error)
-        Update(ctx context.Context, id string, req UpdateCollaboratorRequest, actorUserID string) (*CollaboratorDTO, error)
-        Extend(ctx context.Context, id string, req ExtendJourneyRequest, actorUserID string) (*CollaboratorDTO, error)
-        Finish(ctx context.Context, id string, req FinishJourneyRequest, actorUserID string) (*CollaboratorDTO, error)
-        GetProjection(ctx context.Context, id string) (*CollaboratorProjectionDTO, error)
+	List(ctx context.Context, filter CollaboratorListFilter) ([]CollaboratorDTO, int64, error)
+	Create(ctx context.Context, req CreateCollaboratorRequest, actorUserID string) (*CollaboratorDTO, error)
+	GetByID(ctx context.Context, id string) (*CollaboratorDTO, error)
+	Update(ctx context.Context, id string, req UpdateCollaboratorRequest, actorUserID string) (*CollaboratorDTO, error)
+	Extend(ctx context.Context, id string, req ExtendJourneyRequest, actorUserID string) (*CollaboratorDTO, error)
+	Finish(ctx context.Context, id string, req FinishJourneyRequest, actorUserID string) (*CollaboratorDTO, error)
+	GetProjection(ctx context.Context, id string) (*CollaboratorProjectionDTO, error)
 }
 ```
 
@@ -4705,10 +4695,10 @@ package referencedata
 import "context"
 
 type Service interface {
-        ListTypes(ctx context.Context) ([]string, error)
-        ListByType(ctx context.Context, typ string, includeInactive bool) ([]ReferenceDataDTO, error)
-        Create(ctx context.Context, typ string, req CreateReferenceDataRequest, actorUserID string) (*ReferenceDataDTO, error)
-        Update(ctx context.Context, typ string, id string, req UpdateReferenceDataRequest, actorUserID string) (*ReferenceDataDTO, error)
+	ListTypes(ctx context.Context) ([]string, error)
+	ListByType(ctx context.Context, typ string, includeInactive bool) ([]ReferenceDataDTO, error)
+	Create(ctx context.Context, typ string, req CreateReferenceDataRequest, actorUserID string) (*ReferenceDataDTO, error)
+	Update(ctx context.Context, typ string, id string, req UpdateReferenceDataRequest, actorUserID string) (*ReferenceDataDTO, error)
 }
 ```
 
@@ -4722,19 +4712,19 @@ package workperiods
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter WorkPeriodListFilter) ([]WorkPeriodDTO, int64, error)
-        Create(ctx context.Context, req CreateWorkPeriodRequest, actorUserID string) (*WorkPeriodDTO, error)
-        GetByID(ctx context.Context, id string) (*WorkPeriodDTO, error)
-        Update(ctx context.Context, id string, req UpdateWorkPeriodRequest, actorUserID string) (*WorkPeriodDTO, error)
+	List(ctx context.Context, filter WorkPeriodListFilter) ([]WorkPeriodDTO, int64, error)
+	Create(ctx context.Context, req CreateWorkPeriodRequest, actorUserID string) (*WorkPeriodDTO, error)
+	GetByID(ctx context.Context, id string) (*WorkPeriodDTO, error)
+	Update(ctx context.Context, id string, req UpdateWorkPeriodRequest, actorUserID string) (*WorkPeriodDTO, error)
 }
 
 type WorkPeriodListFilter struct {
-        FromDate   string `query:"fromDate"`
-        ToDate     string `query:"toDate"`
-        PeriodCode string `query:"periodCode"`
-        Status     string `query:"status"`
-        Page       int    `query:"page"`
-        PageSize   int    `query:"pageSize"`
+	FromDate   string `query:"fromDate"`
+	ToDate     string `query:"toDate"`
+	PeriodCode string `query:"periodCode"`
+	Status     string `query:"status"`
+	Page       int    `query:"page"`
+	PageSize   int    `query:"pageSize"`
 }
 ```
 
@@ -4748,12 +4738,12 @@ package planning
 import "context"
 
 type Service interface {
-        SeedFromPrevious(ctx context.Context, workPeriodID string, req SeedFromPreviousRequest, actorUserID string) (*WorkPlanDTO, error)
-        GetPlan(ctx context.Context, workPeriodID string) (*WorkPlanDTO, error)
-        UpdatePlanItem(ctx context.Context, workPeriodID string, planItemID string, req UpdatePlanItemRequest, actorUserID string) (*PlanItemDTO, error)
-        MarkInformed(ctx context.Context, workPeriodID string, actorUserID string) (*WorkPlanDTO, error)
-        Accrue(ctx context.Context, workPeriodID string, req AccrueWorkPeriodRequest, actorUserID string) (*AccrualBatchDTO, error)
-        GetAccrual(ctx context.Context, workPeriodID string) (*AccrualBatchDTO, error)
+	SeedFromPrevious(ctx context.Context, workPeriodID string, req SeedFromPreviousRequest, actorUserID string) (*WorkPlanDTO, error)
+	GetPlan(ctx context.Context, workPeriodID string) (*WorkPlanDTO, error)
+	UpdatePlanItem(ctx context.Context, workPeriodID string, planItemID string, req UpdatePlanItemRequest, actorUserID string) (*PlanItemDTO, error)
+	MarkInformed(ctx context.Context, workPeriodID string, actorUserID string) (*WorkPlanDTO, error)
+	Accrue(ctx context.Context, workPeriodID string, req AccrueWorkPeriodRequest, actorUserID string) (*AccrualBatchDTO, error)
+	GetAccrual(ctx context.Context, workPeriodID string) (*AccrualBatchDTO, error)
 }
 ```
 
@@ -4767,10 +4757,10 @@ package mineproduction
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter MineProductionListFilter) ([]MineWellProductionDTO, int64, error)
-        Create(ctx context.Context, req CreateMineWellProductionRequest, actorUserID string) (*MineWellProductionDTO, error)
-        GetByID(ctx context.Context, id string) (*MineWellProductionDTO, error)
-        Update(ctx context.Context, id string, req UpdateMineWellProductionRequest, actorUserID string) (*MineWellProductionDTO, error)
+	List(ctx context.Context, filter MineProductionListFilter) ([]MineWellProductionDTO, int64, error)
+	Create(ctx context.Context, req CreateMineWellProductionRequest, actorUserID string) (*MineWellProductionDTO, error)
+	GetByID(ctx context.Context, id string) (*MineWellProductionDTO, error)
+	Update(ctx context.Context, id string, req UpdateMineWellProductionRequest, actorUserID string) (*MineWellProductionDTO, error)
 }
 ```
 
@@ -4784,18 +4774,18 @@ package goldprices
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter GoldPriceListFilter) ([]GoldPriceDTO, int64, error)
-        Create(ctx context.Context, req CreateGoldPriceRequest, actorUserID string) (*GoldPriceDTO, error)
-        GetByID(ctx context.Context, id string) (*GoldPriceDTO, error)
-        GetLatest(ctx context.Context) (*GoldPriceDTO, error)
-        Update(ctx context.Context, id string, req UpdateGoldPriceRequest, actorUserID string) (*GoldPriceDTO, error)
+	List(ctx context.Context, filter GoldPriceListFilter) ([]GoldPriceDTO, int64, error)
+	Create(ctx context.Context, req CreateGoldPriceRequest, actorUserID string) (*GoldPriceDTO, error)
+	GetByID(ctx context.Context, id string) (*GoldPriceDTO, error)
+	GetLatest(ctx context.Context) (*GoldPriceDTO, error)
+	Update(ctx context.Context, id string, req UpdateGoldPriceRequest, actorUserID string) (*GoldPriceDTO, error)
 }
 
 type GoldPriceListFilter struct {
-        FromDate string `query:"fromDate"`
-        ToDate   string `query:"toDate"`
-        Page     int    `query:"page"`
-        PageSize int    `query:"pageSize"`
+	FromDate string `query:"fromDate"`
+	ToDate   string `query:"toDate"`
+	Page     int    `query:"page"`
+	PageSize int    `query:"pageSize"`
 }
 ```
 
@@ -4809,19 +4799,19 @@ package pricelist
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter PriceListFilter) ([]PriceListItemDTO, int64, error)
-        Create(ctx context.Context, req CreatePriceListItemRequest, actorUserID string) (*PriceListItemDTO, error)
-        GetByID(ctx context.Context, id string) (*PriceListItemDTO, error)
-        Update(ctx context.Context, id string, req UpdatePriceListItemRequest, actorUserID string) (*PriceListItemDTO, error)
-        GetPricePreview(ctx context.Context, id string, currencyCode string) (*PricePreviewDTO, error)
+	List(ctx context.Context, filter PriceListFilter) ([]PriceListItemDTO, int64, error)
+	Create(ctx context.Context, req CreatePriceListItemRequest, actorUserID string) (*PriceListItemDTO, error)
+	GetByID(ctx context.Context, id string) (*PriceListItemDTO, error)
+	Update(ctx context.Context, id string, req UpdatePriceListItemRequest, actorUserID string) (*PriceListItemDTO, error)
+	GetPricePreview(ctx context.Context, id string, currencyCode string) (*PricePreviewDTO, error)
 }
 
 type PriceListFilter struct {
-        Search     string `query:"search"`
-        CategoryID string `query:"categoryId"`
-        ActiveOnly bool   `query:"activeOnly"`
-        Page       int    `query:"page"`
-        PageSize   int    `query:"pageSize"`
+	Search     string `query:"search"`
+	CategoryID string `query:"categoryId"`
+	ActiveOnly bool   `query:"activeOnly"`
+	Page       int    `query:"page"`
+	PageSize   int    `query:"pageSize"`
 }
 ```
 
@@ -4835,10 +4825,10 @@ package expenses
 import "context"
 
 type Service interface {
-        List(ctx context.Context, filter ExpenseListFilter) ([]ExpenseTransactionDTO, int64, error)
-        Create(ctx context.Context, req CreateExpenseRequest, actorUserID string) (*ExpenseTransactionDTO, error)
-        GetByID(ctx context.Context, id string) (*ExpenseTransactionDTO, error)
-        Revert(ctx context.Context, id string, req RevertExpenseRequest, actorUserID string) (*ExpenseTransactionDTO, error)
+	List(ctx context.Context, filter ExpenseListFilter) ([]ExpenseTransactionDTO, int64, error)
+	Create(ctx context.Context, req CreateExpenseRequest, actorUserID string) (*ExpenseTransactionDTO, error)
+	GetByID(ctx context.Context, id string) (*ExpenseTransactionDTO, error)
+	Revert(ctx context.Context, id string, req RevertExpenseRequest, actorUserID string) (*ExpenseTransactionDTO, error)
 }
 ```
 
@@ -4852,11 +4842,11 @@ package currentaccounts
 import "context"
 
 type Service interface {
-        GetSummary(ctx context.Context, collaboratorID string) (*CurrentAccountSummaryDTO, error)
-        ListEntries(ctx context.Context, collaboratorID string, filter CurrentAccountEntryFilter) ([]CurrentAccountEntryDTO, int64, error)
-        RevertEntry(ctx context.Context, entryID string, req RevertLedgerEntryRequest, actorUserID string) (*CurrentAccountEntryDTO, error)
-        ZeroGold(ctx context.Context, collaboratorID string, req ZeroGoldRequest, actorUserID string) (*CurrentAccountEntryDTO, error)
-        CloseJourney(ctx context.Context, collaboratorID string, req CloseJourneyRequest, actorUserID string) (*CloseJourneyPreviewDTO, error)
+	GetSummary(ctx context.Context, collaboratorID string) (*CurrentAccountSummaryDTO, error)
+	ListEntries(ctx context.Context, collaboratorID string, filter CurrentAccountEntryFilter) ([]CurrentAccountEntryDTO, int64, error)
+	RevertEntry(ctx context.Context, entryID string, req RevertLedgerEntryRequest, actorUserID string) (*CurrentAccountEntryDTO, error)
+	ZeroGold(ctx context.Context, collaboratorID string, req ZeroGoldRequest, actorUserID string) (*CurrentAccountEntryDTO, error)
+	CloseJourney(ctx context.Context, collaboratorID string, req CloseJourneyRequest, actorUserID string) (*CloseJourneyPreviewDTO, error)
 }
 ```
 
@@ -4870,16 +4860,16 @@ package reports
 import "context"
 
 type Service interface {
-        Dashboard(ctx context.Context) (*DashboardDTO, error)
-        CollaboratorBalances(ctx context.Context, filter ReportDateFilter) ([]CollaboratorBalanceReportRowDTO, error)
-        JourneysEndingSoon(ctx context.Context, days int) ([]JourneysEndingSoonRowDTO, error)
-        PendingProductionAccruals(ctx context.Context) ([]PendingProductionAccrualRowDTO, error)
-        MercantileSales(ctx context.Context, filter ReportDateFilter) ([]MercantileSalesRowDTO, error)
+	Dashboard(ctx context.Context) (*DashboardDTO, error)
+	CollaboratorBalances(ctx context.Context, filter ReportDateFilter) ([]CollaboratorBalanceReportRowDTO, error)
+	JourneysEndingSoon(ctx context.Context, days int) ([]JourneysEndingSoonRowDTO, error)
+	PendingProductionAccruals(ctx context.Context) ([]PendingProductionAccrualRowDTO, error)
+	MercantileSales(ctx context.Context, filter ReportDateFilter) ([]MercantileSalesRowDTO, error)
 }
 
 type ReportDateFilter struct {
-        FromDate string `query:"fromDate"`
-        ToDate   string `query:"toDate"`
+	FromDate string `query:"fromDate"`
+	ToDate   string `query:"toDate"`
 }
 ```
 
@@ -4903,15 +4893,15 @@ Recommended package convention:
 package auth
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type UserRepository interface {
-        FindByUsername(ctx context.Context, username string) (*models.User, error)
-        FindByID(ctx context.Context, id string) (*models.User, error)
-        UpdateLastLogin(ctx context.Context, userID string) error
-        ListRoles(ctx context.Context, userID string) ([]models.Role, error)
+	FindByUsername(ctx context.Context, username string) (*models.User, error)
+	FindByID(ctx context.Context, id string) (*models.User, error)
+	UpdateLastLogin(ctx context.Context, userID string) error
+	ListRoles(ctx context.Context, userID string) ([]models.Role, error)
 }
 ```
 
@@ -4923,17 +4913,17 @@ type UserRepository interface {
 package people
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter PersonListFilter) ([]models.Person, int64, error)
-        Create(ctx context.Context, person *models.Person) error
-        FindByID(ctx context.Context, id string) (*models.Person, error)
-        Update(ctx context.Context, person *models.Person) error
-        ExistsByUniqueFields(ctx context.Context, name string, phone *string, email *string, cpf *string, pixKey *string, excludeID *string) (bool, error)
-        ListJourneys(ctx context.Context, personID string) ([]models.CollaboratorJourney, error)
+	List(ctx context.Context, filter PersonListFilter) ([]models.Person, int64, error)
+	Create(ctx context.Context, person *models.Person) error
+	FindByID(ctx context.Context, id string) (*models.Person, error)
+	Update(ctx context.Context, person *models.Person) error
+	ExistsByUniqueFields(ctx context.Context, name string, phone *string, email *string, cpf *string, pixKey *string, excludeID *string) (bool, error)
+	ListJourneys(ctx context.Context, personID string) ([]models.CollaboratorJourney, error)
 }
 ```
 
@@ -4945,18 +4935,18 @@ type Repository interface {
 package collaborators
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter CollaboratorListFilter) ([]models.CollaboratorJourney, int64, error)
-        Create(ctx context.Context, collaborator *models.CollaboratorJourney) error
-        FindByID(ctx context.Context, id string) (*models.CollaboratorJourney, error)
-        Update(ctx context.Context, collaborator *models.CollaboratorJourney) error
-        FindActiveByPersonID(ctx context.Context, personID string) (*models.CollaboratorJourney, error)
-        FindMostRecentFinishedByPersonID(ctx context.Context, personID string) (*models.CollaboratorJourney, error)
-        ListActive(ctx context.Context) ([]models.CollaboratorJourney, error)
+	List(ctx context.Context, filter CollaboratorListFilter) ([]models.CollaboratorJourney, int64, error)
+	Create(ctx context.Context, collaborator *models.CollaboratorJourney) error
+	FindByID(ctx context.Context, id string) (*models.CollaboratorJourney, error)
+	Update(ctx context.Context, collaborator *models.CollaboratorJourney) error
+	FindActiveByPersonID(ctx context.Context, personID string) (*models.CollaboratorJourney, error)
+	FindMostRecentFinishedByPersonID(ctx context.Context, personID string) (*models.CollaboratorJourney, error)
+	ListActive(ctx context.Context) ([]models.CollaboratorJourney, error)
 }
 ```
 
@@ -4968,18 +4958,18 @@ type Repository interface {
 package referencedata
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        ListTypes(ctx context.Context) ([]string, error)
-        ListByType(ctx context.Context, typ string, includeInactive bool) ([]models.ReferenceData, error)
-        Create(ctx context.Context, item *models.ReferenceData) error
-        FindByID(ctx context.Context, id string) (*models.ReferenceData, error)
-        FindByTypeAndCode(ctx context.Context, typ string, code string) (*models.ReferenceData, error)
-        Update(ctx context.Context, item *models.ReferenceData) error
-        ExistsByTypeAndCode(ctx context.Context, typ string, code string, excludeID *string) (bool, error)
+	ListTypes(ctx context.Context) ([]string, error)
+	ListByType(ctx context.Context, typ string, includeInactive bool) ([]models.ReferenceData, error)
+	Create(ctx context.Context, item *models.ReferenceData) error
+	FindByID(ctx context.Context, id string) (*models.ReferenceData, error)
+	FindByTypeAndCode(ctx context.Context, typ string, code string) (*models.ReferenceData, error)
+	Update(ctx context.Context, item *models.ReferenceData) error
+	ExistsByTypeAndCode(ctx context.Context, typ string, code string, excludeID *string) (bool, error)
 }
 ```
 
@@ -4991,17 +4981,17 @@ type Repository interface {
 package workperiods
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter WorkPeriodListFilter) ([]models.WorkPeriod, int64, error)
-        Create(ctx context.Context, period *models.WorkPeriod) error
-        FindByID(ctx context.Context, id string) (*models.WorkPeriod, error)
-        FindByDateAndPeriod(ctx context.Context, workDate string, periodCode string) (*models.WorkPeriod, error)
-        FindPrevious(ctx context.Context, workDate string, periodCode string) (*models.WorkPeriod, error)
-        Update(ctx context.Context, period *models.WorkPeriod) error
+	List(ctx context.Context, filter WorkPeriodListFilter) ([]models.WorkPeriod, int64, error)
+	Create(ctx context.Context, period *models.WorkPeriod) error
+	FindByID(ctx context.Context, id string) (*models.WorkPeriod, error)
+	FindByDateAndPeriod(ctx context.Context, workDate string, periodCode string) (*models.WorkPeriod, error)
+	FindPrevious(ctx context.Context, workDate string, periodCode string) (*models.WorkPeriod, error)
+	Update(ctx context.Context, period *models.WorkPeriod) error
 }
 ```
 
@@ -5013,18 +5003,18 @@ type Repository interface {
 package planning
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        ListPlanItems(ctx context.Context, workPeriodID string) ([]models.WorkPlanItem, error)
-        CreatePlanItems(ctx context.Context, items []models.WorkPlanItem) error
-        FindPlanItemByID(ctx context.Context, id string) (*models.WorkPlanItem, error)
-        UpdatePlanItem(ctx context.Context, item *models.WorkPlanItem) error
-        DeleteDraftPlanItems(ctx context.Context, workPeriodID string) error
-        CreateAccrualBatch(ctx context.Context, batch *models.EarningAccrualBatch, items []models.EarningAccrualItem, ledgerEntries []models.CurrentAccountEntry) error
-        FindAccrualByWorkPeriodID(ctx context.Context, workPeriodID string) (*models.EarningAccrualBatch, []models.EarningAccrualItem, error)
+	ListPlanItems(ctx context.Context, workPeriodID string) ([]models.WorkPlanItem, error)
+	CreatePlanItems(ctx context.Context, items []models.WorkPlanItem) error
+	FindPlanItemByID(ctx context.Context, id string) (*models.WorkPlanItem, error)
+	UpdatePlanItem(ctx context.Context, item *models.WorkPlanItem) error
+	DeleteDraftPlanItems(ctx context.Context, workPeriodID string) error
+	CreateAccrualBatch(ctx context.Context, batch *models.EarningAccrualBatch, items []models.EarningAccrualItem, ledgerEntries []models.CurrentAccountEntry) error
+	FindAccrualByWorkPeriodID(ctx context.Context, workPeriodID string) (*models.EarningAccrualBatch, []models.EarningAccrualItem, error)
 }
 ```
 
@@ -5036,16 +5026,16 @@ type Repository interface {
 package mineproduction
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter MineProductionListFilter) ([]models.MineWellProduction, int64, error)
-        Create(ctx context.Context, production *models.MineWellProduction) error
-        FindByID(ctx context.Context, id string) (*models.MineWellProduction, error)
-        FindByWorkPeriodAndLocation(ctx context.Context, workPeriodID string, locationID string) (*models.MineWellProduction, error)
-        Update(ctx context.Context, production *models.MineWellProduction) error
+	List(ctx context.Context, filter MineProductionListFilter) ([]models.MineWellProduction, int64, error)
+	Create(ctx context.Context, production *models.MineWellProduction) error
+	FindByID(ctx context.Context, id string) (*models.MineWellProduction, error)
+	FindByWorkPeriodAndLocation(ctx context.Context, workPeriodID string, locationID string) (*models.MineWellProduction, error)
+	Update(ctx context.Context, production *models.MineWellProduction) error
 }
 ```
 
@@ -5057,17 +5047,17 @@ type Repository interface {
 package goldprices
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter GoldPriceListFilter) ([]models.GoldPrice, int64, error)
-        Create(ctx context.Context, price *models.GoldPrice) error
-        FindByID(ctx context.Context, id string) (*models.GoldPrice, error)
-        FindByQuoteDate(ctx context.Context, quoteDate string) (*models.GoldPrice, error)
-        FindLatest(ctx context.Context) (*models.GoldPrice, error)
-        Update(ctx context.Context, price *models.GoldPrice) error
+	List(ctx context.Context, filter GoldPriceListFilter) ([]models.GoldPrice, int64, error)
+	Create(ctx context.Context, price *models.GoldPrice) error
+	FindByID(ctx context.Context, id string) (*models.GoldPrice, error)
+	FindByQuoteDate(ctx context.Context, quoteDate string) (*models.GoldPrice, error)
+	FindLatest(ctx context.Context) (*models.GoldPrice, error)
+	Update(ctx context.Context, price *models.GoldPrice) error
 }
 ```
 
@@ -5079,16 +5069,16 @@ type Repository interface {
 package pricelist
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter PriceListFilter) ([]models.PriceListItem, int64, error)
-        Create(ctx context.Context, item *models.PriceListItem) error
-        FindByID(ctx context.Context, id string) (*models.PriceListItem, error)
-        Update(ctx context.Context, item *models.PriceListItem) error
-        ExistsByNameOrCode(ctx context.Context, name string, code *string, excludeID *string) (bool, error)
+	List(ctx context.Context, filter PriceListFilter) ([]models.PriceListItem, int64, error)
+	Create(ctx context.Context, item *models.PriceListItem) error
+	FindByID(ctx context.Context, id string) (*models.PriceListItem, error)
+	Update(ctx context.Context, item *models.PriceListItem) error
+	ExistsByNameOrCode(ctx context.Context, name string, code *string, excludeID *string) (bool, error)
 }
 ```
 
@@ -5100,16 +5090,16 @@ type Repository interface {
 package expenses
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        List(ctx context.Context, filter ExpenseListFilter) ([]models.ExpenseTransaction, int64, error)
-        CreateWithLedger(ctx context.Context, expense *models.ExpenseTransaction, items []models.ExpenseItem, ledgerEntries []models.CurrentAccountEntry) error
-        FindByID(ctx context.Context, id string) (*models.ExpenseTransaction, []models.ExpenseItem, error)
-        FindLedgerEntriesByExpenseID(ctx context.Context, expenseID string) ([]models.CurrentAccountEntry, error)
-        RevertWithLedger(ctx context.Context, originalEntries []models.CurrentAccountEntry, reversalEntries []models.CurrentAccountEntry) error
+	List(ctx context.Context, filter ExpenseListFilter) ([]models.ExpenseTransaction, int64, error)
+	CreateWithLedger(ctx context.Context, expense *models.ExpenseTransaction, items []models.ExpenseItem, ledgerEntries []models.CurrentAccountEntry) error
+	FindByID(ctx context.Context, id string) (*models.ExpenseTransaction, []models.ExpenseItem, error)
+	FindLedgerEntriesByExpenseID(ctx context.Context, expenseID string) ([]models.CurrentAccountEntry, error)
+	RevertWithLedger(ctx context.Context, originalEntries []models.CurrentAccountEntry, reversalEntries []models.CurrentAccountEntry) error
 }
 ```
 
@@ -5121,26 +5111,26 @@ type Repository interface {
 package currentaccounts
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type BalanceRow struct {
-        CurrencyCode string
-        Credits      float64
-        Debits       float64
-        Balance      float64
+	CurrencyCode string
+	Credits      float64
+	Debits       float64
+	Balance      float64
 }
 
 type Repository interface {
-        GetBalances(ctx context.Context, collaboratorID string) ([]BalanceRow, error)
-        ListEntries(ctx context.Context, collaboratorID string, filter CurrentAccountEntryFilter) ([]models.CurrentAccountEntry, int64, error)
-        FindEntryByID(ctx context.Context, entryID string) (*models.CurrentAccountEntry, error)
-        CreateEntry(ctx context.Context, entry *models.CurrentAccountEntry) error
-        CreateEntries(ctx context.Context, entries []models.CurrentAccountEntry) error
-        HasReversal(ctx context.Context, entryID string) (bool, error)
-        RevertEntry(ctx context.Context, original *models.CurrentAccountEntry, reversal *models.CurrentAccountEntry) error
-        CloseJourneyWithLedger(ctx context.Context, collaborator *models.CollaboratorJourney, closeEntries []models.CurrentAccountEntry) error
+	GetBalances(ctx context.Context, collaboratorID string) ([]BalanceRow, error)
+	ListEntries(ctx context.Context, collaboratorID string, filter CurrentAccountEntryFilter) ([]models.CurrentAccountEntry, int64, error)
+	FindEntryByID(ctx context.Context, entryID string) (*models.CurrentAccountEntry, error)
+	CreateEntry(ctx context.Context, entry *models.CurrentAccountEntry) error
+	CreateEntries(ctx context.Context, entries []models.CurrentAccountEntry) error
+	HasReversal(ctx context.Context, entryID string) (bool, error)
+	RevertEntry(ctx context.Context, original *models.CurrentAccountEntry, reversal *models.CurrentAccountEntry) error
+	CloseJourneyWithLedger(ctx context.Context, collaborator *models.CollaboratorJourney, closeEntries []models.CurrentAccountEntry) error
 }
 ```
 
@@ -5152,13 +5142,13 @@ type Repository interface {
 package audit
 
 import (
-        "context"
-        "mining-app/internal/db/models"
+	"context"
+	"mining-app/internal/db/models"
 )
 
 type Repository interface {
-        Create(ctx context.Context, log *models.AuditLog) error
-        ListByEntity(ctx context.Context, entityType string, entityID string) ([]models.AuditLog, error)
+	Create(ctx context.Context, log *models.AuditLog) error
+	ListByEntity(ctx context.Context, entityType string, entityID string) ([]models.AuditLog, error)
 }
 ```
 
@@ -5174,45 +5164,45 @@ Example pattern:
 package people
 
 import (
-        "github.com/gofiber/fiber/v2"
-        "mining-app/internal/shared/httpx"
+	"github.com/gofiber/fiber/v2"
+	"mining-app/internal/shared/httpx"
 )
 
 type Handler struct {
-        service Service
+	service Service
 }
 
 func NewHandler(service Service) *Handler {
-        return &Handler{service: service}
+	return &Handler{service: service}
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
-        var filter PersonListFilter
-        if err := c.QueryParser(&filter); err != nil {
-                return httpx.BadRequest(c, "invalid_query", "Invalid query parameters", nil)
-        }
+	var filter PersonListFilter
+	if err := c.QueryParser(&filter); err != nil {
+		return httpx.BadRequest(c, "invalid_query", "Invalid query parameters", nil)
+	}
 
-        items, total, err := h.service.List(c.Context(), filter)
-        if err != nil {
-                return httpx.HandleError(c, err)
-        }
+	items, total, err := h.service.List(c.Context(), filter)
+	if err != nil {
+		return httpx.HandleError(c, err)
+	}
 
-        return httpx.OKWithPage(c, items, filter.Page, filter.PageSize, total)
+	return httpx.OKWithPage(c, items, filter.Page, filter.PageSize, total)
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
-        var req CreatePersonRequest
-        if err := c.BodyParser(&req); err != nil {
-                return httpx.BadRequest(c, "invalid_body", "Invalid request body", nil)
-        }
+	var req CreatePersonRequest
+	if err := c.BodyParser(&req); err != nil {
+		return httpx.BadRequest(c, "invalid_body", "Invalid request body", nil)
+	}
 
-        actorUserID := httpx.ActorUserID(c)
-        created, err := h.service.Create(c.Context(), req, actorUserID)
-        if err != nil {
-                return httpx.HandleError(c, err)
-        }
+	actorUserID := httpx.ActorUserID(c)
+	created, err := h.service.Create(c.Context(), req, actorUserID)
+	if err != nil {
+		return httpx.HandleError(c, err)
+	}
 
-        return httpx.Created(c, created)
+	return httpx.Created(c, created)
 }
 ```
 
@@ -5230,46 +5220,46 @@ Recommended package:
 package httpx
 
 import (
-        "github.com/gofiber/fiber/v2"
-        "mining-app/internal/shared/dto"
+	"github.com/gofiber/fiber/v2"
+	"mining-app/internal/shared/dto"
 )
 
 func OK[T any](c *fiber.Ctx, data T) error {
-        return c.Status(fiber.StatusOK).JSON(dto.APIResponse[T]{Data: data})
+	return c.Status(fiber.StatusOK).JSON(dto.APIResponse[T]{Data: data})
 }
 
 func Created[T any](c *fiber.Ctx, data T) error {
-        return c.Status(fiber.StatusCreated).JSON(dto.APIResponse[T]{Data: data})
+	return c.Status(fiber.StatusCreated).JSON(dto.APIResponse[T]{Data: data})
 }
 
 func OKWithPage[T any](c *fiber.Ctx, data T, page int, pageSize int, totalRows int64) error {
-        totalPages := 0
-        if pageSize > 0 {
-                totalPages = int((totalRows + int64(pageSize) - 1) / int64(pageSize))
-        }
-        return c.Status(fiber.StatusOK).JSON(dto.APIResponse[T]{
-                Data: data,
-                Meta: &dto.Meta{
-                        Page: page,
-                        PageSize: pageSize,
-                        TotalRows: totalRows,
-                        TotalPages: totalPages,
-                },
-        })
+	totalPages := 0
+	if pageSize > 0 {
+		totalPages = int((totalRows + int64(pageSize) - 1) / int64(pageSize))
+	}
+	return c.Status(fiber.StatusOK).JSON(dto.APIResponse[T]{
+		Data: data,
+		Meta: &dto.Meta{
+			Page: page,
+			PageSize: pageSize,
+			TotalRows: totalRows,
+			TotalPages: totalPages,
+		},
+	})
 }
 
 func BadRequest(c *fiber.Ctx, code string, message string, fields map[string]string) error {
-        return c.Status(fiber.StatusBadRequest).JSON(dto.APIResponse[any]{
-                Error: &dto.APIError{Code: code, Message: message, Fields: fields},
-        })
+	return c.Status(fiber.StatusBadRequest).JSON(dto.APIResponse[any]{
+		Error: &dto.APIError{Code: code, Message: message, Fields: fields},
+	})
 }
 
 func ActorUserID(c *fiber.Ctx) string {
-        v := c.Locals("userID")
-        if s, ok := v.(string); ok {
-                return s
-        }
-        return ""
+	v := c.Locals("userID")
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
 }
 ```
 
@@ -5282,33 +5272,1326 @@ The above contracts are intentionally implementation-ready but still need normal
 Important adjustments during coding:
 
 1. Avoid cyclic imports between `people` and `collaborators` DTO packages.
-
-   * Either move shared DTOs to `/internal/api/dto`, or keep module DTOs but avoid cross-package return types.
+   - Either move shared DTOs to `/internal/api/dto`, or keep module DTOs but avoid cross-package return types.
 2. Prefer decimal types over `float64` for money in production code.
-
-   * DTOs can expose numbers, but domain services should use decimal arithmetic.
+   - DTOs can expose numbers, but domain services should use decimal arithmetic.
 3. Role authorization middleware should wrap routes by action.
-
-   * Example: only ADMIN can close journeys or revert ledger entries.
+   - Example: only ADMIN can close journeys or revert ledger entries.
 4. Handlers should not know GORM models.
-
-   * Handlers speak DTOs only.
+   - Handlers speak DTOs only.
 5. Services may coordinate multiple repositories inside transactions.
-
-   * Expenses, accruals, reversals, zero-out, and close are transaction-required workflows.
+   - Expenses, accruals, reversals, zero-out, and close are transaction-required workflows.
 
 ---
 
-## 51. Recommended Next Step
+## 51. Production-Grade Repository Folder Tree
 
-The next best step is to create the **actual backend project skeleton**, including:
+Recommended repository name:
 
-* `go.mod`
-* Fiber server bootstrap
-* config loader
-* database connection
-* migration runner
-* model files
-* route registration
-* empty handlers/services/repositories
-* first working endpoints for health, auth placeholder, people list/create
+```text
+mining-collaborator-accounting/
+```
+
+This is a full-stack monorepo containing:
+
+- Go/Fiber backend
+- React frontend
+- SQLite/GORM persistence
+- migrations
+- tests
+- Docker deployment
+- operational scripts
+- documentation
+
+---
+
+## 51.1 Top-Level Monorepo Layout
+
+```text
+mining-collaborator-accounting/
+├── README.md
+├── Makefile
+├── .gitignore
+├── .editorconfig
+├── .env.example
+├── docker-compose.yml
+├── docker-compose.dev.yml
+├── Dockerfile
+├── docs/
+├── scripts/
+├── deployments/
+├── backend/
+├── frontend/
+└── data/
+```
+
+### Top-level responsibilities
+
+```text
+README.md                 Project overview and local setup
+Makefile                  Common developer and deployment commands
+.env.example              Example environment variables
+Dockerfile                Production multi-stage build
+Docker Compose files      Local/dev/prod orchestration
+docs/                     Architecture and operational documentation
+scripts/                  Developer and operational scripts
+deployments/              Server, systemd, nginx, backup examples
+backend/                  Fiber + GORM + SQLite API
+frontend/                 React mobile-first SPA
+data/                     Local mounted SQLite/backups directory, gitignored
+```
+
+---
+
+## 51.2 Backend Folder Tree
+
+```text
+backend/
+├── go.mod
+├── go.sum
+├── Makefile
+├── .air.toml
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── app/
+│   │   ├── app.go
+│   │   ├── bootstrap.go
+│   │   ├── config.go
+│   │   ├── dependencies.go
+│   │   └── shutdown.go
+│   ├── db/
+│   │   ├── db.go
+│   │   ├── migrate.go
+│   │   ├── transaction.go
+│   │   ├── seeds.go
+│   │   └── models/
+│   │       ├── base.go
+│   │       ├── user.go
+│   │       ├── reference_data.go
+│   │       ├── person.go
+│   │       ├── collaborator_journey.go
+│   │       ├── work_period.go
+│   │       ├── work_plan_item.go
+│   │       ├── mine_well_production.go
+│   │       ├── gold_price.go
+│   │       ├── price_list_item.go
+│   │       ├── expense_transaction.go
+│   │       ├── expense_item.go
+│   │       ├── earning_accrual.go
+│   │       ├── current_account_entry.go
+│   │       ├── audit_log.go
+│   │       └── system_setting.go
+│   ├── http/
+│   │   ├── middleware/
+│   │   │   ├── auth.go
+│   │   │   ├── cors.go
+│   │   │   ├── logger.go
+│   │   │   ├── recovery.go
+│   │   │   └── roles.go
+│   │   ├── routes/
+│   │   │   ├── dependencies.go
+│   │   │   ├── routes.go
+│   │   │   ├── auth.go
+│   │   │   ├── people.go
+│   │   │   ├── collaborators.go
+│   │   │   ├── reference_data.go
+│   │   │   ├── work_periods.go
+│   │   │   ├── planning.go
+│   │   │   ├── mine_production.go
+│   │   │   ├── gold_prices.go
+│   │   │   ├── price_list.go
+│   │   │   ├── expenses.go
+│   │   │   ├── current_accounts.go
+│   │   │   └── reports.go
+│   │   └── server.go
+│   ├── shared/
+│   │   ├── dto/
+│   │   │   ├── response.go
+│   │   │   ├── pagination.go
+│   │   │   └── filters.go
+│   │   ├── errors/
+│   │   │   ├── errors.go
+│   │   │   └── codes.go
+│   │   ├── httpx/
+│   │   │   ├── responses.go
+│   │   │   ├── errors.go
+│   │   │   └── context.go
+│   │   ├── ids/
+│   │   │   └── ulid.go
+│   │   ├── money/
+│   │   │   └── decimal.go
+│   │   ├── dates/
+│   │   │   └── dates.go
+│   │   ├── validation/
+│   │   │   └── validator.go
+│   │   └── logging/
+│   │       └── logger.go
+│   ├── auth/
+│   │   ├── dto.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   ├── repository_gorm.go
+│   │   ├── password.go
+│   │   └── jwt.go
+│   ├── people/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── collaborators/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   ├── repository_gorm.go
+│   │   ├── journey_rules.go
+│   │   └── projection.go
+│   ├── referencedata/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── workperiods/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── planning/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   ├── repository_gorm.go
+│   │   ├── seed_from_previous.go
+│   │   ├── inform.go
+│   │   └── accrual_orchestrator.go
+│   ├── mineproduction/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── goldprices/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── pricelist/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   ├── expenses/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   ├── repository_gorm.go
+│   │   ├── expense_rules.go
+│   │   └── posting.go
+│   ├── earnings/
+│   │   ├── calculator.go
+│   │   ├── daily_wage_calculator.go
+│   │   ├── salary_calculator.go
+│   │   ├── commission_calculator.go
+│   │   ├── sick_rules.go
+│   │   ├── license_rules.go
+│   │   └── accrual_service.go
+│   ├── currentaccounts/
+│   │   ├── dto.go
+│   │   ├── mapper.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   ├── repository_gorm.go
+│   │   ├── balance.go
+│   │   ├── reversal.go
+│   │   ├── zero_gold.go
+│   │   └── close_journey.go
+│   ├── reports/
+│   │   ├── dto.go
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── service_impl.go
+│   │   ├── repository.go
+│   │   └── repository_gorm.go
+│   └── audit/
+│       ├── service.go
+│       ├── service_impl.go
+│       ├── repository.go
+│       └── repository_gorm.go
+├── migrations/
+│   ├── 000001_init_schema.up.sql
+│   ├── 000001_init_schema.down.sql
+│   ├── 000002_seed_reference_data.up.sql
+│   ├── 000002_seed_reference_data.down.sql
+│   ├── 000003_seed_roles_and_settings.up.sql
+│   └── 000003_seed_roles_and_settings.down.sql
+├── tests/
+│   ├── integration/
+│   │   ├── people_test.go
+│   │   ├── collaborators_test.go
+│   │   ├── planning_test.go
+│   │   ├── expenses_test.go
+│   │   └── current_accounts_test.go
+│   ├── fixtures/
+│   │   ├── reference_data.sql
+│   │   ├── people.json
+│   │   └── collaborators.json
+│   └── testdb/
+│       └── testdb.go
+└── tmp/
+```
+
+---
+
+## 51.3 Backend Layer Responsibilities
+
+### `cmd/server/main.go`
+
+Application entry point only:
+
+- load config
+- bootstrap app
+- start server
+- graceful shutdown
+
+### `internal/app`
+
+Owns startup wiring:
+
+- config loading
+- dependency construction
+- service/repository composition
+- logger setup
+- DB setup
+- route setup
+
+### `internal/db`
+
+Owns persistence plumbing:
+
+- GORM connection
+- SQLite options
+- migrations
+- transactions
+- model registration
+
+### `internal/http/routes`
+
+Owns route mapping only:
+
+- route groups
+- middleware attachment
+- handler method wiring
+
+### `internal/http/middleware`
+
+Owns cross-cutting HTTP concerns:
+
+- auth
+- role checks
+- CORS
+- logging
+- panic recovery
+
+### Feature modules
+
+Each module follows this shape:
+
+```text
+<module>/
+├── dto.go
+├── mapper.go
+├── handler.go
+├── service.go
+├── service_impl.go
+├── repository.go
+└── repository_gorm.go
+```
+
+### Business-heavy modules
+
+Some modules get extra files:
+
+```text
+earnings/
+currentaccounts/
+expenses/
+planning/
+collaborators/
+```
+
+because they contain real business rules, not just CRUD.
+
+---
+
+## 51.4 Frontend Folder Tree
+
+```text
+frontend/
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── vite.config.ts
+├── index.html
+├── .env.example
+├── public/
+│   ├── favicon.svg
+│   └── app-icon.svg
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── app/
+│   │   ├── router.tsx
+│   │   ├── providers.tsx
+│   │   ├── queryClient.ts
+│   │   ├── authStore.ts
+│   │   └── config.ts
+│   ├── api/
+│   │   ├── client.ts
+│   │   ├── auth.api.ts
+│   │   ├── people.api.ts
+│   │   ├── collaborators.api.ts
+│   │   ├── referenceData.api.ts
+│   │   ├── workPeriods.api.ts
+│   │   ├── planning.api.ts
+│   │   ├── mineProduction.api.ts
+│   │   ├── goldPrices.api.ts
+│   │   ├── priceList.api.ts
+│   │   ├── expenses.api.ts
+│   │   ├── currentAccounts.api.ts
+│   │   └── reports.api.ts
+│   ├── types/
+│   │   ├── api.ts
+│   │   ├── auth.ts
+│   │   ├── people.ts
+│   │   ├── collaborators.ts
+│   │   ├── referenceData.ts
+│   │   ├── planning.ts
+│   │   ├── production.ts
+│   │   ├── expenses.ts
+│   │   ├── currentAccounts.ts
+│   │   └── reports.ts
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── AppShell.tsx
+│   │   │   ├── TopBar.tsx
+│   │   │   ├── BottomNav.tsx
+│   │   │   ├── SideNav.tsx
+│   │   │   └── PageHeader.tsx
+│   │   ├── forms/
+│   │   │   ├── TextField.tsx
+│   │   │   ├── SelectField.tsx
+│   │   │   ├── DateField.tsx
+│   │   │   ├── MoneyField.tsx
+│   │   │   ├── GoldField.tsx
+│   │   │   └── FormActions.tsx
+│   │   ├── cards/
+│   │   │   ├── SummaryCard.tsx
+│   │   │   ├── BalanceCard.tsx
+│   │   │   ├── CollaboratorCard.tsx
+│   │   │   └── LedgerEntryCard.tsx
+│   │   ├── tables/
+│   │   │   ├── DataTable.tsx
+│   │   │   ├── MobileListTable.tsx
+│   │   │   └── Pagination.tsx
+│   │   ├── feedback/
+│   │   │   ├── Loading.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   ├── ErrorAlert.tsx
+│   │   │   └── ConfirmDialog.tsx
+│   │   └── guards/
+│   │       ├── RequireAuth.tsx
+│   │       └── RequireRole.tsx
+│   ├── features/
+│   │   ├── auth/
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── useAuth.ts
+│   │   │   └── authSchemas.ts
+│   │   ├── dashboard/
+│   │   │   ├── DashboardPage.tsx
+│   │   │   └── DashboardCards.tsx
+│   │   ├── people/
+│   │   │   ├── PeopleListPage.tsx
+│   │   │   ├── PersonDetailPage.tsx
+│   │   │   ├── PersonForm.tsx
+│   │   │   ├── usePeople.ts
+│   │   │   └── peopleSchemas.ts
+│   │   ├── collaborators/
+│   │   │   ├── CollaboratorListPage.tsx
+│   │   │   ├── CollaboratorDetailPage.tsx
+│   │   │   ├── CollaboratorForm.tsx
+│   │   │   ├── ExtendJourneyDialog.tsx
+│   │   │   ├── FinishJourneyDialog.tsx
+│   │   │   ├── ProjectionPanel.tsx
+│   │   │   ├── useCollaborators.ts
+│   │   │   └── collaboratorSchemas.ts
+│   │   ├── planning/
+│   │   │   ├── WorkPeriodsPage.tsx
+│   │   │   ├── WorkPeriodDetailPage.tsx
+│   │   │   ├── PlanTab.tsx
+│   │   │   ├── InformTab.tsx
+│   │   │   ├── AccrualTab.tsx
+│   │   │   ├── PlanItemEditor.tsx
+│   │   │   ├── usePlanning.ts
+│   │   │   └── planningSchemas.ts
+│   │   ├── production/
+│   │   │   ├── MineProductionPage.tsx
+│   │   │   ├── MineProductionForm.tsx
+│   │   │   └── useMineProduction.ts
+│   │   ├── gold-prices/
+│   │   │   ├── GoldPricesPage.tsx
+│   │   │   ├── GoldPriceForm.tsx
+│   │   │   └── useGoldPrices.ts
+│   │   ├── price-list/
+│   │   │   ├── PriceListPage.tsx
+│   │   │   ├── PriceListItemForm.tsx
+│   │   │   ├── PricePreview.tsx
+│   │   │   └── usePriceList.ts
+│   │   ├── expenses/
+│   │   │   ├── ExpensesPage.tsx
+│   │   │   ├── ExpenseEntryPage.tsx
+│   │   │   ├── ExpenseForm.tsx
+│   │   │   ├── ExpenseSummaryPanel.tsx
+│   │   │   ├── ExpenseLineItems.tsx
+│   │   │   ├── RevertExpenseDialog.tsx
+│   │   │   ├── useExpenses.ts
+│   │   │   └── expenseSchemas.ts
+│   │   ├── current-accounts/
+│   │   │   ├── CurrentAccountPage.tsx
+│   │   │   ├── CurrentAccountSummary.tsx
+│   │   │   ├── LedgerEntriesPage.tsx
+│   │   │   ├── LedgerEntryList.tsx
+│   │   │   ├── RevertLedgerEntryDialog.tsx
+│   │   │   ├── ZeroGoldDialog.tsx
+│   │   │   ├── CloseJourneyDialog.tsx
+│   │   │   └── useCurrentAccounts.ts
+│   │   ├── reports/
+│   │   │   ├── ReportsPage.tsx
+│   │   │   ├── CollaboratorBalancesReport.tsx
+│   │   │   ├── JourneysEndingSoonReport.tsx
+│   │   │   ├── PendingAccrualsReport.tsx
+│   │   │   ├── MercantileSalesReport.tsx
+│   │   │   └── useReports.ts
+│   │   └── settings/
+│   │       ├── SettingsPage.tsx
+│   │       ├── ReferenceDataPage.tsx
+│   │       ├── ReferenceDataForm.tsx
+│   │       └── useReferenceData.ts
+│   ├── hooks/
+│   │   ├── useDebounce.ts
+│   │   ├── useMediaQuery.ts
+│   │   └── useToast.ts
+│   ├── utils/
+│   │   ├── dates.ts
+│   │   ├── formatters.ts
+│   │   ├── money.ts
+│   │   ├── gold.ts
+│   │   └── errors.ts
+│   ├── styles/
+│   │   ├── index.css
+│   │   └── tailwind.css
+│   └── test/
+│       ├── setup.ts
+│       └── test-utils.tsx
+├── tests/
+│   ├── e2e/
+│   │   ├── auth.spec.ts
+│   │   ├── people.spec.ts
+│   │   ├── collaborators.spec.ts
+│   │   ├── expenses.spec.ts
+│   │   └── current-accounts.spec.ts
+│   └── fixtures/
+└── dist/
+```
+
+---
+
+## 51.5 Frontend Layer Responsibilities
+
+### `src/app`
+
+Application composition:
+
+- router
+- global providers
+- query client
+- auth store
+- runtime config
+
+### `src/api`
+
+Typed API clients. One file per backend domain.
+
+### `src/types`
+
+Frontend TypeScript equivalents of backend DTOs.
+
+### `src/components`
+
+Reusable UI building blocks:
+
+- layout
+- forms
+- cards
+- tables
+- feedback components
+- guards
+
+### `src/features`
+
+Business screens and feature-specific hooks/forms.
+
+Each feature owns:
+
+- pages
+- forms
+- feature hooks
+- validation schemas
+- feature-specific panels/dialogs
+
+### `src/utils`
+
+Formatting and pure helper functions.
+
+---
+
+## 51.6 Documentation Folder
+
+```text
+docs/
+├── architecture/
+│   ├── overview.md
+│   ├── domain-model.md
+│   ├── erd.md
+│   ├── ledger-design.md
+│   ├── planning-workflow.md
+│   ├── earnings-engine.md
+│   └── expense-engine.md
+├── api/
+│   ├── route-map.md
+│   ├── dto-contracts.md
+│   └── errors.md
+├── deployment/
+│   ├── local-development.md
+│   ├── production-linux.md
+│   ├── docker.md
+│   ├── backups.md
+│   └── restore.md
+├── operations/
+│   ├── daily-use.md
+│   ├── closing-journey.md
+│   ├── reversing-transactions.md
+│   └── gold-price-policy.md
+└── decisions/
+    ├── 0001-modular-monolith.md
+    ├── 0002-immutable-ledger.md
+    ├── 0003-sqlite-first.md
+    └── 0004-dual-currency-accounting.md
+```
+
+---
+
+## 51.7 Scripts Folder
+
+```text
+scripts/
+├── dev.sh
+├── build.sh
+├── test.sh
+├── lint.sh
+├── migrate-up.sh
+├── migrate-down.sh
+├── seed-dev.sh
+├── backup-db.sh
+├── restore-db.sh
+├── create-admin-user.sh
+└── release.sh
+```
+
+### Script responsibilities
+
+```text
+dev.sh                 Start backend and frontend locally
+build.sh               Build backend and frontend
+test.sh                Run all backend/frontend tests
+lint.sh                Run Go and TypeScript linters
+migrate-up.sh          Apply DB migrations
+migrate-down.sh        Roll back DB migrations
+seed-dev.sh            Load development seed data
+backup-db.sh           Snapshot SQLite database
+restore-db.sh          Restore SQLite database from backup
+create-admin-user.sh   Bootstrap first admin user
+release.sh             Build production artifact/container
+```
+
+---
+
+## 51.8 Deployment Folder
+
+```text
+deployments/
+├── nginx/
+│   └── mining-app.conf
+├── systemd/
+│   └── mining-app.service
+├── docker/
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── Dockerfile.all-in-one
+├── backup/
+│   ├── cron.example
+│   └── backup-policy.md
+└── env/
+    ├── production.env.example
+    └── staging.env.example
+```
+
+---
+
+## 51.9 Data Folder
+
+```text
+data/
+├── app.db
+├── app.db-shm
+├── app.db-wal
+├── backups/
+│   ├── .gitkeep
+│   └── YYYY-MM-DD-HHMM-app.db.gz
+└── exports/
+    ├── .gitkeep
+    └── reports/
+```
+
+Important:
+
+```text
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/backups/*.gz
+data/exports/**
+```
+
+should be gitignored.
+
+---
+
+## 51.10 Testing Layout
+
+### Backend tests
+
+```text
+backend/tests/integration/
+backend/internal/<module>/*_test.go
+```
+
+Use module-level tests for business logic:
+
+```text
+backend/internal/earnings/commission_calculator_test.go
+backend/internal/earnings/sick_rules_test.go
+backend/internal/earnings/license_rules_test.go
+backend/internal/currentaccounts/reversal_test.go
+backend/internal/currentaccounts/zero_gold_test.go
+backend/internal/currentaccounts/close_journey_test.go
+backend/internal/expenses/expense_rules_test.go
+backend/internal/collaborators/journey_rules_test.go
+```
+
+### Frontend tests
+
+```text
+frontend/src/features/<feature>/*.test.tsx
+frontend/tests/e2e/*.spec.ts
+```
+
+---
+
+## 51.11 Production Build Strategy
+
+Recommended production deployment:
+
+1. Build React frontend into static assets.
+2. Embed or copy frontend `dist` into Go server image.
+3. Fiber serves API and static frontend.
+4. SQLite database is stored in mounted persistent volume.
+5. Nightly backup job copies SQLite database to backup folder.
+
+Production runtime shape:
+
+```text
+/app/mining-app-server
+/app/public/
+/data/app.db
+/data/backups/
+```
+
+---
+
+## 51.12 Recommended `.gitignore`
+
+```gitignore
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# env
+.env
+.env.*
+!.env.example
+
+# Go
+/backend/bin/
+/backend/tmp/
+/backend/coverage.out
+/backend/*.test
+
+# Node
+/frontend/node_modules/
+/frontend/dist/
+/frontend/coverage/
+
+# SQLite/data
+/data/*.db
+/data/*.db-shm
+/data/*.db-wal
+/data/backups/*.gz
+/data/exports/**
+
+# logs
+*.log
+logs/
+
+# Docker
+*.pid
+```
+
+---
+
+## 51.13 Recommended Root Makefile Commands
+
+```makefile
+.PHONY: dev build test lint migrate-up migrate-down seed backup restore
+
+dev:
+	./scripts/dev.sh
+
+build:
+	./scripts/build.sh
+
+test:
+	./scripts/test.sh
+
+lint:
+	./scripts/lint.sh
+
+migrate-up:
+	./scripts/migrate-up.sh
+
+migrate-down:
+	./scripts/migrate-down.sh
+
+seed:
+	./scripts/seed-dev.sh
+
+backup:
+	./scripts/backup-db.sh
+
+restore:
+	./scripts/restore-db.sh
+```
+
+---
+
+## 51.14 Why this structure is production-grade
+
+This structure supports:
+
+- clean feature boundaries
+- testable services
+- DTO isolation from GORM models
+- route registration independent from handlers
+- migrations independent from AutoMigrate
+- business rules separated from persistence
+- future desktop/mobile frontend growth
+- Docker-based production deployment
+- SQLite backup/restore operations
+- auditability of financial workflows
+
+---
+
+## 52. Backend Skeleton — Step 1
+
+This section starts the actual backend skeleton files.
+
+Target backend path:
+
+```text
+backend/
+```
+
+Initial files created in this step:
+
+```text
+backend/go.mod
+backend/cmd/server/main.go
+backend/internal/app/config.go
+backend/internal/app/bootstrap.go
+backend/internal/db/db.go
+backend/internal/http/server.go
+backend/internal/http/routes/dependencies.go
+backend/internal/http/routes/routes.go
+backend/internal/health/handler.go
+backend/internal/http/routes/health.go
+```
+
+---
+
+## 52.1 `backend/go.mod`
+
+```go
+module mining-app/backend
+
+// Use the latest stable Go version available in your environment.
+// If your local toolchain is older, change this to your installed version.
+go 1.23
+
+require (
+	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/glebarez/sqlite v1.11.0
+	github.com/joho/godotenv v1.5.1
+	gorm.io/gorm v1.25.12
+)
+```
+
+Notes:
+
+- `github.com/glebarez/sqlite` is a pure-Go SQLite driver, easier to build/deploy than CGO SQLite.
+- You can switch later to `gorm.io/driver/sqlite` if you prefer CGO-based SQLite.
+
+---
+
+## 52.2 `backend/cmd/server/main.go`
+
+```go
+package main
+
+import (
+	"log"
+
+	"mining-app/backend/internal/app"
+)
+
+func main() {
+	cfg, err := app.LoadConfig()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	server, cleanup, err := app.Bootstrap(cfg)
+	if err != nil {
+		log.Fatalf("failed to bootstrap app: %v", err)
+	}
+	defer cleanup()
+
+	if err := server.Listen(cfg.HTTPAddr); err != nil {
+		log.Fatalf("server stopped: %v", err)
+	}
+}
+```
+
+Responsibility:
+
+- only starts the application
+- no route definitions
+- no business logic
+- no database logic
+
+---
+
+## 52.3 `backend/internal/app/config.go`
+
+```go
+package app
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/joho/godotenv"
+)
+
+type Config struct {
+	Env       string
+	HTTPAddr  string
+	DBPath    string
+	JWTSecret string
+}
+
+func LoadConfig() (Config, error) {
+	_ = godotenv.Load()
+
+	cfg := Config{
+		Env:       getEnv("APP_ENV", "development"),
+		HTTPAddr:  getEnv("HTTP_ADDR", ":8080"),
+		DBPath:    getEnv("DB_PATH", "./data/app.db"),
+		JWTSecret: getEnv("JWT_SECRET", "dev-only-change-me"),
+	}
+
+	if cfg.JWTSecret == "" {
+		return Config{}, fmt.Errorf("JWT_SECRET is required")
+	}
+
+	return cfg, nil
+}
+
+func getEnv(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+```
+
+Recommended `.env`:
+
+```env
+APP_ENV=development
+HTTP_ADDR=:8080
+DB_PATH=./data/app.db
+JWT_SECRET=replace-this-in-production
+```
+
+---
+
+## 52.4 `backend/internal/app/bootstrap.go`
+
+```go
+package app
+
+import (
+	"log"
+
+	"github.com/gofiber/fiber/v2"
+
+	"mining-app/backend/internal/db"
+	httpserver "mining-app/backend/internal/http"
+	"mining-app/backend/internal/http/routes"
+)
+
+func Bootstrap(cfg Config) (*fiber.App, func(), error) {
+	database, err := db.Open(cfg.DBPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	deps := routes.Dependencies{
+		DB: database,
+	}
+
+	server := httpserver.NewServer(cfg, deps)
+
+	cleanup := func() {
+		sqlDB, err := database.DB()
+		if err != nil {
+			log.Printf("failed to access database handle during cleanup: %v", err)
+			return
+		}
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}
+
+	return server, cleanup, nil
+}
+```
+
+---
+
+## 52.5 `backend/internal/db/db.go`
+
+```go
+package db
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+func Open(path string) (*gorm.DB, error) {
+	if err := ensureDir(path); err != nil {
+		return nil, err
+	}
+
+	dsn := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", path)
+
+	database, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite database: %w", err)
+	}
+
+	return database, nil
+}
+
+func ensureDir(path string) error {
+	dir := filepath.Dir(path)
+	if dir == "." || dir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create database directory %s: %w", dir, err)
+	}
+	return nil
+}
+```
+
+Notes:
+
+- `foreign_keys(1)` enables foreign-key enforcement.
+- `journal_mode(WAL)` improves SQLite concurrency.
+- `busy_timeout(5000)` helps avoid immediate lock failures.
+
+---
+
+## 52.6 `backend/internal/http/server.go`
+
+```go
+package http
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+
+	"mining-app/backend/internal/app"
+	"mining-app/backend/internal/http/routes"
+)
+
+func NewServer(cfg app.Config, deps routes.Dependencies) *fiber.App {
+	server := fiber.New(fiber.Config{
+		AppName:      "Mining Collaborator Accounting API",
+		ServerHeader: "mining-app",
+	})
+
+	server.Use(recover.New())
+	server.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+	}))
+
+	routes.Register(server, deps)
+
+	return server
+}
+```
+
+Production note:
+
+- later, replace `AllowOrigins: "*"` with an environment-driven allowed origin list.
+
+---
+
+## 52.7 `backend/internal/http/routes/dependencies.go`
+
+```go
+package routes
+
+import "gorm.io/gorm"
+
+type Dependencies struct {
+	DB *gorm.DB
+}
+```
+
+This starts simple. As modules are implemented, this grows into:
+
+```go
+type Dependencies struct {
+	DB *gorm.DB
+
+	AuthHandler            *auth.Handler
+	PeopleHandler          *people.Handler
+	CollaboratorHandler    *collaborators.Handler
+	ReferenceDataHandler   *referencedata.Handler
+	WorkPeriodHandler      *workperiods.Handler
+	PlanningHandler        *planning.Handler
+	MineProductionHandler  *mineproduction.Handler
+	GoldPriceHandler       *goldprices.Handler
+	PriceListHandler       *pricelist.Handler
+	ExpenseHandler         *expenses.Handler
+	CurrentAccountHandler  *currentaccounts.Handler
+	ReportHandler          *reports.Handler
+
+	AuthMiddleware fiber.Handler
+}
+```
+
+---
+
+## 52.8 `backend/internal/http/routes/routes.go`
+
+```go
+package routes
+
+import "github.com/gofiber/fiber/v2"
+
+func Register(server *fiber.App, deps Dependencies) {
+	RegisterHealthRoutes(server)
+
+	api := server.Group("/api")
+	v1 := api.Group("/v1")
+
+	_ = v1
+	_ = deps
+
+	// Future route registration:
+	// RegisterAuthRoutes(v1, deps)
+	// RegisterPeopleRoutes(v1, deps)
+	// RegisterCollaboratorRoutes(v1, deps)
+	// RegisterReferenceDataRoutes(v1, deps)
+	// RegisterWorkPeriodRoutes(v1, deps)
+	// RegisterPlanningRoutes(v1, deps)
+	// RegisterMineProductionRoutes(v1, deps)
+	// RegisterGoldPriceRoutes(v1, deps)
+	// RegisterPriceListRoutes(v1, deps)
+	// RegisterExpenseRoutes(v1, deps)
+	// RegisterCurrentAccountRoutes(v1, deps)
+	// RegisterReportRoutes(v1, deps)
+}
+```
+
+---
+
+## 52.9 `backend/internal/health/handler.go`
+
+```go
+package health
+
+import (
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+type Handler struct{}
+
+func NewHandler() *Handler {
+	return &Handler{}
+}
+
+type Response struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+}
+
+func (h *Handler) Healthz(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(Response{
+		Status:    "ok",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+```
+
+---
+
+## 52.10 `backend/internal/http/routes/health.go`
+
+```go
+package routes
+
+import (
+	"github.com/gofiber/fiber/v2"
+
+	"mining-app/backend/internal/health"
+)
+
+func RegisterHealthRoutes(server *fiber.App) {
+	h := health.NewHandler()
+	server.Get("/healthz", h.Healthz)
+}
+```
+
+---
+
+## 52.11 Smoke Test
+
+From the repository root:
+
+```bash
+cd backend
+go mod tidy
+go run ./cmd/server
+```
+
+In another terminal:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-04-24T00:00:00Z"
+}
+```
+
+The timestamp will be the current UTC time.
+
+---
+
+## 52.12 Next Implementation Step
+
+The next concrete step is to add:
+
+1. shared API response helpers
+2. shared error package
+3. ULID generator
+4. first GORM model files
+5. migration runner
+6. People module shell with list/create placeholders
+

@@ -18,6 +18,33 @@ Local requirements:
 - Ubuntu/Debian: `gcc`, `libc6-dev`, `sqlite3`, `libsqlite3-dev`
 
 ## Quick start
+### Run development
+```bash
+mkdir -p data
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+### Open:
+```bash
+http://localhost:5173
+```
+
+Backend health:
+```bash
+curl http://localhost:8080/healthz
+```
+## Run production-like local
+```bash
+mkdir -p data
+docker compose up --build
+```
+
+### Open:
+
+```bash
+http://localhost:3000
+```
+
+## Quick start (Old)
 
 ```bash
 make dev

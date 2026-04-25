@@ -1,7 +1,10 @@
-.PHONY: dev backend frontend test build tidy migrate-up
+.PHONY: ddev dev backend frontend test build tidy migrate-up
 
 dev:
 	./scripts/dev.sh
+
+ddev:
+	./scripts/ddev.sh
 
 backend:
 	cd backend && go run ./cmd/server
