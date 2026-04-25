@@ -17,11 +17,30 @@ Local requirements:
 - macOS: Xcode Command Line Tools are usually enough
 - Ubuntu/Debian: `gcc`, `libc6-dev`, `sqlite3`, `libsqlite3-dev`
 
+# Daily Workflow
+## Terminal 1:
+```bash
+cd backend
+air
+```
+## Terminal 2:
+```bash
+cd frontend
+npm run dev
+```
+
+## Browser
+Open:
+```bash
+http://localhost:5173
+```
+
+Your frontend changes hot reload through Vite, and backend Go changes restart automatically through air.
+
 ## Quick start
 ### Run development
 ```bash
-mkdir -p data
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+make ddev
 ```
 ### Open:
 ```bash
@@ -32,6 +51,7 @@ Backend health:
 ```bash
 curl http://localhost:8080/healthz
 ```
+
 ## Run production-like local
 ```bash
 mkdir -p data
@@ -44,24 +64,6 @@ docker compose up --build
 http://localhost:3000
 ```
 
-## Quick start (Old)
-
-```bash
-make dev
-```
-
-Backend health:
-
-```bash
-curl http://localhost:8080/healthz
-```
-
-Backend dependency refresh:
-
-```bash
-cd backend
-go mod tidy
-```
 # Development launch flow
 ## Unzip and enter repo
 ```bash

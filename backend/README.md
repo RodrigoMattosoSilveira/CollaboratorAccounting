@@ -14,11 +14,11 @@ This SQLite configuration uses the CGO-backed SQLite 3 driver transitively throu
 ## Run
 
 ```bash
-go mod tidy
-go run ./cmd/server
+cd backend
+air
 ```
 
-Then open:
+Then run:
 
 ```bash
 curl http://localhost:8080/healthz
