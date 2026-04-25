@@ -1,3 +1,8 @@
 export default function DashboardPage() {
-  return <section><h1>Dashboard</h1><p>Mobile-first dashboard shell.</p></section>;
+  return (
+    <div className="p-6">
+      <h1>Dashboard</h1>
+      <p>Welcome.</p>
+    </div>
+  );
 }
