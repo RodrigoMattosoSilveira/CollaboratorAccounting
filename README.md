@@ -2,47 +2,27 @@
 
 Production-oriented monorepo for a mobile-first collaborator accounting app.
 
-## Stack
+# Stack
 
 - Backend: Go 1.25, Fiber v3 (`github.com/gofiber/fiber/v3`), GORM (`gorm.io/gorm`)
 - Database: SQLite 3 through GORM's SQLite driver (`gorm.io/driver/sqlite`, CGO-backed by `github.com/mattn/go-sqlite3`)
 - Frontend: React, TypeScript, Vite
 
-## SQLite 3 build requirement
-
-This repo intentionally uses the SQLite 3 / CGO-backed GORM driver, not the pure-Go SQLite driver.
-
-Local requirements:
-
-- macOS: Xcode Command Line Tools are usually enough
-- Ubuntu/Debian: `gcc`, `libc6-dev`, `sqlite3`, `libsqlite3-dev`
 
 # Daily Workflow
 ## Terminal 1:
 ```bash
-cd backend
-air
+# from the project root, launch the backend
+make bedev
 ```
 ## Terminal 2:
 ```bash
-cd frontend
-npm run dev
+# from the project root, launch the frontend
+make fedev
 ```
 
 ## Browser
 Open:
-```bash
-http://localhost:5173
-```
-
-Your frontend changes hot reload through Vite, and backend Go changes restart automatically through air.
-
-## Quick start
-### Run development
-```bash
-make ddev
-```
-### Open:
 ```bash
 http://localhost:5173
 ```
@@ -64,7 +44,7 @@ docker compose up --build
 http://localhost:3000
 ```
 
-# Development launch flow
+# Docker
 ## Unzip and enter repo
 ```bash
 unzip mining-collaborator-accounting-fiber3-sqlite3-gorm.zip
@@ -164,3 +144,12 @@ docker compose exec frontend sh
 ```bash
 mkdir -p data
 ```
+
+# SQLite 3 build requirement
+
+This repo intentionally uses the SQLite 3 / CGO-backed GORM driver, not the pure-Go SQLite driver.
+
+Local requirements:
+
+- macOS: Xcode Command Line Tools are usually enough
+- Ubuntu/Debian: `gcc`, `libc6-dev`, `sqlite3`, `libsqlite3-dev`
