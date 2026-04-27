@@ -4,10 +4,33 @@ const API_BASE_URL =
 type ApiEnvelope<T> = {
   data?: T;
   error?: {
-    code: string;
-    message: string;
+    code?: string;
+    message?: string;
+    fields?: Record<string, string>;
   };
 };
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  fields?: Record<string, string>;
+  details?: unknown;
+
+  constructor(args: {
+    message: string;
+    status: number;
+    code?: string;
+    fields?: Record<string, string>;
+    details?: unknown;
+  }) {
+    super(args.message);
+    this.name = "ApiError";
+    this.status = args.status;
+    this.code = args.code;
+    this.fields = args.fields;
+    this.details = args.details;
+  }
+}
 
 export async function apiFetch<T>(
   path: string,
@@ -21,14 +44,28 @@ export async function apiFetch<T>(
     },
   });
 
-  const json = (await response.json().catch(() => null)) as
-    | ApiEnvelope<T>
-    | T
-    | null;
+  const text = await response.text();
+
+  let json: ApiEnvelope<T> | T | null = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
 
   if (!response.ok) {
-    const maybeEnvelope = json as ApiEnvelope<T> | null;
-    throw new Error(maybeEnvelope?.error?.message || "API request failed");
+    const envelope = json as ApiEnvelope<T> | null;
+
+    throw new ApiError({
+      status: response.status,
+      code: envelope?.error?.code,
+      message:
+        envelope?.error?.message ||
+        text ||
+        `API request failed with status ${response.status}`,
+      fields: envelope?.error?.fields,
+      details: json ?? text,
+    });
   }
 
   if (json && typeof json === "object" && "data" in json) {

@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { PersonForm } from "./PersonForm";
 import { useCreatePerson } from "./usePeople";
+import { ApiError } from "../../api/client";
+import { ApiErrorPanel } from "../../components/ApiErrorPanel";
 
 const ACTIVE_STATUS_ID = "ref-person-status-active";
 
@@ -28,7 +30,9 @@ export function CreatePersonPage() {
       <section className="mx-auto max-w-4xl p-4">
         {mutation.error && (
           <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
-            {(mutation.error as Error).message}
+            <p className="font-semibold">{(mutation.error as Error).message}</p>
+
+            <ApiErrorPanel error={mutation.error} />
           </div>
         )}
 
