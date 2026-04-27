@@ -1,46 +1,39 @@
-import axios from "axios";
-
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
 
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
+type ApiEnvelope<T> = {
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+  };
+};
 
-apiClient.interceptors.request.use((request) => {
-  const token = localStorage.getItem("token");
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers ?? {}),
+    },
+  });
 
-  if (token) {
-    request.headers.Authorization = `Bearer ${token}`;
+  const json = (await response.json().catch(() => null)) as
+    | ApiEnvelope<T>
+    | T
+    | null;
+
+  if (!response.ok) {
+    const maybeEnvelope = json as ApiEnvelope<T> | null;
+    throw new Error(maybeEnvelope?.error?.message || "API request failed");
   }
 
-  return request;
-});
+  if (json && typeof json === "object" && "data" in json) {
+    return (json as ApiEnvelope<T>).data as T;
+  }
 
-export async function apiGet<T>(url: string): Promise<T> {
-  const response = await apiClient.get<T>(url);
-  return response.data;
+  return json as T;
 }
-
-export async function apiPost<TRequest, TResponse>(
-  url: string,
-  data: TRequest
-): Promise<TResponse> {
-  const response = await apiClient.post<TResponse>(url, data);
-  return response.data;
-}
-
-export async function apiPut<TRequest, TResponse>(
-  url: string,
-  data: TRequest
-): Promise<TResponse> {
-  const response = await apiClient.put<TResponse>(url, data);
-  return response.data;
-}
-
-export async function apiDelete<TResponse>(url: string): Promise<TResponse> {
-  const response = await apiClient.delete<TResponse>(url);
-  return response.data;
-}
-
-export const apiFetch = apiGet;

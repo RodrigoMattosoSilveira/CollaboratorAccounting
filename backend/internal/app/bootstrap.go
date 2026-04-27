@@ -24,7 +24,7 @@ func Bootstrap(cfg Config) (*fiber.App, func(), error) {
 	refSvc := referencedata.NewService(refRepo)
 	refHandler := referencedata.NewHandler(refSvc)
 
-	peopleRepo := people.NewGormRepository(database)
+	peopleRepo := people.NewRepository(database)
 	peopleSvc := people.NewService(peopleRepo)
 	peopleHandler := people.NewHandler(peopleSvc)
 

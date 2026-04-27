@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS roles (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS system_settings (
+  id TEXT PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL,
+  description TEXT NULL,
+  updated_by TEXT NOT NULL,
+  updated_at DATETIME NOT NULL
+);

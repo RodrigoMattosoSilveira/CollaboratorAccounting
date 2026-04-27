@@ -2,11 +2,23 @@ package people
 
 import (
 	"context"
+
 	"mining-app/backend/internal/db"
 )
 
 type Repository interface {
-	List(ctx context.Context) ([]db.Person, error)
+	List(ctx context.Context, filter PersonListFilter) ([]db.Person, int64, error)
 	Create(ctx context.Context, person *db.Person) error
 	FindByID(ctx context.Context, id string) (*db.Person, error)
+	Update(ctx context.Context, person *db.Person) error
+
+	ExistsByUniqueFields(
+		ctx context.Context,
+		cpf string,
+		rg string,
+		cellular string,
+		email string,
+		pixKey *string,
+		excludeID *string,
+	) (bool, error)
 }
