@@ -32,10 +32,15 @@ export function PeopleListPage() {
           </div>
         )}
 
-        {error && (
+        {/* {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
             {(error as Error).message}
           </div>
+        )} */}
+        {error && (
+          <pre className="rounded bg-red-50 p-4 text-xs text-red-800">
+            {JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}
+          </pre>
         )}
 
         {!isLoading && !error && people.length === 0 && (

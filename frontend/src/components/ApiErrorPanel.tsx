@@ -11,16 +11,22 @@ export function ApiErrorPanel({ error }: { error: unknown }) {
 
       {error instanceof ApiError && (
         <>
+          {error.url && (
+            <p className="mt-1 text-xs text-red-700">
+              URL: {error.url}
+            </p>
+          )}
+
           <p className="mt-1 text-xs text-red-700">
-            Status: {error.status}
+            Status: {error.status ?? "network failure"}
             {error.code ? ` · Code: ${error.code}` : ""}
           </p>
 
-          {error.fields && Object.keys(error.fields).length > 0 && (
+          {error.fields && (
             <ul className="mt-2 list-disc pl-5 text-sm">
-              {Object.entries(error.fields).map(([field, fieldMessage]) => (
+              {Object.entries(error.fields).map(([field, message]) => (
                 <li key={field}>
-                  <span className="font-medium">{field}:</span> {fieldMessage}
+                  <span className="font-medium">{field}:</span> {message}
                 </li>
               ))}
             </ul>
