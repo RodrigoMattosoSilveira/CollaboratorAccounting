@@ -1,46 +1,91 @@
-import axios from "axios";
+const API_BASE_URL = "/api/v1";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+type ApiEnvelope<T> = {
+  data?: T;
+  error?: {
+    code?: string;
+    message?: string;
+    fields?: Record<string, string>;
+  };
+};
 
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
+export class ApiError extends Error {
+  status?: number;
+  code?: string;
+  fields?: Record<string, string>;
+  details?: unknown;
+  url?: string;
 
-apiClient.interceptors.request.use((request) => {
-  const token = localStorage.getItem("token");
+  constructor(args: {
+    message: string;
+    status?: number;
+    code?: string;
+    fields?: Record<string, string>;
+    details?: unknown;
+    url?: string;
+  }) {
+    super(args.message);
+    this.name = "ApiError";
+    this.status = args.status;
+    this.code = args.code;
+    this.fields = args.fields;
+    this.details = args.details;
+    this.url = args.url;
+  }
+}
 
-  if (token) {
-    request.headers.Authorization = `Bearer ${token}`;
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE_URL}${path}`;
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    throw new ApiError({
+      message: error instanceof Error ? error.message : "Network request failed",
+      url,
+      details: error,
+    });
   }
 
-  return request;
-});
+  const text = await response.text();
 
-export async function apiGet<T>(url: string): Promise<T> {
-  const response = await apiClient.get<T>(url);
-  return response.data;
+  let json: ApiEnvelope<T> | T | null = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!response.ok) {
+    const envelope = json as ApiEnvelope<T> | null;
+
+    throw new ApiError({
+      status: response.status,
+      code: envelope?.error?.code,
+      message:
+        envelope?.error?.message ||
+        text ||
+        `API request failed with status ${response.status}`,
+      fields: envelope?.error?.fields,
+      details: json ?? text,
+      url,
+    });
+  }
+
+  if (json && typeof json === "object" && "data" in json) {
+    return (json as ApiEnvelope<T>).data as T;
+  }
+
+  return json as T;
 }
-
-export async function apiPost<TRequest, TResponse>(
-  url: string,
-  data: TRequest
-): Promise<TResponse> {
-  const response = await apiClient.post<TResponse>(url, data);
-  return response.data;
-}
-
-export async function apiPut<TRequest, TResponse>(
-  url: string,
-  data: TRequest
-): Promise<TResponse> {
-  const response = await apiClient.put<TResponse>(url, data);
-  return response.data;
-}
-
-export async function apiDelete<TResponse>(url: string): Promise<TResponse> {
-  const response = await apiClient.delete<TResponse>(url);
-  return response.data;
-}
-
-export const apiFetch = apiGet;

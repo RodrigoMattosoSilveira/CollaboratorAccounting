@@ -1,37 +1,38 @@
-import { apiDelete, apiGet, apiPost, apiPut } from "./client";
+import { apiFetch } from "./client";
 import type {
   CreatePersonInput,
+  PeopleListResponse,
   Person,
   UpdatePersonInput,
 } from "../types/people";
 
-export function listPeople(): Promise<Person[]> {
-  return apiGet<Person[]>("/people");
+export async function listPeople(): Promise<Person[]> {
+  const response = await apiFetch<PeopleListResponse | Person[]>("/people");
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return response.items ?? [];
 }
 
 export function getPerson(id: string): Promise<Person> {
-  return apiGet<Person>(`/people/${id}`);
+  return apiFetch<Person>(`/people/${id}`);
 }
 
 export function createPerson(input: CreatePersonInput): Promise<Person> {
-  return apiPost<CreatePersonInput, Person>("/people", input);
+  return apiFetch<Person>("/people", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function updatePerson(
   id: string,
   input: UpdatePersonInput
 ): Promise<Person> {
-  return apiPut<UpdatePersonInput, Person>(`/people/${id}`, input);
+  return apiFetch<Person>(`/people/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
-
-export function deletePerson(id: string): Promise<void> {
-  return apiDelete<void>(`/people/${id}`);
-}
-
-export const peopleApi = {
-  list: listPeople,
-  get: getPerson,
-  create: createPerson,
-  update: updatePerson,
-  delete: deletePerson,
-};

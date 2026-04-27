@@ -1,7 +1,15 @@
-.PHONY: ddev dev backend frontend test build tidy migrate-up
+.PHONY: ddev bedev fedev dev backend frontend test build tidy migrate-up
 
+getntw:
+	./scripts/getntw.sh
 dev:
 	./scripts/dev.sh
+
+bedev:
+	./scripts/bedev.sh	
+
+fedev:
+	./scripts/fedev.sh	
 
 ddev:
 	./scripts/ddev.sh
