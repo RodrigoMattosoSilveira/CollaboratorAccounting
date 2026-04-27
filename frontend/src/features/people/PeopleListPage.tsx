@@ -6,54 +6,127 @@ export function PeopleListPage() {
   const people = Array.isArray(data) ? data : [];
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">People</h1>
-          <p className="text-sm text-gray-600">Permanent person records</p>
-        </div>
+    <main className="min-h-screen bg-gray-50">
+      <header className="sticky top-0 z-10 border-b bg-white/95 px-4 py-4 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-950">People</h1>
+            <p className="text-sm text-gray-500">
+              Permanent identity records
+            </p>
+          </div>
 
-        <Link className="rounded bg-black px-4 py-2 text-white" to="/people/new">
-          Add
-        </Link>
-      </div>
-
-      {isLoading && <p>Loading people...</p>}
-
-      {error && (
-        <div className="rounded border border-red-300 bg-red-50 p-3 text-red-700">
-          {(error as Error).message}
-        </div>
-      )}
-
-      {!isLoading && !error && people.length === 0 && (
-        <div className="rounded border bg-white p-6 text-center">
-          <p className="font-medium">No people yet.</p>
-          <Link className="mt-3 inline-block underline" to="/people/new">
-            Create the first person
+          <Link
+            to="/people/new"
+            className="rounded-xl bg-gray-950 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+          >
+            Add
           </Link>
         </div>
-      )}
+      </header>
 
-      <div className="space-y-3">
+      <section className="mx-auto max-w-4xl space-y-4 p-4">
+        {isLoading && (
+          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+            Loading people...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800">
+            {(error as Error).message}
+          </div>
+        )}
+
+        {!isLoading && !error && people.length === 0 && (
+          <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
+            <h2 className="text-lg font-semibold">No people yet</h2>
+            <p className="mt-2 text-sm text-gray-500">
+              Create the first Person record before creating collaborators.
+            </p>
+            <Link
+              to="/people/new"
+              className="mt-5 inline-block rounded-xl bg-gray-950 px-5 py-3 text-sm font-semibold text-white"
+            >
+              Create Person
+            </Link>
+          </div>
+        )}
+
         {people.map((person) => (
           <Link
             key={person.id}
             to={`/people/${person.id}`}
-            className="block rounded border bg-white p-4 shadow-sm"
+            className="block rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md"
           >
-            <div className="font-semibold">
-              {person.firstName} {person.lastName}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-950">
+                  {person.firstName} {person.lastName}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Nickname: {person.nickname || "—"}
+                </p>
+              </div>
+
+              <StatusBadge complete={person.canCreateCollaborator}>
+                {person.canCreateCollaborator ? "Complete" : "Incomplete"}
+              </StatusBadge>
             </div>
-            <div className="mt-1 text-sm text-gray-600">
-              {person.cellular || "No cellular"} · {person.email || "No email"}
+
+            <div className="mt-4 grid gap-2 text-sm text-gray-700">
+              <Info label="CPF" value={person.cpf} />
+              <Info label="RG" value={person.rg} />
+              <Info label="Cellular" value={person.cellular} />
+              <Info label="Email" value={person.email} />
             </div>
-            <div className="mt-1 text-xs text-gray-500">
-              Status: {person.statusLabel || person.statusId}
-            </div>
+
+            {!person.canCreateCollaborator &&
+              person.missingSections &&
+              person.missingSections.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {person.missingSections.map((section) => (
+                    <span
+                      key={section}
+                      className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
+                    >
+                      Missing {section}
+                    </span>
+                  ))}
+                </div>
+              )}
           </Link>
         ))}
-      </div>
+      </section>
     </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-right font-medium">{value || "—"}</span>
+    </div>
+  );
+}
+
+function StatusBadge({
+  complete,
+  children,
+}: {
+  complete: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+        complete
+          ? "bg-green-100 text-green-800"
+          : "bg-amber-100 text-amber-800"
+      }`}
+    >
+      {children}
+    </span>
   );
 }

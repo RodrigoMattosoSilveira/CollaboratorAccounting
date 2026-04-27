@@ -21,14 +21,12 @@ export function PersonForm({
   onSubmit,
 }: Props) {
   const isCreate = !initial;
-
   const [activeTab, setActiveTab] = useState<Tab>("personal");
 
   const [form, setForm] = useState<UpdatePersonInput>({
     firstName: initial?.firstName ?? "",
     lastName: initial?.lastName ?? "",
     nickname: initial?.nickname ?? "",
-
     cpf: initial?.cpf ?? "",
     rg: initial?.rg ?? "",
     cellular: initial?.cellular ?? "",
@@ -58,8 +56,7 @@ export function PersonForm({
 
   const completionLabel = useMemo(() => {
     if (!initial) return "New record";
-    if (initial.canCreateCollaborator) return "Complete";
-    return "Incomplete";
+    return initial.canCreateCollaborator ? "Complete" : "Incomplete";
   }, [initial]);
 
   function update<K extends keyof UpdatePersonInput>(
@@ -73,7 +70,7 @@ export function PersonForm({
     event.preventDefault();
 
     if (isCreate) {
-      const createInput: CreatePersonInput = {
+      await onSubmit({
         firstName: form.firstName,
         lastName: form.lastName,
         nickname: form.nickname,
@@ -83,9 +80,7 @@ export function PersonForm({
         email: form.email,
         statusId: form.statusId,
         notes: form.notes,
-      };
-
-      await onSubmit(createInput);
+      });
       return;
     }
 
@@ -93,7 +88,7 @@ export function PersonForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form onSubmit={submit} className="space-y-5 pb-28">
       <ProfileStatusCard
         isCreate={isCreate}
         completionLabel={completionLabel}
@@ -352,11 +347,11 @@ export function PersonForm({
         </Section>
       )}
 
-      <div className="sticky bottom-0 rounded-2xl border bg-white p-4 shadow-lg">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-white p-4 shadow-2xl md:sticky md:rounded-2xl md:border">
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-black px-5 py-4 font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-xl bg-gray-950 px-5 py-4 text-base font-semibold text-white shadow-sm disabled:opacity-50"
         >
           {submitting ? "Saving..." : isCreate ? "Create Person" : "Save Changes"}
         </button>
@@ -380,7 +375,9 @@ function ProfileStatusCard({
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Profile Status</h2>
+          <h2 className="text-lg font-semibold text-gray-950">
+            Profile Status
+          </h2>
           <p className="text-sm text-gray-600">
             {isCreate
               ? "Complete the Personal section to create this Person record."
@@ -391,7 +388,7 @@ function ProfileStatusCard({
         </div>
 
         <span
-          className={`rounded-full px-3 py-1 text-sm font-medium ${
+          className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${
             canCreateCollaborator
               ? "bg-green-100 text-green-800"
               : "bg-amber-100 text-amber-800"
@@ -429,7 +426,7 @@ function Section({
   return (
     <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
       <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
         {description && <p className="text-sm text-gray-600">{description}</p>}
       </div>
       {children}
@@ -458,7 +455,7 @@ function TabButton({
       disabled={disabled}
       onClick={onClick}
       className={`rounded-xl px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-        active ? "bg-black text-white" : "bg-gray-100 text-gray-700"
+        active ? "bg-gray-950 text-white" : "bg-gray-100 text-gray-700"
       }`}
     >
       {label}
@@ -487,7 +484,7 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">
+      <span className="mb-1 block text-sm font-medium text-gray-800">
         {label}
         {required && <span className="text-red-600"> *</span>}
       </span>
@@ -498,7 +495,7 @@ function Input({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border p-3 disabled:bg-gray-100"
+        className="w-full rounded-xl border border-gray-300 bg-white p-3 text-base outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-200 disabled:bg-gray-100"
       />
     </label>
   );
@@ -515,12 +512,14 @@ function TextArea({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-gray-800">
+        {label}
+      </span>
       <textarea
         rows={4}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border p-3"
+        className="w-full rounded-xl border border-gray-300 bg-white p-3 text-base outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-200"
       />
     </label>
   );
@@ -541,7 +540,7 @@ function Select({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">
+      <span className="mb-1 block text-sm font-medium text-gray-800">
         {label}
         {required && <span className="text-red-600"> *</span>}
       </span>
@@ -549,7 +548,7 @@ function Select({
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border p-3"
+        className="w-full rounded-xl border border-gray-300 bg-white p-3 text-base outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-200"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

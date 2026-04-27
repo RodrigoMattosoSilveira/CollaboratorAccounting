@@ -9,27 +9,38 @@ export function CreatePersonPage() {
   const mutation = useCreatePerson();
 
   return (
-    <main className="mx-auto max-w-3xl p-4">
-      <Link className="mb-4 inline-block text-sm underline" to="/people">
-        Back to People
-      </Link>
-
-      <h1 className="mb-4 text-2xl font-bold">New Person</h1>
-
-      {mutation.error && (
-        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">
-          {(mutation.error as Error).message}
+    <main className="min-h-screen bg-gray-50">
+      <header className="sticky top-0 z-10 border-b bg-white/95 px-4 py-4 backdrop-blur">
+        <div className="mx-auto max-w-4xl">
+          <Link className="text-sm text-gray-500 underline" to="/people">
+            Back to People
+          </Link>
+          <h1 className="mt-3 text-2xl font-bold text-gray-950">
+            New Person
+          </h1>
+          <p className="text-sm text-gray-500">
+            Complete the Personal section first. Other sections can be filled
+            later.
+          </p>
         </div>
-      )}
+      </header>
 
-      <PersonForm
-        defaultStatusId={ACTIVE_STATUS_ID}
-        submitting={mutation.isPending}
-        onSubmit={async (input) => {
-          const created = await mutation.mutateAsync(input);
-          navigate(`/people/${created.id}`);
-        }}
-      />
+      <section className="mx-auto max-w-4xl p-4">
+        {mutation.error && (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+            {(mutation.error as Error).message}
+          </div>
+        )}
+
+        <PersonForm
+          defaultStatusId={ACTIVE_STATUS_ID}
+          submitting={mutation.isPending}
+          onSubmit={async (input) => {
+            const created = await mutation.mutateAsync(input);
+            navigate(`/people/${created.id}`);
+          }}
+        />
+      </section>
     </main>
   );
 }

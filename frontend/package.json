@@ -18,8 +18,10 @@
     "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vitest": "latest"
