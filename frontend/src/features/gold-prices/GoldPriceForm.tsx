@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import type { CreateGoldPriceInput } from "../../types/goldPrices";
+import { useTranslation } from "react-i18next";
 
 type GoldPriceFormProps = {
   value: CreateGoldPriceInput;
@@ -9,17 +10,16 @@ type GoldPriceFormProps = {
 };
 
 export function GoldPriceForm({ value, isPending = false, onChange, onSubmit }: GoldPriceFormProps) {
+  const { t } = useTranslation("goldPrices");
   return (
     <form className="rounded-2xl border bg-white p-4 shadow-sm" onSubmit={onSubmit}>
-      <h2 className="text-lg font-semibold text-gray-950">Record Gold Price</h2>
+      <h2 className="text-lg font-semibold text-gray-950">{t("recordGoldPrice")}</h2>
       <p className="mt-1 text-sm text-gray-500">
-        This administrator-recorded BRL-per-gram value is the conversion source for new gold-gram expenses.
-      </p>
+        {t("administratorRecordedBrlPer")}</p>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <label className="block text-sm font-semibold text-gray-700">
-          Price Date
-          <input
+          {t("priceDateLabel")}<input
             className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
             required
             type="date"
@@ -29,8 +29,7 @@ export function GoldPriceForm({ value, isPending = false, onChange, onSubmit }: 
         </label>
 
         <label className="block text-sm font-semibold text-gray-700">
-          BRL per Gram
-          <input
+          {t("brlPerGram")}<input
             className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
             inputMode="decimal"
             min="0.01"
@@ -43,22 +42,19 @@ export function GoldPriceForm({ value, isPending = false, onChange, onSubmit }: 
         </label>
 
         <label className="block text-sm font-semibold text-gray-700">
-          Recorded By
-          <input
+          {t("recorded")}<input
             className="mt-2 block w-full rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700"
             readOnly
             required
             value={value.recordedBy}
-            placeholder="Loading authenticated actor…"
+            placeholder={t("loading")}
           />
           <span className="mt-1 block text-xs font-normal text-gray-500">
-            Derived from the authenticated session and enforced by the server.
-          </span>
+            {t("derivedFromAuthenticatedSession")}</span>
         </label>
 
         <label className="block text-sm font-semibold text-gray-700 md:col-span-2">
-          Notes
-          <textarea
+          {t("notes")}<textarea
             className="mt-2 block min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
             value={value.notes ?? ""}
             onChange={(event) => onChange({ ...value, notes: event.target.value })}
@@ -71,7 +67,7 @@ export function GoldPriceForm({ value, isPending = false, onChange, onSubmit }: 
         disabled={isPending}
         type="submit"
       >
-        {isPending ? "Recording..." : "Record Gold Price"}
+        {isPending ? t("recording") : t("recordGoldPrice")}
       </button>
     </form>
   );

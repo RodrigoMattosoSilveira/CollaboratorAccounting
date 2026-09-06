@@ -25,32 +25,40 @@ import {
 
 type Action = "ZERO_GOLD" | "PARTIAL_PAYOUT" | "CLOSE_JOURNEY";
 
-function settlementReasonOptions(t: (key: string) => string) {
+type SettlementReasonOption = {
+  value: string;
+  label: string;
+  actions: Action[];
+};
+
+function settlementReasonOptions(
+  t: (key: string) => string,
+): SettlementReasonOption[] {
   return [
     {
       value: "GOLD_BALANCE_PAYOUT",
       label: t("settlementReasons.GOLD_BALANCE_PAYOUT"),
-      actions: ["ZERO_GOLD"] satisfies Action[],
+      actions: ["ZERO_GOLD"],
     },
     {
       value: "COLLABORATOR_REQUESTED_PAYOUT",
       label: t("settlementReasons.COLLABORATOR_REQUESTED_PAYOUT"),
-      actions: ["PARTIAL_PAYOUT"] satisfies Action[],
+      actions: ["PARTIAL_PAYOUT"],
     },
     {
       value: "SCHEDULED_PAYOUT",
       label: t("settlementReasons.SCHEDULED_PAYOUT"),
-      actions: ["PARTIAL_PAYOUT"] satisfies Action[],
+      actions: ["PARTIAL_PAYOUT"],
     },
     {
       value: "END_OF_JOURNEY_SETTLEMENT",
       label: t("settlementReasons.END_OF_JOURNEY_SETTLEMENT"),
-      actions: ["CLOSE_JOURNEY"] satisfies Action[],
+      actions: ["CLOSE_JOURNEY"],
     },
     {
       value: "FINAL_BALANCE_PAYOUT",
       label: t("settlementReasons.FINAL_BALANCE_PAYOUT"),
-      actions: ["CLOSE_JOURNEY"] satisfies Action[],
+      actions: ["CLOSE_JOURNEY"],
     },
   ];
 }
