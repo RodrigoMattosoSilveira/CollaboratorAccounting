@@ -49,6 +49,64 @@ describe("SupportAccessLeasesPage", () => {
     expect(container.textContent).toContain("Control-plane and Tenant Administrator authority cannot be leased");
   });
 
+  it("shows every active Tenant initially and filters the request picker by name, code, or ID", async () => {
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+            { id: "north-support", code: "NSUP", name: "North Support", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+            { id: "inactive-tenant", code: "INACTIVE", name: "Inactive Tenant", active: false, operationalStatus: "INACTIVE", tenantAdminCount: 0, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url.startsWith("/api/v1/authz/support-access-leases")) {
+        return jsonResponse({ data: [] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    await waitForText("2 active Tenants");
+    expect(tenantChoicesText()).toContain("Tenant A");
+    expect(tenantChoicesText()).toContain("North Support");
+    expect(tenantChoicesText()).not.toContain("Inactive Tenant");
+
+    await setSearchInput("Tenant A");
+    await waitForText("1 of 2 active Tenants");
+    expect(tenantChoicesText()).toContain("Tenant A");
+    expect(tenantChoicesText()).not.toContain("North Support");
+
+    await setSearchInput("NSUP");
+    await waitFor(() => tenantChoicesText().includes("North Support"));
+    expect(tenantChoicesText()).not.toContain("Tenant A");
+
+    await setSearchInput("north-support");
+    await waitFor(() => tenantChoicesText().includes("North Support"));
+    expect(tenantChoicesText()).not.toContain("Tenant A");
+
+    const northChoice = container.querySelector('input[name="support-access-tenant"][value="north-support"]') as HTMLInputElement | null;
+    expect(northChoice).not.toBeNull();
+    await act(async () => northChoice?.click());
+    expect(northChoice?.checked).toBe(true);
+    await waitForText("Selected: North Support");
+
+    await setSearchInput("default");
+    await waitFor(() => tenantChoicesText().includes("Tenant A"));
+    expect(tenantChoicesText()).not.toContain("North Support");
+    await waitForText("Selected: North Support");
+
+    await clickButton("Clear filter");
+    await waitFor(() => tenantChoicesText().includes("Tenant A") && tenantChoicesText().includes("North Support"));
+    const restoredNorthChoice = container.querySelector('input[name="support-access-tenant"][value="north-support"]') as HTMLInputElement | null;
+    expect(restoredNorthChoice?.checked).toBe(true);
+  });
+
   it("lets the exact Tenant Administrator approve a non-expired pending lease and review its audit trail", async () => {
     let approved = false;
     mockFetch(async (url, init) => {
@@ -164,6 +222,25 @@ async function waitFor(predicate: () => boolean) {
 
 function textNode(text: string) {
   return Array.from(container.querySelectorAll("*")).find((element) => element.textContent?.includes(text));
+}
+
+
+function tenantChoicesText() {
+  return container.querySelector('[role="radiogroup"][aria-label="Tenant choices"]')?.textContent ?? "";
+}
+
+async function setSearchInput(value: string) {
+  const input = Array.from(container.querySelectorAll('input[type="search"]')).find((element) => {
+    const label = element.closest("label");
+    return label?.textContent?.includes("Filter tenants");
+  }) as HTMLInputElement | undefined;
+  if (!input) throw new Error("Filter tenants input not found");
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    valueSetter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 }
 
 async function clickButton(name: string) {

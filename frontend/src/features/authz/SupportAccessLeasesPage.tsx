@@ -236,6 +236,7 @@ function RequestLeasePanel({
   onSubmit: (input: { tenantId: string; expiresAt: string; reason: string; permissions: string[] }) => void;
 }) {
   const [tenantId, setTenantId] = useState("");
+  const [tenantSearch, setTenantSearch] = useState("");
   const [expiresAt, setExpiresAt] = useState(defaultExpirationInput());
   const [reason, setReason] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
@@ -259,6 +260,16 @@ function RequestLeasePanel({
     );
   }
 
+  const normalizedTenantSearch = tenantSearch.trim().toLocaleLowerCase();
+  const visibleTenants = normalizedTenantSearch
+    ? tenants.filter((tenant) =>
+        [tenant.name, tenant.code, tenant.id].some((value) =>
+          value.toLocaleLowerCase().includes(normalizedTenantSearch),
+        ),
+      )
+    : tenants;
+  const selectedTenant = tenants.find((tenant) => tenant.id === tenantId);
+
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-slate-950">Request Tenant support access</h2>
@@ -267,21 +278,84 @@ function RequestLeasePanel({
       </p>
       <ApiErrorPanel error={error} />
       <form className="mt-4 space-y-5" onSubmit={handleSubmit}>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-700">
-            Tenant
-            <select
-              className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2"
-              required
-              value={tenantId}
-              onChange={(event) => setTenantId(event.target.value)}
-            >
-              <option value="">Select a Tenant</option>
-              {tenants.map((tenant) => (
-                <option key={tenant.id} value={tenant.id}>{tenant.name} ({tenant.code})</option>
-              ))}
-            </select>
-          </label>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
+          <fieldset>
+            <legend className="text-sm font-semibold text-slate-700">Tenant</legend>
+            <p className="mt-1 text-xs text-slate-500">
+              Filter by Tenant name, code, or ID, then choose exactly one Tenant. All active Tenants are shown until you enter a filter.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="min-w-0 flex-1 text-sm font-semibold text-slate-700">
+                Filter tenants
+                <input
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  onChange={(event) => setTenantSearch(event.target.value)}
+                  placeholder="Name, code, or Tenant ID"
+                  type="search"
+                  value={tenantSearch}
+                />
+              </label>
+              {normalizedTenantSearch && (
+                <button
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                  onClick={() => setTenantSearch("")}
+                  type="button"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
+              <span>
+                {normalizedTenantSearch
+                  ? `${visibleTenants.length} of ${tenants.length} active Tenants`
+                  : `${tenants.length} active Tenants`}
+              </span>
+              {selectedTenant && (
+                <span>
+                  Selected: <strong className="text-slate-700">{selectedTenant.name}</strong>
+                </span>
+              )}
+            </div>
+            {tenants.length === 0 && (
+              <p className="mt-3 rounded-xl border border-dashed p-4 text-center text-sm text-slate-500">
+                No active Tenants are available for support access.
+              </p>
+            )}
+            {tenants.length > 0 && visibleTenants.length === 0 && (
+              <p className="mt-3 rounded-xl border border-dashed p-4 text-center text-sm text-slate-500">
+                No active Tenants match the current filter.
+              </p>
+            )}
+            {visibleTenants.length > 0 && (
+              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Tenant choices">
+                {visibleTenants.map((tenant) => (
+                  <label
+                    key={tenant.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${
+                      tenantId === tenant.id
+                        ? "border-slate-950 bg-slate-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      className="mt-1"
+                      type="radio"
+                      name="support-access-tenant"
+                      value={tenant.id}
+                      checked={tenantId === tenant.id}
+                      onChange={() => setTenantId(tenant.id)}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-slate-900">{tenant.name}</span>
+                      <span className="block text-xs text-slate-600">{tenant.code}</span>
+                      <span className="block break-all font-mono text-xs text-slate-500">Tenant ID: {tenant.id}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
           <label className="text-sm font-semibold text-slate-700">
             Fixed expiration
             <input
