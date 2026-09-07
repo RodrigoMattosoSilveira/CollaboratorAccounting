@@ -260,8 +260,42 @@ export function listSupportAccessLeases(
   if (filters.tenantId?.trim()) params.set("tenantId", filters.tenantId.trim());
   if (filters.status?.trim()) params.set("status", filters.status.trim());
   const query = params.toString();
-  return apiFetch<SupportAccessLease[]>(`/authz/support-access-leases${query ? `?${query}` : ""}`, {
+  return apiFetch<unknown>(`/authz/support-access-leases${query ? `?${query}` : ""}`, {
     headers: authzHeaders(actor),
+  }).then(normalizeSupportAccessLeaseList);
+}
+
+export function normalizeSupportAccessLeaseList(input: unknown): SupportAccessLease[] {
+  let rows: unknown = input;
+
+  // apiFetch normally unwraps the standard { data: [...] } envelope. Keep this
+  // list boundary tolerant of an additional list envelope so React Query never
+  // exposes a non-iterable successful payload to the Lease History renderer.
+  if (!Array.isArray(rows) && rows && typeof rows === "object") {
+    const record = rows as Record<string, unknown>;
+    if (Array.isArray(record.data)) {
+      rows = record.data;
+    } else if (Array.isArray(record.items)) {
+      rows = record.items;
+    } else if (Array.isArray(record.leases)) {
+      rows = record.leases;
+    }
+  }
+
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows.filter((row): row is SupportAccessLease => {
+    if (!row || typeof row !== "object") return false;
+    const lease = row as Record<string, unknown>;
+    return (
+      typeof lease.id === "string"
+      && typeof lease.tenantId === "string"
+      && typeof lease.status === "string"
+      && typeof lease.effectiveStatus === "string"
+      && Array.isArray(lease.permissions)
+    );
   });
 }
 

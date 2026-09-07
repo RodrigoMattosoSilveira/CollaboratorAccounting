@@ -335,6 +335,17 @@ func TestTenantSupportAccessLeaseHTTPLifecycleAndCurrentActorProvenance(t *testi
 		t.Fatalf("unexpected requested support lease: %#v", lease)
 	}
 
+	pendingListResp := doAuthzRequest(t, app, http.MethodGet, "/api/v1/authz/support-access-leases?status=PENDING", nil, map[string]string{
+		HeaderActorID: "lease-http-app@example.test", HeaderTenantID: GlobalTenantScope,
+	})
+	if pendingListResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected filtered support lease list status 200, got %d", pendingListResp.StatusCode)
+	}
+	pendingList := decodeData[[]SupportAccessLeaseResponse](t, pendingListResp)
+	if len(pendingList) != 1 || pendingList[0].ID != lease.ID || pendingList[0].EffectiveStatus != SupportAccessLeaseStatusPending {
+		t.Fatalf("expected PENDING filter to return an array containing the pending lease, got %#v", pendingList)
+	}
+
 	eligibleResp := doAuthzRequest(t, app, http.MethodGet, "/api/v1/authz/support-access-leases/eligible-permissions", nil, map[string]string{
 		HeaderActorID: "lease-http-app@example.test", HeaderTenantID: GlobalTenantScope,
 	})

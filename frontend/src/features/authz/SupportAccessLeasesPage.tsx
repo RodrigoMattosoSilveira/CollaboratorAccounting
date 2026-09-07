@@ -62,6 +62,7 @@ export function SupportAccessLeasesPage() {
     [actor.tenantId, globalApplicationAdmin, statusFilter, tenantAdministrator, tenantFilter],
   );
   const leasesQuery = useSupportAccessLeases(requestActor, filters);
+  const leases = Array.isArray(leasesQuery.data) ? leasesQuery.data : [];
   const permissionQuery = useEligibleSupportAccessLeasePermissions(requestActor);
   const requestMutation = useRequestSupportAccessLease(requestActor);
   const approveMutation = useApproveSupportAccessLease(requestActor);
@@ -208,14 +209,14 @@ export function SupportAccessLeasesPage() {
               <ApiErrorPanel error={leasesQuery.error || approveMutation.error || terminateMutation.error} />
 
               {leasesQuery.isLoading && <p className="mt-4 text-sm text-slate-500">Loading support leases…</p>}
-              {!leasesQuery.isLoading && (leasesQuery.data ?? []).length === 0 && (
+              {!leasesQuery.isLoading && leases.length === 0 && (
                 <div className="mt-4 rounded-2xl border border-dashed p-6 text-center text-sm text-slate-500">
                   No support leases match the current filters.
                 </div>
               )}
 
               <div className="mt-4 space-y-4">
-                {(leasesQuery.data ?? []).map((lease) => (
+                {leases.map((lease) => (
                   <LeaseCard
                     key={lease.id}
                     lease={lease}

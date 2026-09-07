@@ -207,6 +207,41 @@ describe("SupportAccessLeasesPage", () => {
     ));
   });
 
+  it("filters Pending Lease history without exposing a non-array query result to the renderer", async () => {
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url === "/api/v1/authz/support-access-leases?status=PENDING") {
+        // Reproduce the successful non-array payload that previously reached
+        // React Query and crashed `(leasesQuery.data ?? []).map(...)`.
+        return jsonResponse({ data: { data: [pendingLease] } });
+      }
+      if (url === "/api/v1/authz/support-access-leases") {
+        return jsonResponse({ data: [] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    await clickButton("Lease history");
+    await selectHistoryStatus("PENDING");
+    await waitFor(() => calls.some((call) => call.url === "/api/v1/authz/support-access-leases?status=PENDING"));
+    await waitForText("lease-pending");
+
+    expect(container.querySelector("#support-access-history-panel")).not.toBeNull();
+    expect(container.textContent).toContain("PENDING");
+  });
+
   it("opens with both cards collapsed and keeps only one Support access card open at a time", async () => {
     mockFetch(async (url, init) => {
       calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
@@ -417,6 +452,19 @@ async function setSearchInput(value: string) {
     valueSetter?.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+async function selectHistoryStatus(value: string) {
+  const select = Array.from(container.querySelectorAll("select")).find((element) => {
+    const label = element.closest("label");
+    return label?.textContent?.includes("Status");
+  }) as HTMLSelectElement | undefined;
+  if (!select) throw new Error("Lease history Status select not found");
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+  await act(async () => {
+    valueSetter?.call(select, value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
 
