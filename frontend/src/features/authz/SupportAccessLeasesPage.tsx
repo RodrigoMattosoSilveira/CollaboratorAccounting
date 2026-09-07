@@ -567,8 +567,8 @@ function LeaseCard({
   onToggleAudit: () => void;
 }) {
   const permissionMap = useMemo(() => new Map(permissions.map((item) => [item.code, item])), [permissions]);
-  const expiredPending = lease.status === "PENDING" && new Date(lease.expiresAt).getTime() <= Date.now();
-  const canApprove = tenantAdministrator && lease.effectiveStatus === "PENDING" && !expiredPending;
+  const expiredPending = lease.status === "PENDING" && lease.effectiveStatus === "EXPIRED";
+  const canApprove = tenantAdministrator && lease.effectiveStatus === "PENDING";
   const canTerminate = tenantAdministrator && lease.effectiveStatus === "APPROVED";
 
   return (

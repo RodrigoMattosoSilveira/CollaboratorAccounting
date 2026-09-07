@@ -169,6 +169,14 @@ func TestTenantSupportAccessLeaseExpiresWithoutLifecycleRewrite(t *testing.T) {
 	if _, err := store.FindAccountActor(context.Background(), "account-support-expiry", "tenant-a"); !errors.Is(err, ErrTenantActorUnavailable) {
 		t.Fatalf("expired lease must not authorize Tenant access, got %v", err)
 	}
+	approvedLeases, err := store.ListSupportAccessLeases(context.Background(), applicationActor, SupportAccessLeaseFilter{Status: SupportAccessLeaseStatusApproved})
+	if err != nil {
+		t.Fatalf("list approved leases: %v", err)
+	}
+	if len(approvedLeases) != 0 {
+		t.Fatalf("expired approved lease must not match APPROVED effective-status filter: %#v", approvedLeases)
+	}
+
 	leases, err := store.ListSupportAccessLeases(context.Background(), applicationActor, SupportAccessLeaseFilter{Status: SupportAccessLeaseStatusExpired})
 	if err != nil {
 		t.Fatalf("list expired leases: %v", err)
@@ -208,6 +216,22 @@ func TestTenantSupportAccessLeaseAllowsNewRequestAfterPendingExpiration(t *testi
 
 	if err := database.Model(&TenantSupportAccessLease{}).Where("id = ?", first.ID).Update("expires_at", time.Now().UTC().Add(-time.Minute)).Error; err != nil {
 		t.Fatalf("force lapsed pending fixture: %v", err)
+	}
+
+	pendingLeases, err := store.ListSupportAccessLeases(context.Background(), applicationActor, SupportAccessLeaseFilter{Status: SupportAccessLeaseStatusPending})
+	if err != nil {
+		t.Fatalf("list pending leases after expiration: %v", err)
+	}
+	if len(pendingLeases) != 0 {
+		t.Fatalf("lapsed pending request must not match PENDING effective-status filter: %#v", pendingLeases)
+	}
+
+	expiredLeases, err := store.ListSupportAccessLeases(context.Background(), applicationActor, SupportAccessLeaseFilter{Status: SupportAccessLeaseStatusExpired})
+	if err != nil {
+		t.Fatalf("list expired pending leases: %v", err)
+	}
+	if len(expiredLeases) != 1 || expiredLeases[0].ID != first.ID || expiredLeases[0].Status != SupportAccessLeaseStatusPending || expiredLeases[0].EffectiveStatus != SupportAccessLeaseStatusExpired {
+		t.Fatalf("lapsed pending request must remain persisted PENDING but filter/display as EXPIRED: %#v", expiredLeases)
 	}
 
 	replacement, err := store.CreateSupportAccessLease(context.Background(), applicationActor, CreateSupportAccessLeaseRequest{

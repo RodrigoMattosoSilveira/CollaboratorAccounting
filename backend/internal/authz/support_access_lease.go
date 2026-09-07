@@ -307,28 +307,33 @@ func (s *GORMStore) ListSupportAccessLeases(ctx context.Context, actor *Actor, f
 	}
 
 	status := strings.ToUpper(strings.TrimSpace(filter.Status))
-	if status != "" && status != SupportAccessLeaseStatusExpired {
-		switch status {
-		case SupportAccessLeaseStatusPending, SupportAccessLeaseStatusApproved, SupportAccessLeaseStatusTerminated:
-			query = query.Where("status = ?", status)
-		default:
-			return nil, NewValidationError(map[string]string{"status": "Status must be PENDING, APPROVED, TERMINATED, or EXPIRED"})
-		}
+	now := time.Now().UTC()
+	switch status {
+	case "":
+	case SupportAccessLeaseStatusPending:
+		query = query.Where("status = ? AND expires_at > ?", SupportAccessLeaseStatusPending, now)
+	case SupportAccessLeaseStatusApproved:
+		query = query.Where("status = ? AND expires_at > ?", SupportAccessLeaseStatusApproved, now)
+	case SupportAccessLeaseStatusTerminated:
+		query = query.Where("status = ?", SupportAccessLeaseStatusTerminated)
+	case SupportAccessLeaseStatusExpired:
+		query = query.Where("status IN ? AND expires_at <= ?", []string{
+			SupportAccessLeaseStatusPending,
+			SupportAccessLeaseStatusApproved,
+		}, now)
+	default:
+		return nil, NewValidationError(map[string]string{"status": "Status must be PENDING, APPROVED, TERMINATED, or EXPIRED"})
 	}
 
 	var rows []TenantSupportAccessLease
 	if err := query.Order("requested_at DESC, id DESC").Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("list support access leases: %w", err)
 	}
-	now := time.Now().UTC()
 	responses := make([]SupportAccessLeaseResponse, 0, len(rows))
 	for _, row := range rows {
 		response, err := loadSupportAccessLeaseResponse(ctx, s.database, row.ID, now)
 		if err != nil {
 			return nil, err
-		}
-		if status == SupportAccessLeaseStatusExpired && response.EffectiveStatus != SupportAccessLeaseStatusExpired {
-			continue
 		}
 		responses = append(responses, response)
 	}
@@ -514,7 +519,8 @@ func containsRoleCode(roleCodes []string, role RoleCode) bool {
 }
 
 func effectiveSupportAccessLeaseStatus(lease TenantSupportAccessLease, now time.Time) string {
-	if lease.Status == SupportAccessLeaseStatusApproved && !lease.ExpiresAt.After(now) {
+	if (lease.Status == SupportAccessLeaseStatusPending || lease.Status == SupportAccessLeaseStatusApproved) &&
+		!lease.ExpiresAt.After(now) {
 		return SupportAccessLeaseStatusExpired
 	}
 	return lease.Status
