@@ -220,6 +220,7 @@ function LeaseHistoryTenantFilter({
   onChange: (tenantId: string) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const visibleTenants = normalizedSearch
     ? tenants.filter((tenant) =>
@@ -229,83 +230,111 @@ function LeaseHistoryTenantFilter({
       )
     : tenants;
   const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId);
+  const selectedLabel = selectedTenant
+    ? `${selectedTenant.name} (${selectedTenant.code})`
+    : "All Tenants";
+  const showAllTenantsOption =
+    !normalizedSearch || "all tenants".includes(normalizedSearch);
+
+  function chooseTenant(tenantId: string) {
+    onChange(tenantId);
+    setSearch("");
+    setOpen(false);
+  }
 
   return (
-    <fieldset className="min-w-72 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <legend className="px-1 text-sm font-semibold text-slate-700">Tenant</legend>
-      <p className="text-xs text-slate-500">
-        Filter by Tenant name, code, or ID. All Tenant picks are shown until you enter a filter.
-      </p>
-      <div className="mt-2 flex flex-wrap items-end gap-2">
-        <label className="min-w-0 flex-1 text-xs font-semibold text-slate-700">
-          Filter history tenants
-          <input
-            className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Name, code, or Tenant ID"
-            type="search"
-            value={search}
-          />
-        </label>
-        {search && (
-          <button
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-            type="button"
-            onClick={() => setSearch("")}
-          >
-            Clear history filter
-          </button>
-        )}
-      </div>
-      <p className="mt-2 text-xs text-slate-500">
-        {normalizedSearch
-          ? `${visibleTenants.length} of ${tenants.length} active Tenants`
-          : `${tenants.length} active Tenant${tenants.length === 1 ? "" : "s"}`}
-      </p>
-      <div
-        className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1"
-        role="radiogroup"
-        aria-label="Lease history Tenant choices"
-      >
-        <label className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-3">
-          <input
-            type="radio"
-            name="support-access-history-tenant"
-            value=""
-            checked={!selectedTenantId}
-            onChange={() => onChange("")}
-          />
-          <span>
-            <span className="block text-sm font-semibold text-slate-900">All Tenants</span>
-            <span className="block text-xs text-slate-500">Show retained support leases from every Tenant.</span>
-          </span>
-        </label>
-        {visibleTenants.map((tenant) => (
-          <label key={tenant.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-3">
-            <input
-              type="radio"
-              name="support-access-history-tenant"
-              value={tenant.id}
-              checked={selectedTenantId === tenant.id}
-              onChange={() => onChange(tenant.id)}
-            />
-            <span>
+    <div
+      className="relative min-w-72"
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+          setSearch("");
+          setOpen(false);
+        }
+      }}
+    >
+      <label className="block text-sm font-semibold text-slate-700">
+        Tenant
+        <input
+          type="search"
+          role="combobox"
+          aria-label="Lease history Tenant filter"
+          aria-autocomplete="list"
+          aria-controls={open ? "support-access-history-tenant-options" : undefined}
+          aria-expanded={open}
+          className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2"
+          value={search}
+          placeholder={selectedLabel}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setSearch("");
+              setOpen(false);
+              event.currentTarget.blur();
+            }
+          }}
+        />
+      </label>
+
+      {open && (
+        <div
+          id="support-access-history-tenant-options"
+          role="listbox"
+          aria-label="Lease history Tenant choices"
+          className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1 shadow-lg"
+        >
+          <p className="px-3 py-2 text-xs font-semibold text-slate-500">
+            {normalizedSearch
+              ? `${visibleTenants.length} of ${tenants.length} active Tenants`
+              : `${tenants.length} active Tenant${tenants.length === 1 ? "" : "s"}`}
+          </p>
+
+          {showAllTenantsOption && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={!selectedTenantId}
+              data-tenant-id=""
+              className="block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 focus:bg-slate-100 focus:outline-none"
+              onClick={() => chooseTenant("")}
+            >
+              <span className="block text-sm font-semibold text-slate-900">All Tenants</span>
+              <span className="block text-xs text-slate-500">
+                Show retained support leases from every Tenant.
+              </span>
+            </button>
+          )}
+
+          {visibleTenants.map((tenant) => (
+            <button
+              key={tenant.id}
+              type="button"
+              role="option"
+              aria-selected={selectedTenantId === tenant.id}
+              data-tenant-id={tenant.id}
+              className="block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 focus:bg-slate-100 focus:outline-none"
+              onClick={() => chooseTenant(tenant.id)}
+            >
               <span className="block text-sm font-semibold text-slate-900">{tenant.name}</span>
               <span className="block text-xs text-slate-600">{tenant.code}</span>
               <span className="block font-mono text-xs text-slate-500">Tenant ID: {tenant.id}</span>
-            </span>
-          </label>
-        ))}
-      </div>
-      {normalizedSearch && visibleTenants.length === 0 && (
-        <p className="mt-2 rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
-          No active Tenants match the current history filter.
-        </p>
+            </button>
+          ))}
+
+          {normalizedSearch && visibleTenants.length === 0 && !showAllTenantsOption && (
+            <p className="px-3 py-5 text-center text-sm text-slate-500">
+              No active Tenants match the current history filter.
+            </p>
+          )}
+        </div>
       )}
-      <p className="mt-2 text-xs font-semibold text-slate-700">
-        Selected history Tenant: {selectedTenant ? selectedTenant.name : "All Tenants"}
-      </p>
-    </fieldset>
+    </div>
   );
 }
 
