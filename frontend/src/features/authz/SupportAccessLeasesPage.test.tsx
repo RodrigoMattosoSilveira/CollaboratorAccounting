@@ -43,10 +43,17 @@ describe("SupportAccessLeasesPage", () => {
     renderPage(applicationAdminContext);
 
     await waitForText("Request Tenant support access");
-    await waitForText("Read People");
     await waitForText("Lease history");
-    await waitForText("lease-pending");
+    expect(container.textContent).not.toContain("Read People");
+    expect(container.textContent).not.toContain("lease-pending");
+
+    await clickButton("Request Tenant support access");
+    await waitForText("Read People");
     expect(container.textContent).toContain("Control-plane and Tenant Administrator authority cannot be leased");
+
+    await clickButton("Lease history");
+    await waitForText("lease-pending");
+    expect(container.textContent).not.toContain("Read People");
   });
 
   it("shows every active Tenant initially and filters the request picker by name, code, or ID", async () => {
@@ -72,6 +79,7 @@ describe("SupportAccessLeasesPage", () => {
 
     renderPage(applicationAdminContext);
 
+    await clickButton("Request Tenant support access");
     await waitForText("2 active Tenants");
     expect(tenantChoicesText()).toContain("Tenant A");
     expect(tenantChoicesText()).toContain("North Support");
@@ -130,6 +138,7 @@ describe("SupportAccessLeasesPage", () => {
 
     renderPage(applicationAdminContext);
 
+    await clickButton("Lease history");
     await waitFor(() => historyTenantFilterInput()?.placeholder === "All Tenants");
     expect(historyTenantChoicesText()).toBe("");
 
@@ -197,6 +206,51 @@ describe("SupportAccessLeasesPage", () => {
     ));
   });
 
+  it("opens with both cards collapsed and keeps only one Support access card open at a time", async () => {
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url.startsWith("/api/v1/authz/support-access-leases")) {
+        return jsonResponse({ data: [pendingLease] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    const requestButton = panelButton("Request Tenant support access");
+    const historyButton = panelButton("Lease history");
+    expect(requestButton?.getAttribute("aria-expanded")).toBe("false");
+    expect(historyButton?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Support reason / case");
+    expect(container.textContent).not.toContain("lease-pending");
+
+    await act(async () => requestButton?.click());
+    await waitForText("Support reason / case");
+    expect(requestButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(historyButton?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("lease-pending");
+
+    await act(async () => historyButton?.click());
+    await waitForText("lease-pending");
+    expect(requestButton?.getAttribute("aria-expanded")).toBe("false");
+    expect(historyButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).not.toContain("Support reason / case");
+
+    await act(async () => historyButton?.click());
+    await waitFor(() => historyButton?.getAttribute("aria-expanded") === "false");
+    expect(container.textContent).not.toContain("lease-pending");
+  });
+
   it("lets the exact Tenant Administrator approve a non-expired pending lease and review its audit trail", async () => {
     let approved = false;
     mockFetch(async (url, init) => {
@@ -220,6 +274,7 @@ describe("SupportAccessLeasesPage", () => {
     renderPage(tenantAdminContext);
 
     await waitForText("Tenant boundary: Tenant A");
+    await clickButton("Lease history");
     await waitForText("Approve support access");
     await clickButton("Review audit trail");
     await waitForText("support_access_leases.request");
@@ -362,6 +417,12 @@ async function setSearchInput(value: string) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function panelButton(name: string) {
+  return Array.from(container.querySelectorAll("button")).find(
+    (element) => element.textContent?.includes(name) && element.hasAttribute("aria-expanded"),
+  ) as HTMLButtonElement | undefined;
 }
 
 async function clickButton(name: string) {

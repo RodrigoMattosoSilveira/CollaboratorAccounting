@@ -69,6 +69,11 @@ export function SupportAccessLeasesPage() {
   const [auditLeaseId, setAuditLeaseId] = useState("");
   const auditQuery = useSupportAccessLeaseAuditLogs(requestActor, auditLeaseId);
   const [terminationReasons, setTerminationReasons] = useState<Record<string, string>>({});
+  const [openPanel, setOpenPanel] = useState<"request" | "history" | null>(null);
+
+  function togglePanel(panel: "request" | "history") {
+    setOpenPanel((current) => current === panel ? null : panel);
+  }
 
   const tenants = useMemo(
     () => (tenantsQuery.data ?? []).filter((tenant) => tenant.active),
@@ -117,93 +122,129 @@ export function SupportAccessLeasesPage() {
         </header>
 
         {globalApplicationAdmin && (
-          <RequestLeasePanel
-            tenants={tenants}
-            permissions={permissionQuery.data ?? []}
-            permissionsLoading={permissionQuery.isLoading}
-            disabled={requestMutation.isPending}
-            error={requestMutation.error || tenantsQuery.error || permissionQuery.error}
-            onSubmit={(input) => requestMutation.mutate(input)}
-          />
+          <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <h2>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-lg font-bold text-slate-950 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-500"
+                aria-expanded={openPanel === "request"}
+                aria-controls="support-access-request-panel"
+                onClick={() => togglePanel("request")}
+              >
+                <span>Request Tenant support access</span>
+                <span aria-hidden="true" className="text-2xl font-normal text-slate-500">
+                  {openPanel === "request" ? "−" : "+"}
+                </span>
+              </button>
+            </h2>
+            {openPanel === "request" && (
+              <div id="support-access-request-panel" className="border-t border-slate-200">
+                <RequestLeasePanel
+                  tenants={tenants}
+                  permissions={permissionQuery.data ?? []}
+                  permissionsLoading={permissionQuery.isLoading}
+                  disabled={requestMutation.isPending}
+                  error={requestMutation.error || tenantsQuery.error || permissionQuery.error}
+                  onSubmit={(input) => requestMutation.mutate(input)}
+                />
+              </div>
+            )}
+          </section>
         )}
 
-        <section className="rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-950">Lease history</h2>
-              <p className="text-sm text-slate-600">
-                Lease records are retained. Expiration is derived from the immutable requested expiration; it is not a persisted lifecycle rewrite.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {globalApplicationAdmin && (
-                <LeaseHistoryTenantFilter
-                  tenants={tenants}
-                  selectedTenantId={tenantFilter}
-                  onChange={setTenantFilter}
-                />
+        <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <h2>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-lg font-bold text-slate-950 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-500"
+              aria-expanded={openPanel === "history"}
+              aria-controls="support-access-history-panel"
+              onClick={() => togglePanel("history")}
+            >
+              <span>Lease history</span>
+              <span aria-hidden="true" className="text-2xl font-normal text-slate-500">
+                {openPanel === "history" ? "−" : "+"}
+              </span>
+            </button>
+          </h2>
+
+          {openPanel === "history" && (
+            <div id="support-access-history-panel" className="border-t border-slate-200 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <p className="max-w-3xl text-sm text-slate-600">
+                  Lease records are retained. Expiration is derived from the immutable requested expiration; it is not a persisted lifecycle rewrite.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {globalApplicationAdmin && (
+                    <LeaseHistoryTenantFilter
+                      tenants={tenants}
+                      selectedTenantId={tenantFilter}
+                      onChange={setTenantFilter}
+                    />
+                  )}
+                  <label className="text-sm font-semibold text-slate-700">
+                    Status
+                    <select
+                      className="mt-1 block min-w-44 rounded-xl border border-slate-300 bg-white px-3 py-2"
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60"
+                    type="button"
+                    disabled={leasesQuery.isFetching}
+                    onClick={() => void leasesQuery.refetch()}
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <ApiErrorPanel error={leasesQuery.error || approveMutation.error || terminateMutation.error} />
+
+              {leasesQuery.isLoading && <p className="mt-4 text-sm text-slate-500">Loading support leases…</p>}
+              {!leasesQuery.isLoading && (leasesQuery.data ?? []).length === 0 && (
+                <div className="mt-4 rounded-2xl border border-dashed p-6 text-center text-sm text-slate-500">
+                  No support leases match the current filters.
+                </div>
               )}
-              <label className="text-sm font-semibold text-slate-700">
-                Status
-                <select
-                  className="mt-1 block min-w-44 rounded-xl border border-slate-300 bg-white px-3 py-2"
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <button
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60"
-                type="button"
-                disabled={leasesQuery.isFetching}
-                onClick={() => void leasesQuery.refetch()}
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
 
-          <ApiErrorPanel error={leasesQuery.error || approveMutation.error || terminateMutation.error} />
-
-          {leasesQuery.isLoading && <p className="mt-4 text-sm text-slate-500">Loading support leases…</p>}
-          {!leasesQuery.isLoading && (leasesQuery.data ?? []).length === 0 && (
-            <div className="mt-4 rounded-2xl border border-dashed p-6 text-center text-sm text-slate-500">
-              No support leases match the current filters.
+              <div className="mt-4 space-y-4">
+                {(leasesQuery.data ?? []).map((lease) => (
+                  <LeaseCard
+                    key={lease.id}
+                    lease={lease}
+                    tenantName={tenantNames.get(lease.tenantId) || (lease.tenantId === actor.tenantId ? actor.selectedTenantName : undefined)}
+                    permissions={permissionQuery.data ?? []}
+                    tenantAdministrator={tenantAdministrator}
+                    approvalPending={approveMutation.isPending}
+                    terminationPending={terminateMutation.isPending}
+                    terminationReason={terminationReasons[lease.id] ?? ""}
+                    auditOpen={auditLeaseId === lease.id}
+                    auditLogs={auditLeaseId === lease.id ? auditQuery.data ?? [] : []}
+                    auditLoading={auditLeaseId === lease.id && auditQuery.isLoading}
+                    auditError={auditLeaseId === lease.id ? auditQuery.error : null}
+                    onApprove={() => approveMutation.mutate(lease.id)}
+                    onTerminationReasonChange={(reason) =>
+                      setTerminationReasons((current) => ({ ...current, [lease.id]: reason }))
+                    }
+                    onTerminate={() =>
+                      terminateMutation.mutate({
+                        leaseId: lease.id,
+                        reason: (terminationReasons[lease.id] ?? "").trim(),
+                      })
+                    }
+                    onToggleAudit={() => setAuditLeaseId((current) => current === lease.id ? "" : lease.id)}
+                  />
+                ))}
+              </div>
             </div>
           )}
-
-          <div className="mt-4 space-y-4">
-            {(leasesQuery.data ?? []).map((lease) => (
-              <LeaseCard
-                key={lease.id}
-                lease={lease}
-                tenantName={tenantNames.get(lease.tenantId) || (lease.tenantId === actor.tenantId ? actor.selectedTenantName : undefined)}
-                permissions={permissionQuery.data ?? []}
-                tenantAdministrator={tenantAdministrator}
-                approvalPending={approveMutation.isPending}
-                terminationPending={terminateMutation.isPending}
-                terminationReason={terminationReasons[lease.id] ?? ""}
-                auditOpen={auditLeaseId === lease.id}
-                auditLogs={auditLeaseId === lease.id ? auditQuery.data ?? [] : []}
-                auditLoading={auditLeaseId === lease.id && auditQuery.isLoading}
-                auditError={auditLeaseId === lease.id ? auditQuery.error : null}
-                onApprove={() => approveMutation.mutate(lease.id)}
-                onTerminationReasonChange={(reason) =>
-                  setTerminationReasons((current) => ({ ...current, [lease.id]: reason }))
-                }
-                onTerminate={() =>
-                  terminateMutation.mutate({
-                    leaseId: lease.id,
-                    reason: (terminationReasons[lease.id] ?? "").trim(),
-                  })
-                }
-                onToggleAudit={() => setAuditLeaseId((current) => current === lease.id ? "" : lease.id)}
-              />
-            ))}
-          </div>
         </section>
       </section>
     </main>
@@ -389,9 +430,8 @@ function RequestLeasePanel({
   const selectedTenant = tenants.find((tenant) => tenant.id === tenantId);
 
   return (
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-950">Request Tenant support access</h2>
-      <p className="mt-1 text-sm text-slate-600">
+    <div className="p-5">
+      <p className="text-sm text-slate-600">
         Choose exactly one Tenant, an immutable expiration, a support reason, and only the Tenant permissions required for the case. Approval does not extend the requested expiration.
       </p>
       <ApiErrorPanel error={error} />
@@ -529,7 +569,7 @@ function RequestLeasePanel({
           {disabled ? "Requesting…" : "Request support access"}
         </button>
       </form>
-    </section>
+    </div>
   );
 }
 
