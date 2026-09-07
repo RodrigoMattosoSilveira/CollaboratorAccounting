@@ -116,6 +116,94 @@ describe("SupportAccessLeasesPage", () => {
     expect(restoredNorthChoice?.checked).toBe(true);
   });
 
+  it("keeps Request support access disabled until a permission is selected, locks immediately on submit, and resets after success", async () => {
+    let resolveRequest: ((response: Response) => void) | undefined;
+    let submittedBody: Record<string, unknown> | undefined;
+
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url === "/api/v1/authz/support-access-leases" && init?.method === "POST") {
+        submittedBody = JSON.parse(String(init.body ?? "{}")) as Record<string, unknown>;
+        return new Promise<Response>((resolve) => {
+          resolveRequest = resolve;
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases") {
+        return jsonResponse({ data: [] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    await clickButton("Request Tenant support access");
+    await waitForText("Read People");
+
+    const submitButton = requestSubmitButton();
+    expect(submitButton?.disabled).toBe(true);
+
+    const tenantChoice = container.querySelector(
+      'input[name="support-access-tenant"][value="default"]',
+    ) as HTMLInputElement | null;
+    expect(tenantChoice).not.toBeNull();
+    await act(async () => tenantChoice?.click());
+    await setSupportReason("Investigate Tenant support incident");
+
+    expect(requestSubmitButton()?.disabled).toBe(true);
+
+    const permissionChoice = container.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement | null;
+    expect(permissionChoice).not.toBeNull();
+    await act(async () => permissionChoice?.click());
+    await waitFor(() => requestSubmitButton()?.disabled === false);
+
+    const expirationBeforeSubmit = fixedExpirationInput()?.value ?? "";
+    expect(new Date(expirationBeforeSubmit).getTime()).toBeGreaterThan(Date.now());
+
+    await act(async () => requestSubmitButton()?.click());
+    await waitFor(() => requestSubmitButton()?.disabled === true);
+    expect(requestSubmitButton()?.textContent).toContain("Requesting…");
+    expect(calls.filter((call) => call.url === "/api/v1/authz/support-access-leases" && call.method === "POST")).toHaveLength(1);
+    expect(submittedBody).toMatchObject({
+      tenantId: "default",
+      reason: "Investigate Tenant support incident",
+      permissions: ["people.read"],
+    });
+
+    await act(async () => {
+      resolveRequest?.(jsonResponse({
+        data: {
+          ...pendingLease,
+          reason: "Investigate Tenant support incident",
+          expiresAt: submittedBody?.expiresAt,
+        },
+      }));
+    });
+
+    await waitFor(() => requestSubmitButton()?.textContent?.includes("Request support access") === true);
+    expect(requestSubmitButton()?.disabled).toBe(true);
+    expect(tenantChoice?.checked).toBe(false);
+    expect(supportReasonInput()?.value).toBe("");
+    expect(permissionChoice?.checked).toBe(false);
+    expect(container.textContent).not.toContain("Selected: Tenant A");
+
+    const resetExpiration = fixedExpirationInput()?.value ?? "";
+    const resetTime = new Date(resetExpiration).getTime();
+    expect(Number.isFinite(resetTime)).toBe(true);
+    expect(Math.abs(Date.now() - resetTime)).toBeLessThanOrEqual(60_000);
+  });
+
   it("opens the Lease history Tenant choices from the filter and narrows them as the user types", async () => {
     mockFetch(async (url, init) => {
       calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
@@ -453,6 +541,35 @@ async function setSearchInput(value: string) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function requestSubmitButton() {
+  return container.querySelector(
+    '#support-access-request-panel button[type="submit"]',
+  ) as HTMLButtonElement | null;
+}
+
+function supportReasonInput() {
+  return Array.from(container.querySelectorAll("textarea")).find((element) =>
+    element.closest("label")?.textContent?.includes("Support reason / case"),
+  ) as HTMLTextAreaElement | undefined;
+}
+
+async function setSupportReason(value: string) {
+  const input = supportReasonInput();
+  if (!input) throw new Error("Support reason input not found");
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  await act(async () => {
+    valueSetter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+function fixedExpirationInput() {
+  return container.querySelector(
+    '#support-access-request-panel input[type="datetime-local"]',
+  ) as HTMLInputElement | null;
 }
 
 async function selectHistoryStatus(value: string) {

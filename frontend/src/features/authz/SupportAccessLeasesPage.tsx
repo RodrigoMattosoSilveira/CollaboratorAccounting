@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listTenants } from "../../api/tenants.api";
 import { authorizationRequestContext } from "../../api/tenantSelection";
@@ -146,7 +146,7 @@ export function SupportAccessLeasesPage() {
                   permissionsLoading={permissionQuery.isLoading}
                   disabled={requestMutation.isPending}
                   error={requestMutation.error || tenantsQuery.error || permissionQuery.error}
-                  onSubmit={(input) => requestMutation.mutate(input)}
+                  onSubmit={(input) => requestMutation.mutateAsync(input).then(() => undefined)}
                 />
               </div>
             )}
@@ -393,25 +393,44 @@ function RequestLeasePanel({
   permissionsLoading: boolean;
   disabled: boolean;
   error: unknown;
-  onSubmit: (input: { tenantId: string; expiresAt: string; reason: string; permissions: string[] }) => void;
+  onSubmit: (input: { tenantId: string; expiresAt: string; reason: string; permissions: string[] }) => Promise<void>;
 }) {
   const [tenantId, setTenantId] = useState("");
   const [tenantSearch, setTenantSearch] = useState("");
   const [expiresAt, setExpiresAt] = useState(defaultExpirationInput());
   const [reason, setReason] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const submissionLockRef = useRef(false);
+  const [submissionLocked, setSubmissionLocked] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submissionLockRef.current) return;
     if (!tenantId || !expiresAt || !reason.trim() || selectedPermissions.length === 0) return;
     const parsed = new Date(expiresAt);
-    if (Number.isNaN(parsed.getTime())) return;
-    onSubmit({
-      tenantId,
-      expiresAt: parsed.toISOString(),
-      reason: reason.trim(),
-      permissions: selectedPermissions,
-    });
+    if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return;
+
+    submissionLockRef.current = true;
+    setSubmissionLocked(true);
+    try {
+      await onSubmit({
+        tenantId,
+        expiresAt: parsed.toISOString(),
+        reason: reason.trim(),
+        permissions: selectedPermissions,
+      });
+      setTenantId("");
+      setTenantSearch("");
+      setExpiresAt(nowInput());
+      setReason("");
+      setSelectedPermissions([]);
+    } catch {
+      // The mutation owns error presentation. Preserve the completed form so the
+      // Administrator can correct/retry without re-entering the request.
+    } finally {
+      submissionLockRef.current = false;
+      setSubmissionLocked(false);
+    }
   }
 
   function togglePermission(code: string) {
@@ -429,6 +448,15 @@ function RequestLeasePanel({
       )
     : tenants;
   const selectedTenant = tenants.find((tenant) => tenant.id === tenantId);
+  const expirationTime = new Date(expiresAt).getTime();
+  const expirationIsFuture = Number.isFinite(expirationTime) && expirationTime > Date.now();
+  const submitting = disabled || submissionLocked;
+  const requestReady = Boolean(
+    tenantId
+      && reason.trim()
+      && selectedPermissions.length > 0
+      && expirationIsFuture,
+  );
 
   return (
     <div className="p-5">
@@ -565,9 +593,9 @@ function RequestLeasePanel({
         <button
           className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
           type="submit"
-          disabled={disabled || !tenantId || !reason.trim() || selectedPermissions.length === 0}
+          disabled={submitting || !requestReady}
         >
-          {disabled ? "Requesting…" : "Request support access"}
+          {submitting ? "Requesting…" : "Request support access"}
         </button>
       </form>
     </div>
@@ -764,10 +792,17 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${className}`}>{normalized}</span>;
 }
 
-function defaultExpirationInput(): string {
-  const date = new Date(Date.now() + 60 * 60 * 1000);
+function dateTimeLocalInput(date: Date): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function nowInput(): string {
+  return dateTimeLocalInput(new Date());
+}
+
+function defaultExpirationInput(): string {
+  return dateTimeLocalInput(new Date(Date.now() + 60 * 60 * 1000));
 }
 
 function formatDateTime(value: string | undefined): string {
