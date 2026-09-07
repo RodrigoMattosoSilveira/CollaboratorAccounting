@@ -124,7 +124,7 @@ describe("AuditLogViewerPage", () => {
     await changeInput("Support Lease ID", "lease-support-a");
     await clickButton("Apply Filters");
 
-    const filteredCall = fetchCalls.find((call) =>
+    const filteredCall = await waitForFetchCall((call) =>
       call.url.includes("supportLeaseId=lease-support-a"),
     );
     expect(filteredCall).toBeDefined();
@@ -236,11 +236,29 @@ async function changeInput(labelText: string, value: string) {
   const input = label?.querySelector("input") as HTMLInputElement | null;
   if (!input) throw new Error(`Input not found: ${labelText}`);
 
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set;
+
   await act(async () => {
-    input.value = value;
+    valueSetter?.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+async function waitForFetchCall(predicate: (call: FetchCall) => boolean) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const call = fetchCalls.find(predicate);
+    if (call) return call;
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+  }
+
+  throw new Error("Expected fetch call was not observed");
 }
 
 async function clickButton(name: string) {
