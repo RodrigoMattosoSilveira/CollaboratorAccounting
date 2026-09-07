@@ -107,6 +107,72 @@ describe("SupportAccessLeasesPage", () => {
     expect(restoredNorthChoice?.checked).toBe(true);
   });
 
+  it("shows all Lease history Tenant picks initially and filters them by name, code, or ID", async () => {
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+            { id: "north-support", code: "NSUP", name: "North Support", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+            { id: "inactive-tenant", code: "INACTIVE", name: "Inactive Tenant", active: false, operationalStatus: "INACTIVE", tenantAdminCount: 0, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url.startsWith("/api/v1/authz/support-access-leases")) {
+        return jsonResponse({ data: [] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    await waitForText("Selected history Tenant: All Tenants");
+    expect(historyTenantChoicesText()).toContain("All Tenants");
+    expect(historyTenantChoicesText()).toContain("Tenant A");
+    expect(historyTenantChoicesText()).toContain("North Support");
+    expect(historyTenantChoicesText()).not.toContain("Inactive Tenant");
+
+    await setHistoryTenantSearchInput("North Support");
+    await waitForText("1 of 2 active Tenants");
+    expect(historyTenantChoicesText()).toContain("North Support");
+    expect(historyTenantChoicesText()).not.toContain("Tenant A");
+
+    await setHistoryTenantSearchInput("NSUP");
+    await waitFor(() => historyTenantChoicesText().includes("North Support"));
+    expect(historyTenantChoicesText()).not.toContain("Tenant A");
+
+    await setHistoryTenantSearchInput("north-support");
+    await waitFor(() => historyTenantChoicesText().includes("North Support"));
+    const northChoice = container.querySelector('input[name="support-access-history-tenant"][value="north-support"]') as HTMLInputElement | null;
+    expect(northChoice).not.toBeNull();
+    await act(async () => northChoice?.click());
+    await waitForText("Selected history Tenant: North Support");
+    await waitFor(() => calls.some((call) => call.url.includes("tenantId=north-support")));
+
+    await setHistoryTenantSearchInput("default");
+    await waitFor(() => historyTenantChoicesText().includes("Tenant A"));
+    expect(historyTenantChoicesText()).not.toContain("North Support");
+    await waitForText("Selected history Tenant: North Support");
+
+    await clickButton("Clear history filter");
+    await waitFor(() => historyTenantChoicesText().includes("Tenant A") && historyTenantChoicesText().includes("North Support"));
+    const restoredNorthChoice = container.querySelector('input[name="support-access-history-tenant"][value="north-support"]') as HTMLInputElement | null;
+    expect(restoredNorthChoice?.checked).toBe(true);
+
+    const callCountBeforeAllTenants = calls.length;
+    const allTenantsChoice = container.querySelector('input[name="support-access-history-tenant"][value=""]') as HTMLInputElement | null;
+    expect(allTenantsChoice).not.toBeNull();
+    await act(async () => allTenantsChoice?.click());
+    await waitForText("Selected history Tenant: All Tenants");
+    await waitFor(() => calls.slice(callCountBeforeAllTenants).some((call) =>
+      call.url === "/api/v1/authz/support-access-leases",
+    ));
+  });
+
   it("lets the exact Tenant Administrator approve a non-expired pending lease and review its audit trail", async () => {
     let approved = false;
     mockFetch(async (url, init) => {
@@ -227,6 +293,25 @@ function textNode(text: string) {
 
 function tenantChoicesText() {
   return container.querySelector('[role="radiogroup"][aria-label="Tenant choices"]')?.textContent ?? "";
+}
+
+
+function historyTenantChoicesText() {
+  return container.querySelector('[role="radiogroup"][aria-label="Lease history Tenant choices"]')?.textContent ?? "";
+}
+
+async function setHistoryTenantSearchInput(value: string) {
+  const input = Array.from(container.querySelectorAll('input[type="search"]')).find((element) => {
+    const label = element.closest("label");
+    return label?.textContent?.includes("Filter history tenants");
+  }) as HTMLInputElement | undefined;
+  if (!input) throw new Error("Filter history tenants input not found");
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    valueSetter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 }
 
 async function setSearchInput(value: string) {

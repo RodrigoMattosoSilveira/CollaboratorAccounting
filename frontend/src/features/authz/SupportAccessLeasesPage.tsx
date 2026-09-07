@@ -137,21 +137,11 @@ export function SupportAccessLeasesPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               {globalApplicationAdmin && (
-                <label className="text-sm font-semibold text-slate-700">
-                  Tenant
-                  <select
-                    className="mt-1 block min-w-56 rounded-xl border border-slate-300 bg-white px-3 py-2"
-                    value={tenantFilter}
-                    onChange={(event) => setTenantFilter(event.target.value)}
-                  >
-                    <option value="">All Tenants</option>
-                    {tenants.map((tenant) => (
-                      <option key={tenant.id} value={tenant.id}>
-                        {tenant.name} ({tenant.code})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <LeaseHistoryTenantFilter
+                  tenants={tenants}
+                  selectedTenantId={tenantFilter}
+                  onChange={setTenantFilter}
+                />
               )}
               <label className="text-sm font-semibold text-slate-700">
                 Status
@@ -217,6 +207,105 @@ export function SupportAccessLeasesPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+function LeaseHistoryTenantFilter({
+  tenants,
+  selectedTenantId,
+  onChange,
+}: {
+  tenants: Array<{ id: string; code: string; name: string }>;
+  selectedTenantId: string;
+  onChange: (tenantId: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const visibleTenants = normalizedSearch
+    ? tenants.filter((tenant) =>
+        [tenant.name, tenant.code, tenant.id].some((value) =>
+          value.toLocaleLowerCase().includes(normalizedSearch),
+        ),
+      )
+    : tenants;
+  const selectedTenant = tenants.find((tenant) => tenant.id === selectedTenantId);
+
+  return (
+    <fieldset className="min-w-72 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <legend className="px-1 text-sm font-semibold text-slate-700">Tenant</legend>
+      <p className="text-xs text-slate-500">
+        Filter by Tenant name, code, or ID. All Tenant picks are shown until you enter a filter.
+      </p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="min-w-0 flex-1 text-xs font-semibold text-slate-700">
+          Filter history tenants
+          <input
+            className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, code, or Tenant ID"
+            type="search"
+            value={search}
+          />
+        </label>
+        {search && (
+          <button
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            type="button"
+            onClick={() => setSearch("")}
+          >
+            Clear history filter
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-slate-500">
+        {normalizedSearch
+          ? `${visibleTenants.length} of ${tenants.length} active Tenants`
+          : `${tenants.length} active Tenant${tenants.length === 1 ? "" : "s"}`}
+      </p>
+      <div
+        className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1"
+        role="radiogroup"
+        aria-label="Lease history Tenant choices"
+      >
+        <label className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-3">
+          <input
+            type="radio"
+            name="support-access-history-tenant"
+            value=""
+            checked={!selectedTenantId}
+            onChange={() => onChange("")}
+          />
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">All Tenants</span>
+            <span className="block text-xs text-slate-500">Show retained support leases from every Tenant.</span>
+          </span>
+        </label>
+        {visibleTenants.map((tenant) => (
+          <label key={tenant.id} className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 bg-white p-3">
+            <input
+              type="radio"
+              name="support-access-history-tenant"
+              value={tenant.id}
+              checked={selectedTenantId === tenant.id}
+              onChange={() => onChange(tenant.id)}
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">{tenant.name}</span>
+              <span className="block text-xs text-slate-600">{tenant.code}</span>
+              <span className="block font-mono text-xs text-slate-500">Tenant ID: {tenant.id}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {normalizedSearch && visibleTenants.length === 0 && (
+        <p className="mt-2 rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">
+          No active Tenants match the current history filter.
+        </p>
+      )}
+      <p className="mt-2 text-xs font-semibold text-slate-700">
+        Selected history Tenant: {selectedTenant ? selectedTenant.name : "All Tenants"}
+      </p>
+    </fieldset>
   );
 }
 
