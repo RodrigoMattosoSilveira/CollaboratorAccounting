@@ -53,7 +53,8 @@ describe("SupportAccessLeasesPage", () => {
 
     await clickButton("Lease history");
     await waitForText("lease-pending");
-    expect(container.textContent).not.toContain("Read People");
+    expect(container.querySelector("#support-access-request-panel")).toBeNull();
+    expect(container.querySelector("#support-access-history-panel")).not.toBeNull();
   });
 
   it("shows every active Tenant initially and filters the request picker by name, code, or ID", async () => {
