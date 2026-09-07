@@ -131,6 +131,10 @@ describe("SupportAccessLeasesPage", () => {
     renderPage(applicationAdminContext);
 
     await waitForText("Selected history Tenant: All Tenants");
+    await waitFor(() =>
+      historyTenantChoicesText().includes("Tenant A")
+      && historyTenantChoicesText().includes("North Support"),
+    );
     expect(historyTenantChoicesText()).toContain("All Tenants");
     expect(historyTenantChoicesText()).toContain("Tenant A");
     expect(historyTenantChoicesText()).toContain("North Support");
