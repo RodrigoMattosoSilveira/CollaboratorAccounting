@@ -14,6 +14,7 @@ const auditLogs: AuthzAuditLog[] = [
     actorRecordId: "actor-bootstrap-admin",
     tenantId: "default",
     permissionCode: "journey_settlements.partial_payout",
+    supportLeaseId: "lease-support-a",
     operation: "current_accounts.partial_payout",
     targetType: "collaborator",
     targetId: "collab-123",
@@ -109,6 +110,22 @@ describe("AuditLogViewerPage", () => {
 
     const filteredCall = fetchCalls.find((call) =>
       call.url.includes("operation=ledger_entries.reverse") && call.url.includes("decision=DENIED"),
+    );
+    expect(filteredCall).toBeDefined();
+  });
+
+
+  it("filters and displays Tenant Support Access Lease attribution", async () => {
+    mockAuditFetch(auditLogs);
+
+    renderPage();
+
+    await waitForText("Support Lease: lease-support-a");
+    await changeInput("Support Lease ID", "lease-support-a");
+    await clickButton("Apply Filters");
+
+    const filteredCall = fetchCalls.find((call) =>
+      call.url.includes("supportLeaseId=lease-support-a"),
     );
     expect(filteredCall).toBeDefined();
   });
@@ -209,6 +226,20 @@ async function changeSelect(labelText: string, value: string) {
   await act(async () => {
     select.value = value;
     select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+async function changeInput(labelText: string, value: string) {
+  const label = Array.from(container.querySelectorAll("label")).find((element) =>
+    element.textContent?.includes(labelText),
+  );
+  const input = label?.querySelector("input") as HTMLInputElement | null;
+  if (!input) throw new Error(`Input not found: ${labelText}`);
+
+  await act(async () => {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
 

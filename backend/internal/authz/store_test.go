@@ -1241,3 +1241,88 @@ func TestIntrinsicSelfServiceKeepsJourneyHistoryReadableAfterCurrentJourneyClose
 		}
 	}
 }
+
+func TestAuthorizationAuditLogCarriesSupportLeaseAttribution(t *testing.T) {
+	database := newAuthzTestDB(t)
+	store := NewGORMStore(database)
+
+	actor := &Actor{
+		ID:             "support-admin@example.test",
+		RecordID:       "authz-actor-support-admin",
+		TenantID:       "tenant-a",
+		SupportLeaseID: "lease-a",
+	}
+	if err := store.RecordAuthorizationAudit(context.Background(), AuthorizationAuditEntry{
+		Actor:         actor,
+		Permission:    PermissionPeopleRead,
+		Operation:     "support_access.use",
+		TargetType:    "http_request",
+		TargetID:      "/api/v1/people",
+		Decision:      AuditDecisionAuthorized,
+		RequestMethod: "GET",
+		RequestPath:   "/api/v1/people",
+	}); err != nil {
+		t.Fatalf("record support-attributed audit log: %v", err)
+	}
+
+	logs, err := store.ListAuthorizationAuditLogs(context.Background(), AuditLogFilter{SupportLeaseID: "lease-a"})
+	if err != nil {
+		t.Fatalf("list support-attributed audit logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected 1 support-attributed audit log, got %#v", logs)
+	}
+	if got := logs[0]; got.SupportLeaseID != "lease-a" || got.Operation != "support_access.use" || got.PermissionCode != string(PermissionPeopleRead) {
+		t.Fatalf("unexpected support-attributed audit log: %#v", got)
+	}
+}
+
+func TestAuthorizationAuditLogPreservesHistoricalSupportLeaseProvenance(t *testing.T) {
+	database := newAuthzTestDB(t)
+	store := NewGORMStore(database)
+	now := time.Now().UTC()
+	if err := database.Create(&AuthzAuditLog{
+		ID:            "audit-pre-30i3",
+		OccurredAt:    now,
+		ActorID:       "bootstrap-admin",
+		ActorRecordID: "actor-bootstrap-admin",
+		TenantID:      "tenant-a",
+		Operation:     "support_access_leases.request",
+		TargetType:    "tenant_support_access_lease",
+		TargetID:      "lease-historical",
+		Decision:      AuditDecisionAuthorized,
+		CreatedAt:     now,
+	}).Error; err != nil {
+		t.Fatalf("insert historical support lease audit row: %v", err)
+	}
+
+	logs, err := store.ListAuthorizationAuditLogs(context.Background(), AuditLogFilter{SupportLeaseID: "lease-historical"})
+	if err != nil {
+		t.Fatalf("list historical support lease audit logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].SupportLeaseID != "lease-historical" {
+		t.Fatalf("expected historical target provenance to expose lease ID, got %#v", logs)
+	}
+}
+
+func TestEligibleSupportAccessLeasePermissionCatalogExcludesControlPlane(t *testing.T) {
+	database := newAuthzTestDB(t)
+	store := NewGORMStore(database)
+
+	permissions, err := store.ListEligibleSupportAccessLeasePermissions(context.Background())
+	if err != nil {
+		t.Fatalf("list eligible support access permissions: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, permission := range permissions {
+		seen[permission.Code] = true
+	}
+	if !seen[string(PermissionPeopleRead)] {
+		t.Fatalf("expected people.read in eligible support access catalog: %#v", permissions)
+	}
+	for _, forbidden := range []string{string(PermissionAuthzManage), string(PermissionAuthzRead), string(PermissionSupportAccessLeasesApprove), string(PermissionSupportAccessLeasesTerminate)} {
+		if seen[forbidden] {
+			t.Fatalf("control-plane permission %s must not be lease eligible", forbidden)
+		}
+	}
+}

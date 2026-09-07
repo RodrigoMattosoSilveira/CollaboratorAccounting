@@ -335,11 +335,33 @@ func TestTenantSupportAccessLeaseHTTPLifecycleAndCurrentActorProvenance(t *testi
 		t.Fatalf("unexpected requested support lease: %#v", lease)
 	}
 
+	eligibleResp := doAuthzRequest(t, app, http.MethodGet, "/api/v1/authz/support-access-leases/eligible-permissions", nil, map[string]string{
+		HeaderActorID: "lease-http-app@example.test", HeaderTenantID: GlobalTenantScope,
+	})
+	if eligibleResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected eligible support permission status 200, got %d", eligibleResp.StatusCode)
+	}
+	eligible := decodeData[[]PermissionResponse](t, eligibleResp)
+	if !containsPermissionResponse(eligible, string(PermissionPeopleRead)) || containsPermissionResponse(eligible, string(PermissionAuthzManage)) {
+		t.Fatalf("unexpected eligible support permission catalog: %#v", eligible)
+	}
+
 	approveResp := doAuthzRequest(t, app, http.MethodPost, "/api/v1/authz/support-access-leases/"+lease.ID+"/approve", nil, map[string]string{
 		HeaderActorID: "lease-http-admin@example.test", HeaderTenantID: "tenant-a",
 	})
 	if approveResp.StatusCode != http.StatusOK {
 		t.Fatalf("expected support lease approval status 200, got %d", approveResp.StatusCode)
+	}
+
+	auditResp := doAuthzRequest(t, app, http.MethodGet, "/api/v1/authz/support-access-leases/"+lease.ID+"/audit-logs", nil, map[string]string{
+		HeaderActorID: "lease-http-admin@example.test", HeaderTenantID: "tenant-a",
+	})
+	if auditResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected Tenant Administrator lease audit status 200, got %d", auditResp.StatusCode)
+	}
+	leaseAudit := decodeData[[]AuditLogResponse](t, auditResp)
+	if len(leaseAudit) != 2 || leaseAudit[0].SupportLeaseID != lease.ID {
+		t.Fatalf("expected request/approval lease audit provenance, got %#v", leaseAudit)
 	}
 
 	currentResp := doAuthzRequest(t, app, http.MethodGet, "/api/v1/authz/current-actor", nil, map[string]string{
@@ -388,6 +410,8 @@ func newAuthzTestApp(database *gorm.DB) *fiber.App {
 	authzGroup.Post("/tenant-role-actors/:id/role-grants", h.GrantTenantOperatorRole)
 	authzGroup.Delete("/tenant-role-actors/:id/role-grants/:grantId", h.RevokeTenantOperatorRoleGrant)
 	authzGroup.Get("/support-access-leases", h.ListSupportAccessLeases)
+	authzGroup.Get("/support-access-leases/eligible-permissions", h.ListEligibleSupportAccessLeasePermissions)
+	authzGroup.Get("/support-access-leases/:id/audit-logs", h.ListSupportAccessLeaseAuditLogs)
 	authzGroup.Post("/support-access-leases", h.RequestSupportAccessLease)
 	authzGroup.Post("/support-access-leases/:id/approve", h.ApproveSupportAccessLease)
 	authzGroup.Post("/support-access-leases/:id/terminate", h.TerminateSupportAccessLease)

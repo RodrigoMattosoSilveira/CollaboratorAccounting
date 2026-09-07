@@ -12,6 +12,9 @@ import type {
   GrantAuthzActorRoleInput,
   GrantTenantOperatorRoleInput,
   SetAuthzActorActiveInput,
+  SupportAccessLease,
+  SupportAccessLeaseFilters,
+  CreateSupportAccessLeaseInput,
 } from "../types/authz";
 
 function authzHeaders(actor: AuthzAdminRequestActor) {
@@ -245,5 +248,73 @@ export function revokeAuthzActorRoleGrant(
       method: "DELETE",
       headers: authzHeaders(actor),
     },
+  );
+}
+
+
+export function listSupportAccessLeases(
+  actor: AuthzAdminRequestActor,
+  filters: SupportAccessLeaseFilters = {},
+): Promise<SupportAccessLease[]> {
+  const params = new URLSearchParams();
+  if (filters.tenantId?.trim()) params.set("tenantId", filters.tenantId.trim());
+  if (filters.status?.trim()) params.set("status", filters.status.trim());
+  const query = params.toString();
+  return apiFetch<SupportAccessLease[]>(`/authz/support-access-leases${query ? `?${query}` : ""}`, {
+    headers: authzHeaders(actor),
+  });
+}
+
+export function listEligibleSupportAccessLeasePermissions(
+  actor: AuthzAdminRequestActor,
+): Promise<AuthzPermission[]> {
+  return apiFetch<AuthzPermission[]>("/authz/support-access-leases/eligible-permissions", {
+    headers: authzHeaders(actor),
+  });
+}
+
+export function requestSupportAccessLease(
+  actor: AuthzAdminRequestActor,
+  input: CreateSupportAccessLeaseInput,
+): Promise<SupportAccessLease> {
+  return apiFetch<SupportAccessLease>("/authz/support-access-leases", {
+    method: "POST",
+    headers: authzHeaders(actor),
+    body: JSON.stringify(input),
+  });
+}
+
+export function approveSupportAccessLease(
+  actor: AuthzAdminRequestActor,
+  leaseId: string,
+): Promise<SupportAccessLease> {
+  return apiFetch<SupportAccessLease>(
+    `/authz/support-access-leases/${encodeURIComponent(leaseId)}/approve`,
+    { method: "POST", headers: authzHeaders(actor) },
+  );
+}
+
+export function terminateSupportAccessLease(
+  actor: AuthzAdminRequestActor,
+  leaseId: string,
+  reason: string,
+): Promise<SupportAccessLease> {
+  return apiFetch<SupportAccessLease>(
+    `/authz/support-access-leases/${encodeURIComponent(leaseId)}/terminate`,
+    {
+      method: "POST",
+      headers: authzHeaders(actor),
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export function listSupportAccessLeaseAuditLogs(
+  actor: AuthzAdminRequestActor,
+  leaseId: string,
+): Promise<AuthzAuditLog[]> {
+  return apiFetch<AuthzAuditLog[]>(
+    `/authz/support-access-leases/${encodeURIComponent(leaseId)}/audit-logs`,
+    { headers: authzHeaders(actor) },
   );
 }
