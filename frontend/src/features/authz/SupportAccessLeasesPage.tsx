@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "../../api/client";
 import { listTenants } from "../../api/tenants.api";
 import { authorizationRequestContext } from "../../api/tenantSelection";
+import { ActionSuccessDialog } from "../../components/ActionSuccessDialog";
 import { ApiErrorPanel } from "../../components/ApiErrorPanel";
 import { PageTitle } from "../../components/layout/PageHeading";
 import { useAuthorizationContext } from "../../components/layout/AuthorizationContext";
@@ -71,6 +72,7 @@ export function SupportAccessLeasesPage() {
   const [auditLeaseId, setAuditLeaseId] = useState("");
   const auditQuery = useSupportAccessLeaseAuditLogs(requestActor, auditLeaseId);
   const [terminationReasons, setTerminationReasons] = useState<Record<string, string>>({});
+  const [approvedLeaseId, setApprovedLeaseId] = useState("");
   const [openPanel, setOpenPanel] = useState<"request" | "history" | null>(null);
 
   function togglePanel(panel: "request" | "history") {
@@ -232,7 +234,11 @@ export function SupportAccessLeasesPage() {
                     auditLogs={auditLeaseId === lease.id ? auditQuery.data ?? [] : []}
                     auditLoading={auditLeaseId === lease.id && auditQuery.isLoading}
                     auditError={auditLeaseId === lease.id ? auditQuery.error : null}
-                    onApprove={() => approveMutation.mutate(lease.id)}
+                    onApprove={() =>
+                      approveMutation.mutate(lease.id, {
+                        onSuccess: () => setApprovedLeaseId(lease.id),
+                      })
+                    }
                     onTerminationReasonChange={(reason) =>
                       setTerminationReasons((current) => ({ ...current, [lease.id]: reason }))
                     }
@@ -250,6 +256,17 @@ export function SupportAccessLeasesPage() {
           )}
         </section>
       </section>
+
+      {approvedLeaseId && (
+        <ActionSuccessDialog
+          title="Tenant Support Access request approved"
+          message={`Tenant Support Access Lease ${approvedLeaseId} was approved.`}
+          onDismiss={() => {
+            setApprovedLeaseId("");
+            approveMutation.reset();
+          }}
+        />
+      )}
     </main>
   );
 }

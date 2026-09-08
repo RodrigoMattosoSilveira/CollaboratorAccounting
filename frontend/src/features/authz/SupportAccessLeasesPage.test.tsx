@@ -478,8 +478,15 @@ describe("SupportAccessLeasesPage", () => {
     await waitForText("support_access_leases.request");
     await clickButton("Approve support access");
     await waitFor(() => approved);
+    await waitForText("Tenant Support Access request approved");
 
+    const successDialog = container.querySelector('[role="alertdialog"]');
+    expect(successDialog?.getAttribute("aria-modal")).toBe("true");
+    expect(successDialog?.textContent).toContain("Tenant Support Access Lease lease-pending was approved.");
     expect(calls.some((call) => call.url.endsWith("/lease-pending/approve") && call.method === "POST")).toBe(true);
+
+    await clickButton("Continue");
+    await waitFor(() => container.querySelector('[role="alertdialog"]') === null);
   });
 });
 
