@@ -30,6 +30,18 @@ export function TopBar({
         <p className="text-sm font-medium text-slate-600">{session.login}</p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
+        {effectiveActor.supportLeaseId && (
+          <div
+            className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+            data-testid="support-access-active"
+          >
+            <p className="font-bold">Support access active</p>
+            <p className="font-mono text-xs">{effectiveActor.supportLeaseId}</p>
+            {effectiveActor.supportLeaseExpiresAt && (
+              <p className="text-xs">Expires {formatLeaseExpiration(effectiveActor.supportLeaseExpiresAt)}</p>
+            )}
+          </div>
+        )}
         <TenantSelector
           tenants={tenants}
           selectedTenantId={selectedTenantId}
@@ -44,4 +56,11 @@ export function TopBar({
       </div>
     </header>
   );
+}
+
+
+function formatLeaseExpiration(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }

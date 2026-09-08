@@ -8,6 +8,7 @@ export type NavigationLink = {
 export type NavigationIdentity = {
   personId?: string;
   collaboratorId?: string;
+  supportLeaseId?: string;
 };
 
 export const navigationLinks: NavigationLink[] = [
@@ -20,6 +21,7 @@ export const navigationLinks: NavigationLink[] = [
   { label: "Tenants", to: "/admin/tenants", anyPermission: ["tenants.create", "tenants.update"], applicationOnly: true },
   { label: "Authentication", to: "/admin/authentication", anyPermission: ["authz.manage"], applicationOnly: true },
   { label: "Authorization", to: "/admin/authorization", anyPermission: ["authz.read", "authz.tenant_role_grants.manage"] },
+  { label: "Support access", to: "/admin/support-access-leases", anyPermission: ["support_access_leases.read"] },
   { label: "Audit logs", to: "/admin/audit-logs", anyPermission: ["authz.read"] },
   { label: "Reference data", to: "/admin/reference-data", anyPermission: ["reference_data.manage"] },
   { label: "Gold prices", to: "/admin/gold-prices", anyPermission: ["gold_prices.manage"] },
@@ -36,6 +38,7 @@ export function visibleNavigationLinks(
   const wildcard = permissions.includes("*");
   return navigationLinks.flatMap((link) => {
     if (link.applicationOnly && scope !== "APPLICATION") return [];
+    if (link.to === "/admin/support-access-leases" && identity.supportLeaseId) return [];
     const visible =
       wildcard ||
       !link.anyPermission ||

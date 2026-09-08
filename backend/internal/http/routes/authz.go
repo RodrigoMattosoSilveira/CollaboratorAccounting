@@ -21,6 +21,8 @@ func RegisterAuthzRoutes(router fiber.Router, deps Dependencies) {
 	r.Post("/tenant-role-actors/:id/role-grants", requirePermission(deps, authz.PermissionAuthzTenantRoleGrantsManage), deps.AuthzHandler.GrantTenantOperatorRole)
 	r.Delete("/tenant-role-actors/:id/role-grants/:grantId", requirePermission(deps, authz.PermissionAuthzTenantRoleGrantsManage), deps.AuthzHandler.RevokeTenantOperatorRoleGrant)
 	r.Get("/support-access-leases", authorizationHandledByHandler(), deps.AuthzHandler.ListSupportAccessLeases)
+	r.Get("/support-access-leases/eligible-permissions", authorizationHandledByHandler(), deps.AuthzHandler.ListEligibleSupportAccessLeasePermissions)
+	r.Get("/support-access-leases/:id/audit-logs", authorizationHandledByHandler(), deps.AuthzHandler.ListSupportAccessLeaseAuditLogs)
 	r.Post("/support-access-leases", authorizationHandledByHandler(), deps.AuthzHandler.RequestSupportAccessLease)
 	r.Post("/support-access-leases/:id/approve", authorizationHandledByHandler(), deps.AuthzHandler.ApproveSupportAccessLease)
 	r.Post("/support-access-leases/:id/terminate", authorizationHandledByHandler(), deps.AuthzHandler.TerminateSupportAccessLease)
