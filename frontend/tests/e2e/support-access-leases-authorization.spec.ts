@@ -82,12 +82,12 @@ type AuditLog = {
 const SUPPORT_TENANT_ID = "e2e-support-lease-tenant";
 const OTHER_TENANT_ID = "e2e-support-lease-other-tenant";
 const EXPIRED_TENANT_ID = "e2e-support-lease-expired-tenant";
-const EXPIRED_PENDING_LEASE_ID = "e2e-support-lease-expired-pending";
 
 test.describe("Tenant Support Access Lease authorization", () => {
-  test("deterministic fixtures expose the global Application Administrator, exact-Tenant Administrator, and expired PENDING status", async () => {
+  test("deterministic fixtures expose the global Application Administrator and exact-Tenant Administrators, and a real request becomes effectively EXPIRED while remaining persisted PENDING", async () => {
     const applicationAdminApi = await newApplicationAdminApi();
     const tenantAdminApi = await newTenantAdminApi(SUPPORT_TENANT_ID);
+    const expiredTenantAdminApi = await newTenantAdminApi(EXPIRED_TENANT_ID);
     try {
       const applicationActor = await getCurrentActor(
         applicationAdminApi,
@@ -113,26 +113,85 @@ test.describe("Tenant Support Access Lease authorization", () => {
       expect(tenantActor.permissions).toContain("support_access_leases.approve");
       expect(tenantActor.permissions).toContain("support_access_leases.terminate");
 
+      const expiredTenantActor = await getCurrentActor(
+        expiredTenantAdminApi,
+        authzHeaders(EXPIRED_TENANT_ID),
+      );
+      expect(expiredTenantActor.scope).toBe("TENANT");
+      expect(expiredTenantActor.tenantId).toBe(EXPIRED_TENANT_ID);
+      expect(expiredTenantActor.roleCodes).toContain("TENANT_ADMIN");
+
+      await closeOpenLeases(
+        applicationAdminApi,
+        expiredTenantAdminApi,
+        EXPIRED_TENANT_ID,
+      );
+
+      const expiringRequest = await applicationAdminApi.post(
+        e2eApiUrl("/api/v1/authz/support-access-leases"),
+        {
+          headers: applicationTenantHeaders("*"),
+          data: {
+            tenantId: EXPIRED_TENANT_ID,
+            expiresAt: futureTimestampSeconds(5),
+            reason: "E2E effective-status coverage for an expired PENDING support request",
+            permissions: ["people.read"],
+          },
+        },
+      );
+      await expectStatus(
+        expiringRequest,
+        201,
+        "request a short-lived PENDING Tenant Support Access Lease",
+      );
+      const requestedLease = await responseData<SupportAccessLease>(
+        expiringRequest,
+        "request a short-lived PENDING Tenant Support Access Lease",
+      );
+      expect(requestedLease.status).toBe("PENDING");
+      expect(requestedLease.effectiveStatus).toBe("PENDING");
+      expect(requestedLease.permissions).toEqual(["people.read"]);
+
+      const pendingBeforeExpiry = await listLeases(applicationAdminApi, {
+        tenantId: EXPIRED_TENANT_ID,
+        status: "PENDING",
+      });
+      expect(pendingBeforeExpiry.some((lease) => lease.id === requestedLease.id)).toBe(
+        true,
+      );
+
+      await expect
+        .poll(
+          async () => {
+            const expired = await listLeases(applicationAdminApi, {
+              tenantId: EXPIRED_TENANT_ID,
+              status: "EXPIRED",
+            });
+            return expired.some((lease) => lease.id === requestedLease.id);
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(true);
+
       const expired = await listLeases(applicationAdminApi, {
         tenantId: EXPIRED_TENANT_ID,
         status: "EXPIRED",
       });
-      const expiredFixture = expired.find(
-        (lease) => lease.id === EXPIRED_PENDING_LEASE_ID,
-      );
-      expect(expiredFixture).toBeDefined();
-      expect(expiredFixture?.status).toBe("PENDING");
-      expect(expiredFixture?.effectiveStatus).toBe("EXPIRED");
-      expect(expiredFixture?.permissions).toEqual(["people.read"]);
+      const expiredLease = expired.find((lease) => lease.id === requestedLease.id);
+      expect(expiredLease).toBeDefined();
+      expect(expiredLease?.status).toBe("PENDING");
+      expect(expiredLease?.effectiveStatus).toBe("EXPIRED");
+      expect(expiredLease?.permissions).toEqual(["people.read"]);
 
-      const pending = await listLeases(applicationAdminApi, {
+      const pendingAfterExpiry = await listLeases(applicationAdminApi, {
         tenantId: EXPIRED_TENANT_ID,
         status: "PENDING",
       });
-      expect(pending.some((lease) => lease.id === EXPIRED_PENDING_LEASE_ID)).toBe(
-        false,
-      );
+      expect(
+        pendingAfterExpiry.some((lease) => lease.id === requestedLease.id),
+      ).toBe(false);
     } finally {
+      await expiredTenantAdminApi.dispose();
       await tenantAdminApi.dispose();
       await applicationAdminApi.dispose();
     }
@@ -445,8 +504,12 @@ function applicationTenantHeaders(tenantId: string): Record<string, string> {
 }
 
 function futureTimestamp(minutes: number): string {
+  return futureTimestampSeconds(minutes * 60);
+}
+
+function futureTimestampSeconds(seconds: number): string {
   const nowToSecond = Math.floor(Date.now() / 1000) * 1000;
-  return new Date(nowToSecond + minutes * 60_000).toISOString().replace(".000Z", "Z");
+  return new Date(nowToSecond + seconds * 1_000).toISOString().replace(".000Z", "Z");
 }
 
 async function getCurrentActor(
@@ -470,7 +533,7 @@ async function listLeases(
     { headers: applicationTenantHeaders("*") },
   );
   await expectStatus(response, 200, "list Tenant Support Access Leases");
-  return responseData<SupportAccessLease[]>(response, "list Tenant Support Access Leases");
+  return responseArray<SupportAccessLease>(response, "list Tenant Support Access Leases");
 }
 
 async function closeOpenLeases(
@@ -536,6 +599,31 @@ function expectLeaseAudit(
     `expected ${decision} ${operation} audit for ${permissionCode} on lease ${leaseId}`,
   ).toBeDefined();
   expect(entry?.tenantId).toBe(SUPPORT_TENANT_ID);
+}
+
+async function responseArray<T>(
+  response: APIResponse,
+  context: string,
+): Promise<T[]> {
+  const payload = (await response.json()) as unknown;
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    for (const candidate of [record.data, record.items, record.leases]) {
+      if (Array.isArray(candidate)) {
+        return candidate as T[];
+      }
+    }
+    if (!record.error) {
+      // The generic Go response currently uses `omitempty` for data, so a
+      // successful empty slice is serialized as {}. Match the production
+      // frontend normalizer and preserve the endpoint's logical [] contract.
+      return [];
+    }
+  }
+  throw new Error(`${context}: response did not contain a lease array`);
 }
 
 async function responseData<T>(response: APIResponse, context: string): Promise<T> {
