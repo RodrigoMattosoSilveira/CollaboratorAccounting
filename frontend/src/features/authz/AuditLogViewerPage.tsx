@@ -10,12 +10,13 @@ import type { AuthzAuditLog, AuthzAuditLogFilters } from "../../types/authz";
 import { useAuthzAuditLogs } from "./useAuthzAdmin";
 import { PageTitle } from "../../components/layout/PageHeading";
 
-const defaultFilters: Required<Pick<AuthzAuditLogFilters, "operation" | "decision" | "actorId" | "targetType" | "targetId">> & { limit: number } = {
+const defaultFilters: Required<Pick<AuthzAuditLogFilters, "operation" | "decision" | "actorId" | "targetType" | "targetId" | "supportLeaseId">> & { limit: number } = {
   operation: "",
   decision: "",
   actorId: "",
   targetType: "",
   targetId: "",
+  supportLeaseId: "",
   limit: 100,
 };
 
@@ -32,6 +33,10 @@ const sensitiveOperationOptions = [
   { value: "authz.actors.create", label: "Authorization actor created" },
   { value: "authz.role_grants.create", label: "Authorization role granted" },
   { value: "authz.role_grants.revoke", label: "Authorization role revoked" },
+  { value: "support_access_leases.request", label: "Support lease requested" },
+  { value: "support_access_leases.approve", label: "Support lease approved" },
+  { value: "support_access_leases.terminate", label: "Support lease terminated" },
+  { value: "support_access.use", label: "Support-authorized request" },
 ];
 
 const operationLabels = new Map(sensitiveOperationOptions.map((option) => [option.value, option.label]));
@@ -182,6 +187,16 @@ export function AuditLogViewerPage() {
             </label>
 
             <label className="block text-sm font-semibold text-gray-700">
+              Support Lease ID
+              <input
+                className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
+                placeholder="Tenant Support Access Lease ID"
+                value={draftFilters.supportLeaseId}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, supportLeaseId: event.target.value }))}
+              />
+            </label>
+
+            <label className="block text-sm font-semibold text-gray-700">
               Target type
               <input
                 className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
@@ -274,6 +289,11 @@ export function AuditLogViewerPage() {
                         <p className="font-medium">{log.actorId || "—"}</p>
                         {log.tenantId && <p className="mt-1 text-xs text-gray-500">Tenant: {log.tenantId}</p>}
                         {log.actorRecordId && <p className="mt-1 text-xs text-gray-500">Record: {log.actorRecordId}</p>}
+                        {log.supportLeaseId && (
+                          <p className="mt-1 break-all text-xs font-semibold text-amber-700">
+                            Support Lease: {log.supportLeaseId}
+                          </p>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-gray-700">
                         <p>{log.targetType || "—"}</p>
@@ -422,6 +442,7 @@ function cleanFilters(filters: typeof defaultFilters): AuthzAuditLogFilters {
     actorId: filters.actorId.trim() || undefined,
     targetType: filters.targetType.trim() || undefined,
     targetId: filters.targetId.trim() || undefined,
+    supportLeaseId: filters.supportLeaseId.trim() || undefined,
     limit: clampLimit(filters.limit),
   };
 }

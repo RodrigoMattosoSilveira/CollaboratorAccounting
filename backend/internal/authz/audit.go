@@ -23,6 +23,7 @@ type AuthorizationAuditEntry struct {
 	FallbackActorID string
 	TenantID        string
 	Permission      Permission
+	SupportLeaseID  string
 	Operation       string
 	TargetType      string
 	TargetID        string
@@ -60,6 +61,10 @@ func (s *GORMStore) RecordAuthorizationAudit(ctx context.Context, entry Authoriz
 	if tenantID == "" {
 		tenantID = actorTenantID
 	}
+	supportLeaseID := strings.TrimSpace(entry.SupportLeaseID)
+	if supportLeaseID == "" && entry.Actor != nil {
+		supportLeaseID = strings.TrimSpace(entry.Actor.SupportLeaseID)
+	}
 
 	now := time.Now().UTC()
 	row := AuthzAuditLog{
@@ -69,6 +74,7 @@ func (s *GORMStore) RecordAuthorizationAudit(ctx context.Context, entry Authoriz
 		ActorRecordID:  actorRecordID,
 		TenantID:       tenantID,
 		PermissionCode: string(entry.Permission),
+		SupportLeaseID: supportLeaseID,
 		Operation:      operation,
 		TargetType:     strings.TrimSpace(entry.TargetType),
 		TargetID:       strings.TrimSpace(entry.TargetID),

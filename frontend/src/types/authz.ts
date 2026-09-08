@@ -102,6 +102,7 @@ export type AuthzAuditLog = {
   actorRecordId?: string;
   tenantId?: string;
   permissionCode?: string;
+  supportLeaseId?: string;
   operation: string;
   targetType?: string;
   targetId?: string;
@@ -118,6 +119,39 @@ export type AuthzAuditLogFilters = {
   operation?: string;
   targetType?: string;
   targetId?: string;
+  supportLeaseId?: string;
   decision?: string;
   limit?: number;
+};
+
+export type SupportAccessLeaseStatus = "PENDING" | "APPROVED" | "TERMINATED" | "EXPIRED" | string;
+
+export type SupportAccessLease = {
+  id: string;
+  tenantId: string;
+  applicationActorId: string;
+  requestedByActorId: string;
+  requestedAt: string;
+  expiresAt: string;
+  reason: string;
+  status: string;
+  effectiveStatus: SupportAccessLeaseStatus;
+  permissions: string[];
+  approvedAt?: string;
+  approvedByActorId?: string;
+  terminatedAt?: string;
+  terminatedByActorId?: string;
+  terminationReason?: string;
+};
+
+export type CreateSupportAccessLeaseInput = {
+  tenantId: string;
+  expiresAt: string;
+  reason: string;
+  permissions: string[];
+};
+
+export type SupportAccessLeaseFilters = {
+  tenantId?: string;
+  status?: SupportAccessLeaseStatus;
 };

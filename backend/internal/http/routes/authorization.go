@@ -205,8 +205,10 @@ func requirePermission(deps Dependencies, permission authz.Permission) fiber.Han
 			return writeAuthorizationError(c, err)
 		}
 		if err := authz.RequirePermission(actor, permission); err != nil {
+			recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionDenied, err.Error())
 			return writeAuthorizationError(c, err)
 		}
+		recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionAuthorized, "")
 		return c.Next()
 	}
 }
@@ -247,6 +249,7 @@ func requireApplicationPermission(deps Dependencies, permission authz.Permission
 			return writeAuthorizationError(c, err)
 		}
 		if actor.Scope != authz.ActorScopeApplication || actor.TenantID != authz.GlobalTenantScope || actor.SupportLeaseID != "" {
+			recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionDenied, authz.ErrForbidden.Error())
 			return writeAuthorizationError(c, authz.ErrForbidden)
 		}
 		return c.Next()
@@ -336,11 +339,13 @@ func requirePermissionOrSelfPerson(deps Dependencies, permission authz.Permissio
 			return writeAuthorizationError(c, err)
 		}
 		if authz.RequirePermission(actor, permission) == nil {
+			recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionAuthorized, "")
 			return c.Next()
 		}
 		if actor.HasIntrinsicPermission(selfPermission) && actor.PersonID != "" && actor.PersonID == c.Params(personIDParam) {
 			return c.Next()
 		}
+		recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionDenied, authz.ErrForbidden.Error())
 		return writeAuthorizationError(c, authz.ErrForbidden)
 	}
 }
@@ -356,13 +361,39 @@ func requirePermissionOrSelfCollaborator(deps Dependencies, permission authz.Per
 			return writeAuthorizationError(c, err)
 		}
 		if authz.RequirePermission(actor, permission) == nil {
+			recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionAuthorized, "")
 			return c.Next()
 		}
 		if actor.HasIntrinsicPermission(selfPermission) && actor.CollaboratorID != "" && actor.CollaboratorID == c.Params(collaboratorIDParam) {
 			return c.Next()
 		}
+		recordSupportLeaseAuthorization(c, deps, actor, permission, authz.AuditDecisionDenied, authz.ErrForbidden.Error())
 		return writeAuthorizationError(c, authz.ErrForbidden)
 	}
+}
+
+func recordSupportLeaseAuthorization(c fiber.Ctx, deps Dependencies, actor *authz.Actor, permission authz.Permission, decision string, reason string) {
+	if deps.AuditStore == nil || actor == nil || strings.TrimSpace(actor.SupportLeaseID) == "" {
+		return
+	}
+	if decision == authz.AuditDecisionAuthorized {
+		if _, suppliedByLease := actor.SupportLeasePermissions[permission]; !suppliedByLease {
+			return
+		}
+	}
+	_ = deps.AuditStore.RecordAuthorizationAudit(c.Context(), authz.AuthorizationAuditEntry{
+		Actor:          actor,
+		TenantID:       actor.TenantID,
+		Permission:     permission,
+		SupportLeaseID: actor.SupportLeaseID,
+		Operation:      "support_access.use",
+		TargetType:     "http_request",
+		TargetID:       c.Path(),
+		Decision:       decision,
+		Reason:         reason,
+		RequestMethod:  c.Method(),
+		RequestPath:    c.Path(),
+	})
 }
 
 func writeAuthorizationError(c fiber.Ctx, err error) error {

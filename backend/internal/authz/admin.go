@@ -29,6 +29,8 @@ type ActorAdminStore interface {
 	ListSupportAccessLeases(ctx context.Context, actor *Actor, filter SupportAccessLeaseFilter) ([]SupportAccessLeaseResponse, error)
 	ApproveSupportAccessLease(ctx context.Context, actor *Actor, leaseID string) (SupportAccessLeaseResponse, error)
 	TerminateSupportAccessLease(ctx context.Context, actor *Actor, leaseID string, reason string) (SupportAccessLeaseResponse, error)
+	ListEligibleSupportAccessLeasePermissions(ctx context.Context) ([]PermissionResponse, error)
+	ListSupportAccessLeaseAuditLogs(ctx context.Context, actor *Actor, leaseID string) ([]AuditLogResponse, error)
 }
 
 type RoleResponse struct {
@@ -131,13 +133,14 @@ type GrantTenantOperatorRoleRequest struct {
 }
 
 type AuditLogFilter struct {
-	ActorID    string `query:"actorId"`
-	TenantID   string `query:"tenantId"`
-	Operation  string `query:"operation"`
-	TargetType string `query:"targetType"`
-	TargetID   string `query:"targetId"`
-	Decision   string `query:"decision"`
-	Limit      int    `query:"limit"`
+	ActorID        string `query:"actorId"`
+	TenantID       string `query:"tenantId"`
+	Operation      string `query:"operation"`
+	TargetType     string `query:"targetType"`
+	TargetID       string `query:"targetId"`
+	SupportLeaseID string `query:"supportLeaseId"`
+	Decision       string `query:"decision"`
+	Limit          int    `query:"limit"`
 }
 
 type AuditLogResponse struct {
@@ -147,6 +150,7 @@ type AuditLogResponse struct {
 	ActorRecordID  string `json:"actorRecordId,omitempty"`
 	TenantID       string `json:"tenantId,omitempty"`
 	PermissionCode string `json:"permissionCode,omitempty"`
+	SupportLeaseID string `json:"supportLeaseId,omitempty"`
 	Operation      string `json:"operation"`
 	TargetType     string `json:"targetType,omitempty"`
 	TargetID       string `json:"targetId,omitempty"`
@@ -206,6 +210,15 @@ func (s *GORMStore) ListAuthorizationAuditLogs(ctx context.Context, filter Audit
 	if strings.TrimSpace(filter.TargetID) != "" {
 		query = query.Where("target_id = ?", strings.TrimSpace(filter.TargetID))
 	}
+	if strings.TrimSpace(filter.SupportLeaseID) != "" {
+		leaseID := strings.TrimSpace(filter.SupportLeaseID)
+		query = query.Where(
+			"(support_lease_id = ? OR (COALESCE(support_lease_id, '') = '' AND target_type = ? AND target_id = ?))",
+			leaseID,
+			"tenant_support_access_lease",
+			leaseID,
+		)
+	}
 	if strings.TrimSpace(filter.Decision) != "" {
 		query = query.Where("decision = ?", strings.ToUpper(strings.TrimSpace(filter.Decision)))
 	}
@@ -215,6 +228,10 @@ func (s *GORMStore) ListAuthorizationAuditLogs(ctx context.Context, filter Audit
 	}
 	responses := make([]AuditLogResponse, 0, len(rows))
 	for _, row := range rows {
+		supportLeaseID := strings.TrimSpace(row.SupportLeaseID)
+		if supportLeaseID == "" && row.TargetType == "tenant_support_access_lease" {
+			supportLeaseID = strings.TrimSpace(row.TargetID)
+		}
 		responses = append(responses, AuditLogResponse{
 			ID:             row.ID,
 			OccurredAt:     row.OccurredAt.Format(time.RFC3339),
@@ -222,6 +239,7 @@ func (s *GORMStore) ListAuthorizationAuditLogs(ctx context.Context, filter Audit
 			ActorRecordID:  row.ActorRecordID,
 			TenantID:       row.TenantID,
 			PermissionCode: row.PermissionCode,
+			SupportLeaseID: supportLeaseID,
 			Operation:      row.Operation,
 			TargetType:     row.TargetType,
 			TargetID:       row.TargetID,
