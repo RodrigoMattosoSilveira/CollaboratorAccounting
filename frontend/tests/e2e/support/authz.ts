@@ -35,6 +35,9 @@ const deterministicTenantAdminLogins: Record<string, string> = {
   "e2e-authz-admin-tenant": "e2e-authz-admin-tenant-admin@example.com",
   "e2e-authz-role-tenant": "e2e-authz-role-tenant-admin@example.com",
   "e2e-isolation-tenant": "e2e-isolation-tenant-admin@example.com",
+  "e2e-support-lease-tenant": "e2e-support-lease-tenant-admin@example.com",
+  "e2e-support-lease-other-tenant": "e2e-support-lease-other-tenant-admin@example.com",
+  "e2e-support-lease-expired-tenant": "e2e-support-lease-expired-tenant-admin@example.com",
 };
 
 function tenantAdminPassword(): string {
@@ -163,6 +166,12 @@ function tenantActorFor(tenantId: string): string {
       return "e2e-authz-role-tenant-admin";
     case "e2e-isolation-tenant":
       return "e2e-isolation-tenant-admin";
+    case "e2e-support-lease-tenant":
+      return "e2e-support-lease-tenant-admin";
+    case "e2e-support-lease-other-tenant":
+      return "e2e-support-lease-other-tenant-admin";
+    case "e2e-support-lease-expired-tenant":
+      return "e2e-support-lease-expired-tenant-admin";
     default:
       return E2E_ACTOR_ID;
   }
