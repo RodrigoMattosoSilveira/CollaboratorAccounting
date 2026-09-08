@@ -71,7 +71,7 @@ func main() {
 	if appEnv != "production" && appEnv != "prod" {
 		tenantAdminPassword := firstNonEmpty(os.Getenv("E2E_TENANT_ADMIN_PASSWORD"), input.Password)
 		if err := ensureE2ETenantFixtures(ctx, database, tenantAdminPassword, positiveInt(os.Getenv("AUTH_PASSWORD_HASH_COST"), 12)); err != nil {
-			log.Fatalf("provision E2E Default Tenant Administrator: %v", err)
+			log.Fatalf("provision E2E Tenant fixtures: %v", err)
 		}
 	}
 

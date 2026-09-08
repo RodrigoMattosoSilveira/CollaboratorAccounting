@@ -16,6 +16,10 @@ import (
 const (
 	e2eTenantAdminActorKey = "e2e-default-tenant-admin"
 	e2eTenantAdminLogin    = "tenant-admin@example.com"
+
+	e2eSupportLeaseTenantID        = "e2e-support-lease-tenant"
+	e2eSupportLeaseOtherTenantID   = "e2e-support-lease-other-tenant"
+	e2eSupportLeaseExpiredTenantID = "e2e-support-lease-expired-tenant"
 )
 
 type e2eTenantAdminFixture struct {
@@ -33,6 +37,9 @@ func ensureE2ETenantFixtures(ctx context.Context, database *gorm.DB, password st
 		{TenantID: "e2e-authz-admin-tenant", TenantCode: "E2EAUTHZADMIN", TenantName: "E2E Authorization Admin Boundary", ActorKey: "e2e-authz-admin-tenant-admin", Login: "e2e-authz-admin-tenant-admin@example.com", Stem: "e2e-authz-admin-tenant-admin"},
 		{TenantID: "e2e-authz-role-tenant", TenantCode: "E2EAUTHZROLE", TenantName: "E2E Authorization Role Boundary", ActorKey: "e2e-authz-role-tenant-admin", Login: "e2e-authz-role-tenant-admin@example.com", Stem: "e2e-authz-role-tenant-admin"},
 		{TenantID: "e2e-isolation-tenant", TenantCode: "E2EISOLATION", TenantName: "E2E Operational Isolation", ActorKey: "e2e-isolation-tenant-admin", Login: "e2e-isolation-tenant-admin@example.com", Stem: "e2e-isolation-tenant-admin"},
+		{TenantID: e2eSupportLeaseTenantID, TenantCode: "E2ESUPPORT", TenantName: "E2E Support Access Lease", ActorKey: "e2e-support-lease-tenant-admin", Login: "e2e-support-lease-tenant-admin@example.com", Stem: "e2e-support-lease-tenant-admin"},
+		{TenantID: e2eSupportLeaseOtherTenantID, TenantCode: "E2ESUPPORTOTHER", TenantName: "E2E Support Access Lease Other Tenant", ActorKey: "e2e-support-lease-other-tenant-admin", Login: "e2e-support-lease-other-tenant-admin@example.com", Stem: "e2e-support-lease-other-tenant-admin"},
+		{TenantID: e2eSupportLeaseExpiredTenantID, TenantCode: "E2ESUPPORTEXPIRED", TenantName: "E2E Support Access Lease Expired Tenant", ActorKey: "e2e-support-lease-expired-tenant-admin", Login: "e2e-support-lease-expired-tenant-admin@example.com", Stem: "e2e-support-lease-expired-tenant-admin"},
 	}
 	for _, fixture := range fixtures {
 		if err := ensureE2ETenantAdministrator(ctx, database, fixture, password, passwordHashCost); err != nil {
