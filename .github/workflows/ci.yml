@@ -51,6 +51,23 @@ jobs:
       - name: Run backend tests
         run: go test ./...
 
+  migration-rehearsal:
+    name: 30I migration rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install SQLite
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends sqlite3
+
+      - name: Rehearse pre-30I database through final 30I migration
+        run: make migration-rehearsal-check
+
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest
@@ -91,6 +108,7 @@ jobs:
     timeout-minutes: 30
     needs:
       - backend
+      - migration-rehearsal
       - frontend
 
     steps:

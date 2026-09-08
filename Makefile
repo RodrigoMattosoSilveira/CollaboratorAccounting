@@ -73,6 +73,7 @@ help:
 	@echo "  make frontend-check"
 	@echo "  make local-check"
 	@echo "  make migration-check"
+	@echo "  make migration-rehearsal-check"
 	@echo "  make local-docker-check"
 	@echo "  make local-backend"
 	@echo "  make local-frontend"
@@ -92,6 +93,7 @@ help:
 	@echo "  make server-test-rehearsal-capture-baseline"
 	@echo "  make server-test-rehearsal-ensure-baseline"
 	@echo "  make server-test-rehearsal-restore"
+	@echo "  make server-migrated-db-verify ENV=development|test|production"
 	@echo "  make server-record-test-release-rehearsal ENV=test TREE_SHA=<tree> REVISION=<sha>"
 	@echo "  make server-require-test-release-rehearsal ENV=production TREE_SHA=<tree>"
 	@echo "  make server-ps ENV=development|test|production"
@@ -239,6 +241,18 @@ backend-check:
 migration-check:
 	cd backend && go test ./internal/db -run 'Migration' -count=1
 
+.PHONY: migration-rehearsal-check
+migration-rehearsal-check:
+	@tmpdir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmpdir"' EXIT INT TERM; \
+	APP_ENV=test \
+	TEST_RELEASE_BASELINE_DB="$$tmpdir/pre-bite30i.db" \
+	EXPECTED_LAST_MIGRATION="$(TEST_RELEASE_BASELINE_LAST_MIGRATION)" \
+	MIGRATION_UNDER_REHEARSAL="$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" \
+	EXPECTED_FINAL_MIGRATION="$(TEST_RELEASE_FINAL_MIGRATION)" \
+	MIGRATIONS_DIR="backend/migrations" \
+	sh backend/build-test-rehearsal-baseline.sh
+
 .PHONY: frontend-check
 frontend-check:
 	cd frontend && npm install && npm run checkcd 
@@ -281,6 +295,7 @@ local-admin-test:
 
 .PHONY: local-check
 local-check:
+	$(MAKE) migration-rehearsal-check
 	cd backend && go clean -testcache && go test ./...
 	cd frontend && npm run test:run
 	cd frontend && npx playwright test
@@ -327,7 +342,7 @@ local-docker-check: local-docker-check-image
 		-e GOMODCACHE=/tmp/gomod \
 		-e NPM_CONFIG_CACHE=/tmp/npm-cache \
 		$(LOCAL_DOCKER_CHECK_IMAGE) \
-		bash -lc 'set -euo pipefail; cd backend && go clean -testcache && go test ./...; cd ../frontend && npm ci && npm run test:run && npx playwright install chromium && npx playwright test && npm run build'
+		bash -lc 'set -euo pipefail; make migration-rehearsal-check; cd backend && go clean -testcache && go test ./...; cd ../frontend && npm ci && npm run test:run && npx playwright install chromium && npx playwright test && npm run build'
 
 # ==============================================================================
 # Generic server environment targets
@@ -388,9 +403,10 @@ server-replace-development-db:
 	docker volume create "$$volume" >/dev/null
 	cd $(ENV_DIR) && $(SERVER_COMPOSE) run --rm --no-deps --entrypoint /app/build-development-db.sh backend
 
-TEST_RELEASE_BASELINE_DB ?= $(SERVER_ROOT)/test/rehearsal-baselines/pre-bite30h.db
-TEST_RELEASE_BASELINE_LAST_MIGRATION ?= 000061_expand_final_settlement_database_checks.up.sql
-TEST_RELEASE_MIGRATION_UNDER_REHEARSAL ?= 000062_tenant_administrator_cardinality.up.sql
+TEST_RELEASE_BASELINE_DB ?= $(SERVER_ROOT)/test/rehearsal-baselines/pre-bite30i.db
+TEST_RELEASE_BASELINE_LAST_MIGRATION ?= 000062_tenant_administrator_cardinality.up.sql
+TEST_RELEASE_MIGRATION_UNDER_REHEARSAL ?= 000063_global_administration_control_plane.up.sql
+TEST_RELEASE_FINAL_MIGRATION ?= 000066_support_access_lease_audit_attribution.up.sql
 TEST_RELEASE_REHEARSAL_MARKER_DIR ?= $(SERVER_ROOT)/test/release-rehearsal-passed
 
 .PHONY: server-test-rehearsal-capture-baseline
@@ -456,7 +472,7 @@ server-test-rehearsal-ensure-baseline:
 				"/rehearsal-baseline/$$baseline_name" \
 				"SELECT COUNT(*) FROM auth_user_accounts a JOIN authz_actors az ON az.id=a.actor_id JOIN person_tenant_memberships m ON m.legacy_person_id=az.person_id JOIN auth_account_people ap ON ap.account_id=a.id AND ap.person_id=m.person_id JOIN auth_account_actors aa ON aa.account_id=a.id AND aa.actor_id=az.id AND aa.scope_type='TENANT' AND aa.tenant_id=m.tenant_id AND aa.membership_id=m.id WHERE a.id IN ('e2e-default-tenant-admin-account','test-rehearsal-account-b');")"; \
 			if [[ "$$alignment_count" != "2" ]]; then \
-				echo "Existing deterministic Test release baseline has stale pre-30H Account/Actor identity shape; regenerating it."; \
+				echo "Existing deterministic Test release baseline has stale pre-30I Account/Actor identity shape; regenerating it."; \
 				rm -f "$$baseline"; \
 			else \
 				echo "Using existing validated deterministic Test release baseline: $$baseline"; \
@@ -469,7 +485,7 @@ server-test-rehearsal-ensure-baseline:
 			exit 0; \
 		fi; \
 	fi; \
-	echo "No valid captured Test release baseline exists; generating a deterministic pre-30H baseline from repository migrations."; \
+	echo "No valid captured Test release baseline exists; generating a deterministic pre-30I baseline from repository migrations."; \
 	baseline_dir="$$(dirname "$$baseline")"; \
 	baseline_name="$$(basename "$$baseline")"; \
 	mkdir -p "$$baseline_dir"; \
@@ -479,6 +495,7 @@ server-test-rehearsal-ensure-baseline:
 		-e TEST_RELEASE_BASELINE_DB="/rehearsal-baseline/$$baseline_name" \
 		-e EXPECTED_LAST_MIGRATION="$(TEST_RELEASE_BASELINE_LAST_MIGRATION)" \
 		-e MIGRATION_UNDER_REHEARSAL="$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" \
+		-e EXPECTED_FINAL_MIGRATION="$(TEST_RELEASE_FINAL_MIGRATION)" \
 		--entrypoint /app/build-test-rehearsal-baseline.sh backend
 
 .PHONY: server-test-rehearsal-restore
@@ -488,6 +505,7 @@ server-test-rehearsal-restore:
 		exit 2; \
 	fi
 	@$(MAKE) server-test-rehearsal-ensure-baseline ENV=test
+	@$(MAKE) server-backup ENV=test
 	@baseline="$(TEST_RELEASE_BASELINE_DB)"; \
 	if [[ ! -f "$$baseline" ]]; then \
 		echo "Missing Test release baseline: $$baseline"; \
@@ -510,6 +528,19 @@ server-test-rehearsal-restore:
 		-e FORBIDDEN_MIGRATION="$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" \
 		--entrypoint /app/restore-test-rehearsal-db.sh backend
 
+.PHONY: server-migrated-db-verify
+server-migrated-db-verify:
+	@container="$(CONTAINER_PREFIX)-backend"; \
+	if ! docker ps --format '{{.Names}}' | grep -qx "$$container"; then \
+		echo "Backend container must be running for migrated database verification: $$container"; \
+		exit 2; \
+	fi; \
+	docker exec \
+		-e EXPECTED_BASELINE_LAST_MIGRATION="$(TEST_RELEASE_BASELINE_LAST_MIGRATION)" \
+		-e EXPECTED_FIRST_REHEARSED_MIGRATION="$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" \
+		-e EXPECTED_FINAL_MIGRATION="$(TEST_RELEASE_FINAL_MIGRATION)" \
+		"$$container" /app/verify-migrated-db.sh
+
 .PHONY: server-record-test-release-rehearsal
 server-record-test-release-rehearsal:
 	@if [[ "$(ENV)" != "test" ]]; then \
@@ -520,6 +551,7 @@ server-record-test-release-rehearsal:
 		echo "TREE_SHA and REVISION are required."; \
 		exit 2; \
 	fi
+	@$(MAKE) server-migrated-db-verify ENV=test
 	@baseline="$(TEST_RELEASE_BASELINE_DB)"; \
 	if [[ ! -f "$$baseline" ]]; then \
 		echo "Cannot record rehearsal without baseline: $$baseline"; \
@@ -535,6 +567,7 @@ server-record-test-release-rehearsal:
 		echo "baseline_sha256=$$baseline_sha"; \
 		echo "baseline_last_migration=$(TEST_RELEASE_BASELINE_LAST_MIGRATION)"; \
 		echo "migration_under_rehearsal=$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)"; \
+		echo "final_migration=$(TEST_RELEASE_FINAL_MIGRATION)"; \
 		echo "passed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
 	} > "$$marker"; \
 	echo "Recorded successful Test release rehearsal: $$marker"; \
@@ -558,6 +591,18 @@ server-require-test-release-rehearsal:
 	fi; \
 	grep -qx "tree_sha=$(TREE_SHA)" "$$marker" || { \
 		echo "Production deployment blocked: Test release-rehearsal marker does not match source tree $(TREE_SHA)."; \
+		exit 1; \
+	}; \
+	grep -qx "baseline_last_migration=$(TEST_RELEASE_BASELINE_LAST_MIGRATION)" "$$marker" || { \
+		echo "Production deployment blocked: rehearsal baseline does not match the required pre-30I migration boundary."; \
+		exit 1; \
+	}; \
+	grep -qx "migration_under_rehearsal=$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" "$$marker" || { \
+		echo "Production deployment blocked: rehearsal did not start at the required 30I migration."; \
+		exit 1; \
+	}; \
+	grep -qx "final_migration=$(TEST_RELEASE_FINAL_MIGRATION)" "$$marker" || { \
+		echo "Production deployment blocked: rehearsal did not verify the complete 30I migration sequence."; \
 		exit 1; \
 	}; \
 	echo "Production release gate passed using Test rehearsal marker:"; \
@@ -665,12 +710,38 @@ server-cert-check:
 .PHONY: server-backup
 server-backup:
 	mkdir -p $(ENV_DIR)/backups
-	TIMESTAMP=$$(date +%Y%m%d-%H%M%S); \
+	@TIMESTAMP=$$(date +%Y%m%d-%H%M%S); \
 	CONTAINER="$(CONTAINER_PREFIX)-backend"; \
-	docker exec $$CONTAINER sqlite3 /app/data/app.db ".backup '/tmp/app-backup.db'"; \
-	docker cp $$CONTAINER:/tmp/app-backup.db $(ENV_DIR)/backups/app-$$TIMESTAMP.db; \
-	docker exec $$CONTAINER rm -f /tmp/app-backup.db; \
-	echo "Backup written to $(ENV_DIR)/backups/app-$$TIMESTAMP.db"
+	VOLUME="$(COMPOSE_PROJECT)_backend-data"; \
+	TARGET="$(ENV_DIR)/backups/app-$$TIMESTAMP.db"; \
+	if ! docker ps --format '{{.Names}}' | grep -qx "$$CONTAINER"; then \
+		if docker volume inspect "$$VOLUME" >/dev/null 2>&1; then \
+			echo "Cannot safely back up $(ENV): SQLite volume $$VOLUME exists but backend container $$CONTAINER is not running."; \
+			echo "Start/repair the existing environment or perform an explicit offline backup before deployment."; \
+			exit 2; \
+		fi; \
+		echo "No existing $(ENV) SQLite volume is present; no pre-migration backup is required for this first deployment."; \
+		exit 0; \
+	fi; \
+	docker exec "$$CONTAINER" rm -f /tmp/app-backup.db /tmp/app-backup.db-wal /tmp/app-backup.db-shm; \
+	docker exec "$$CONTAINER" sqlite3 /app/data/app.db ".backup '/tmp/app-backup.db'"; \
+	integrity="$$(docker exec "$$CONTAINER" sqlite3 /tmp/app-backup.db 'PRAGMA integrity_check;')"; \
+	if [[ "$$integrity" != "ok" ]]; then \
+		echo "Backup integrity_check failed: $$integrity"; \
+		docker exec "$$CONTAINER" rm -f /tmp/app-backup.db; \
+		exit 1; \
+	fi; \
+	foreign_keys="$$(docker exec "$$CONTAINER" sqlite3 /tmp/app-backup.db 'PRAGMA foreign_key_check;')"; \
+	if [[ -n "$$foreign_keys" ]]; then \
+		echo "Backup foreign_key_check failed:"; \
+		printf '%s\n' "$$foreign_keys"; \
+		docker exec "$$CONTAINER" rm -f /tmp/app-backup.db; \
+		exit 1; \
+	fi; \
+	docker cp "$$CONTAINER:/tmp/app-backup.db" "$$TARGET"; \
+	docker exec "$$CONTAINER" rm -f /tmp/app-backup.db; \
+	echo "Verified backup written to $$TARGET"; \
+	sha256sum "$$TARGET"
 
 .PHONY: server-reset-admin
 server-reset-admin:
