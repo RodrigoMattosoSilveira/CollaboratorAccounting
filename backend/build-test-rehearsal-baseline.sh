@@ -2,10 +2,12 @@
 set -eu
 
 ENVIRONMENT="${APP_ENV:-}"
-TARGET_DB="${TEST_RELEASE_BASELINE_DB:-/rehearsal-baseline/pre-bite30h.db}"
+TARGET_DB="${TEST_RELEASE_BASELINE_DB:-/rehearsal-baseline/pre-bite30i.db}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/app/migrations}"
-EXPECTED_LAST_MIGRATION="${EXPECTED_LAST_MIGRATION:-000061_expand_final_settlement_database_checks.up.sql}"
-MIGRATION_UNDER_REHEARSAL="${MIGRATION_UNDER_REHEARSAL:-000062_tenant_administrator_cardinality.up.sql}"
+EXPECTED_LAST_MIGRATION="${EXPECTED_LAST_MIGRATION:-000062_tenant_administrator_cardinality.up.sql}"
+MIGRATION_UNDER_REHEARSAL="${MIGRATION_UNDER_REHEARSAL:-000063_global_administration_control_plane.up.sql}"
+EXPECTED_FINAL_MIGRATION="${EXPECTED_FINAL_MIGRATION:-000066_support_access_lease_audit_attribution.up.sql}"
+VERIFY_MIGRATED_DB_SCRIPT="${VERIFY_MIGRATED_DB_SCRIPT:-$(dirname "$0")/verify-migrated-db.sh}"
 TMP_DB="${TARGET_DB}.building.$$"
 PROBE_DB="${TARGET_DB}.probe.$$"
 
@@ -64,21 +66,17 @@ if [ "$expected_seen" != "1" ]; then
   exit 2
 fi
 
-# Seed a small, deterministic *valid* pre-30H authorization shape. Two distinct
-# global Persons occupy both Tenant Administrator slots in the default Tenant.
-# One slot deliberately uses the same stable identity as the post-migration E2E
-# default Tenant Administrator fixture. This preserves the upper valid Bite 30H
-# boundary while allowing deployed Playwright provisioning to reconcile that
-# existing slot instead of attempting to create an invalid third administrator.
-# The second slot remains a release-rehearsal-only Person so 000062 still proves
-# the two-distinct-Person upper boundary. Local migration tests continue to
-# exercise all deliberate rejection cases (>2, duplicate Person, cross-Tenant
-# Person, and missing canonical Person).
+# Seed a small deterministic pre-30I authorization shape. Bite 30H is already
+# present in this baseline, so two distinct global Persons validly occupy both
+# Tenant Administrator slots in the default Tenant. One slot deliberately uses
+# the same stable identity as deployed Playwright. The baseline also retains a
+# legacy Application Administrator tenant-data permission and one historical
+# audit row so the 30I probe proves those records migrate to the final 30I model.
 sqlite3 -bail "$TMP_DB" <<'SQL'
 PRAGMA foreign_keys = ON;
 
 -- Preserve the tenant-local Person compatibility projection as a real
--- pre-30H database would. Startup's Account/Actor foundation repair resolves
+-- pre-30I database does. Startup's Account/Actor foundation repair resolves
 -- the legacy Actor Person through person_tenant_memberships.legacy_person_id;
 -- omitting this bridge creates a hybrid fixture that migration 000062 accepts
 -- but the application correctly rejects during bootstrap.
@@ -91,14 +89,14 @@ INSERT INTO people (
     'e2e-default-tenant-admin-legacy-person', 'E2E', 'Tenant Administrator', 'e2e-default-tenant-admin',
     'e2e-default-tenant-admin-cpf', 'e2e-default-tenant-admin-rg', 'e2e-default-tenant-admin-cellular', 'tenant-admin@example.com',
     'Brasil', 'COMPLETE', 1, 'ref-person-status-active',
-    'Pre-30H deterministic E2E default Tenant Administrator legacy Person projection',
+    'Pre-30I deterministic E2E default Tenant Administrator legacy Person projection',
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'default'
   ),
   (
     'test-rehearsal-legacy-person-b', 'Release', 'Rehearsal B', 'Rehearsal Admin B',
     '99000000002', 'REHEARSAL-RG-B', '+5599000000002', 'release-rehearsal-admin-b@example.test',
     'Brasil', 'COMPLETE', 1, 'ref-person-status-active',
-    'Pre-30H release-rehearsal legacy Person projection B',
+    'Pre-30I release-rehearsal legacy Person projection B',
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'default'
   );
 
@@ -124,12 +122,12 @@ INSERT INTO person_tenant_memberships (
   (
     'e2e-default-tenant-admin-membership', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
     'default', 'e2e-default-tenant-admin-person', 'ref-person-status-active',
-    'Pre-30H deterministic E2E default Tenant Administrator', 'e2e-default-tenant-admin-legacy-person'
+    'Pre-30I deterministic E2E default Tenant Administrator', 'e2e-default-tenant-admin-legacy-person'
   ),
   (
     'test-rehearsal-membership-b', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
     'default', 'test-rehearsal-global-person-b', 'ref-person-status-active',
-    'Pre-30H release-rehearsal Tenant Administrator B', 'test-rehearsal-legacy-person-b'
+    'Pre-30I release-rehearsal Tenant Administrator B', 'test-rehearsal-legacy-person-b'
   );
 
 INSERT INTO authz_actors (
@@ -187,6 +185,86 @@ INSERT INTO authz_actor_role_grants (
     'test-rehearsal-tenant-admin-grant-b', 'test-rehearsal-actor-b',
     'authz-role-tenant-admin', 'default', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
   );
+
+-- Make the pre-30I standing Tenant-data authority explicit. Migration 000063
+-- must remove this from APPLICATION_ADMIN while retaining control-plane access.
+INSERT OR IGNORE INTO authz_role_permissions(role_id, permission_code, created_at)
+VALUES ('authz-role-application-admin', 'people.read', CURRENT_TIMESTAMP);
+
+-- Migration 000066 must preserve historical append-only audit rows and add a
+-- NULL support_lease_id attribution column rather than rewriting old history.
+INSERT INTO authz_audit_logs(
+  id, occurred_at, actor_id, actor_record_id, tenant_id, permission_code, operation,
+  target_type, target_id, decision, reason, request_method, request_path, created_at
+) VALUES (
+  'test-rehearsal-pre30i-audit', CURRENT_TIMESTAMP, NULL, NULL, '*', 'people.read',
+  'pre30i.application_admin.tenant_data', 'release_rehearsal', 'pre30i', 'AUTHORIZED',
+  'Historical pre-30I standing Tenant-data authority', 'GET', '/api/v1/people', CURRENT_TIMESTAMP
+);
+
+-- Exercise the 000064 lifecycle backfill with a historical ordinary Account
+-- whose only Membership is explicitly INACTIVE while its Account, Actor, and
+-- delegated Role Grant are still marked active in the pre-30I schema.
+INSERT INTO people (
+  id, first_name, last_name, nickname, cpf, rg, cellular, email,
+  country, profile_completion_status, can_create_collaborator,
+  status_id, notes, created_at, updated_at, tenant_id
+) VALUES (
+  'test-rehearsal-inactive-legacy-person', 'Release', 'Inactive', 'Rehearsal Inactive',
+  '99000000003', 'REHEARSAL-RG-INACTIVE', '+5599000000003', 'release-rehearsal-inactive@example.test',
+  'Brasil', 'COMPLETE', 1, 'ref-person-status-inactive',
+  'Pre-30I inactive lifecycle migration fixture', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'default'
+);
+
+INSERT INTO global_people (
+  id, first_name, last_name, nickname, cpf, rg, cellular, email,
+  country, profile_completion_status, can_create_collaborator, created_at, updated_at
+) VALUES (
+  'test-rehearsal-inactive-global-person', 'Release', 'Inactive', 'Rehearsal Inactive',
+  '99000000003', 'REHEARSAL-RG-INACTIVE', '+5599000000003', 'release-rehearsal-inactive@example.test',
+  'Brasil', 'COMPLETE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO person_tenant_memberships (
+  id, created_at, updated_at, tenant_id, person_id, status_id, notes, legacy_person_id
+) VALUES (
+  'test-rehearsal-inactive-membership', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'default',
+  'test-rehearsal-inactive-global-person', 'ref-person-status-inactive',
+  'Pre-30I inactive lifecycle migration fixture', 'test-rehearsal-inactive-legacy-person'
+);
+
+INSERT INTO authz_actors (
+  id, actor_key, display_name, person_id, collaborator_id, active, created_at, updated_at
+) VALUES (
+  'test-rehearsal-inactive-actor', 'test-rehearsal-inactive', 'Release Rehearsal Inactive',
+  'test-rehearsal-inactive-legacy-person', NULL, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO auth_user_accounts (
+  id, actor_id, login, password_hash, active, must_change_password, created_at, updated_at
+) VALUES (
+  'test-rehearsal-inactive-account', 'test-rehearsal-inactive-actor',
+  'release-rehearsal-inactive@example.test', 'release-rehearsal-placeholder-hash-inactive',
+  1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO auth_account_people(account_id, person_id, created_at, updated_at) VALUES (
+  'test-rehearsal-inactive-account', 'test-rehearsal-inactive-global-person', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO auth_account_actors(
+  account_id, actor_id, scope_type, tenant_id, membership_id, is_primary, created_at, updated_at
+) VALUES (
+  'test-rehearsal-inactive-account', 'test-rehearsal-inactive-actor', 'TENANT', 'default',
+  'test-rehearsal-inactive-membership', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO authz_actor_role_grants(
+  id, actor_id, role_id, tenant_id, active, created_at, updated_at
+) VALUES (
+  'test-rehearsal-inactive-expense-grant', 'test-rehearsal-inactive-actor',
+  'authz-role-expense-operator', 'default', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
 SQL
 
 integrity="$(sqlite3 "$TMP_DB" "PRAGMA integrity_check;")"
@@ -244,7 +322,7 @@ if [ "$fixture_slot_count" != "1" ]; then
   exit 1
 fi
 
-# A pre-30H account must resolve to the same Membership through both the
+# A pre-30I ordinary account must resolve to the same Membership through both the
 # compatibility path (Account.actor_id -> Actor.person_id -> legacy_person_id)
 # and the explicit 30C path (auth_account_actors.membership_id). This is the
 # identity shape that EnsureAccountActorFoundation() expects during startup.
@@ -267,43 +345,77 @@ if [ "$legacy_explicit_alignment" != "2" ]; then
   exit 1
 fi
 
-# Prove the baseline itself can take the migration under rehearsal, without
-# mutating the saved pre-release snapshot.
-cp "$TMP_DB" "$PROBE_DB"
-migration_path="$MIGRATIONS_DIR/$MIGRATION_UNDER_REHEARSAL"
-if [ ! -f "$migration_path" ]; then
-  echo "Missing migration under rehearsal: $migration_path" >&2
-  exit 2
+legacy_tenant_permission="$(sqlite3 "$TMP_DB" "SELECT COUNT(*) FROM authz_role_permissions WHERE role_id='authz-role-application-admin' AND permission_code='people.read';")"
+if [ "$legacy_tenant_permission" != "1" ]; then
+  echo "Generated pre-30I baseline does not contain the legacy Application Administrator Tenant-data permission." >&2
+  exit 1
 fi
-sqlite3 -bail "$PROBE_DB" < "$migration_path"
-escaped_rehearsal="$(printf '%s' "$MIGRATION_UNDER_REHEARSAL" | sed "s/'/''/g")"
-sqlite3 -bail "$PROBE_DB" "INSERT INTO schema_migrations(filename) VALUES ('$escaped_rehearsal');"
-trigger_count="$(sqlite3 "$PROBE_DB" "SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' AND name LIKE 'trg_tenant_admin_%';")"
-probe_integrity="$(sqlite3 "$PROBE_DB" "PRAGMA integrity_check;")"
-probe_fk="$(sqlite3 "$PROBE_DB" "PRAGMA foreign_key_check;")"
-if [ "$trigger_count" != "8" ] || [ "$probe_integrity" != "ok" ] || [ -n "$probe_fk" ]; then
-  echo "Generated Test release baseline failed the migration-under-rehearsal probe." >&2
-  echo "Bite 30H triggers: $trigger_count" >&2
-  echo "Integrity: $probe_integrity" >&2
-  if [ -n "$probe_fk" ]; then printf '%s\n' "$probe_fk" >&2; fi
+historical_audit_count="$(sqlite3 "$TMP_DB" "SELECT COUNT(*) FROM authz_audit_logs WHERE id='test-rehearsal-pre30i-audit';")"
+if [ "$historical_audit_count" != "1" ]; then
+  echo "Generated pre-30I baseline does not contain the historical audit fixture." >&2
   exit 1
 fi
 
-mv "$TMP_DB" "$TARGET_DB"
-rm -f "$PROBE_DB" "$PROBE_DB-wal" "$PROBE_DB-shm"
-trap - EXIT INT TERM
+# Prove a copy of the baseline can take the complete 30I migration sequence,
+# without mutating the saved pre-release snapshot.
+cp "$TMP_DB" "$PROBE_DB"
 
-baseline_sha256="$(sha256sum "$TARGET_DB" | awk '{print $1}')"
+probe_started=0
+probe_final_seen=0
+probe_count=0
+for migration in "$MIGRATIONS_DIR"/*.up.sql; do
+  filename="$(basename "$migration")"
+  if [ "$filename" = "$MIGRATION_UNDER_REHEARSAL" ]; then
+    probe_started=1
+  fi
+  if [ "$probe_started" != "1" ]; then
+    continue
+  fi
+
+  echo "Applying migration to 30I rehearsal probe: $filename"
+  sqlite3 -bail "$PROBE_DB" < "$migration"
+  escaped_filename="$(printf '%s' "$filename" | sed "s/'/''/g")"
+  sqlite3 -bail "$PROBE_DB" "INSERT INTO schema_migrations(filename) VALUES ('$escaped_filename');"
+  probe_count=$((probe_count + 1))
+
+  if [ "$filename" = "$EXPECTED_FINAL_MIGRATION" ]; then
+    probe_final_seen=1
+    break
+  fi
+done
+
+if [ "$probe_started" != "1" ]; then
+  echo "Missing first migration under rehearsal: $MIGRATION_UNDER_REHEARSAL" >&2
+  exit 2
+fi
+if [ "$probe_final_seen" != "1" ]; then
+  echo "Expected final 30I migration was not reached: $EXPECTED_FINAL_MIGRATION" >&2
+  exit 2
+fi
+if [ ! -x "$VERIFY_MIGRATED_DB_SCRIPT" ]; then
+  echo "Missing migrated-database verifier: $VERIFY_MIGRATED_DB_SCRIPT" >&2
+  exit 2
+fi
+
+APP_ENV=test \
+DATABASE_PATH="$PROBE_DB" \
+MIGRATIONS_DIR="$MIGRATIONS_DIR" \
+EXPECTED_BASELINE_LAST_MIGRATION="$EXPECTED_LAST_MIGRATION" \
+EXPECTED_FIRST_REHEARSED_MIGRATION="$MIGRATION_UNDER_REHEARSAL" \
+EXPECTED_FINAL_MIGRATION="$EXPECTED_FINAL_MIGRATION" \
+  "$VERIFY_MIGRATED_DB_SCRIPT"
+
+mv "$TMP_DB" "$TARGET_DB"
+trap - EXIT INT TERM
+rm -f "$PROBE_DB" "$PROBE_DB-wal" "$PROBE_DB-shm"
+
 printf '%s\n' \
-  "Generated deterministic Test release-rehearsal baseline." \
-  "Baseline: $TARGET_DB" \
-  "Baseline SHA-256: $baseline_sha256" \
-  "Last migration: $EXPECTED_LAST_MIGRATION" \
-  "Migration under rehearsal: $MIGRATION_UNDER_REHEARSAL" \
-  "Pre-release migrations applied: $applied_count" \
-  "Representative Tenant Administrators: deterministic E2E default admin + one distinct rehearsal admin" \
-  "Deterministic E2E default Tenant Administrator slot: compatible" \
-  "Legacy/explicit Account-Actor identity alignment: 2/2" \
-  "Migration probe triggers: $trigger_count" \
+  "Deterministic pre-30I Test release baseline is ready." \
+  "Baseline: ${TARGET_DB}" \
+  "Applied baseline migrations: ${applied_count}" \
+  "Baseline last migration: ${EXPECTED_LAST_MIGRATION}" \
+  "First rehearsed migration: ${MIGRATION_UNDER_REHEARSAL}" \
+  "Final rehearsed migration: ${EXPECTED_FINAL_MIGRATION}" \
+  "Rehearsed 30I migrations: ${probe_count}" \
   "Integrity check: ok" \
   "Foreign key check: clean"
