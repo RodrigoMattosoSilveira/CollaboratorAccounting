@@ -70,6 +70,14 @@ jobs:
           go mod download
           go test ./...
 
+      - name: Install SQLite rehearsal dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends sqlite3
+
+      - name: Rehearse complete Bite 30I migration chain
+        run: make migration-rehearsal-check
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -334,7 +342,8 @@ jobs:
                  make server-test-rehearsal-restore ENV=test
                  ;;
                migrate-in-place)
-                 echo 'Preserving ${{ steps.target.outputs.env_name }} database; migrations will run in place during backend startup.'
+                 echo 'Preserving ${{ steps.target.outputs.env_name }} database; taking a verified backup before in-place migration.'
+                 make server-backup ENV='${{ steps.target.outputs.env_name }}'
                  ;;
                *)
                  echo 'Unsupported database strategy: ${{ steps.target.outputs.database_strategy }}'
@@ -349,6 +358,11 @@ jobs:
              fi
              if ! make ${{ steps.target.outputs.make_prefix }}-backend-health; then
                echo 'Backend health verification failed; collecting server diagnostics.'
+               make server-diagnostics ENV='${{ steps.target.outputs.env_name }}' || true
+               exit 1
+             fi
+             if ! make server-migrated-db-verify ENV='${{ steps.target.outputs.env_name }}'; then
+               echo 'Post-migration database verification failed; collecting server diagnostics.'
                make server-diagnostics ENV='${{ steps.target.outputs.env_name }}' || true
                exit 1
              fi
