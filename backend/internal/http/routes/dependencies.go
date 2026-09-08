@@ -25,6 +25,7 @@ type Dependencies struct {
 	BootstrapActorKey           string
 	AuthzHandler                *authz.Handler
 	ActorStore                  authz.ActorStore
+	AuditStore                  authz.AuditLogStore
 	PeopleHandler               *people.Handler
 	CollaboratorHandler         *collaborators.Handler
 	ExpenseHandler              *expenses.Handler

@@ -138,3 +138,24 @@ describe("permission-aware navigation", () => {
     expect(paths).not.toContain("/admin/authentication");
   });
 });
+
+it("shows Support access only to actors with support_access_leases.read", () => {
+  const applicationAdminPaths = visibleNavigationLinks(
+    ["tenants.read", "support_access_leases.read", "support_access_leases.request"],
+    "APPLICATION",
+  ).map((link) => link.to);
+  expect(applicationAdminPaths).toContain("/admin/support-access-leases");
+
+  const tenantAdminPaths = visibleNavigationLinks(
+    ["people.read", "support_access_leases.read", "support_access_leases.approve"],
+    "TENANT",
+  ).map((link) => link.to);
+  expect(tenantAdminPaths).toContain("/admin/support-access-leases");
+
+  const supportLeaseDataPlanePaths = visibleNavigationLinks(
+    ["people.read", "reference_data.read", "support_access_leases.read"],
+    "APPLICATION",
+    { supportLeaseId: "lease-a" },
+  ).map((link) => link.to);
+  expect(supportLeaseDataPlanePaths).not.toContain("/admin/support-access-leases");
+});

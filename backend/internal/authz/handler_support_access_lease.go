@@ -8,6 +8,33 @@ import (
 	"gorm.io/gorm"
 )
 
+func (h *Handler) ListEligibleSupportAccessLeasePermissions(c fiber.Ctx) error {
+	actor, err := h.resolveRequiredActor(c, PermissionSupportAccessLeasesRead)
+	if err != nil {
+		return writeAuthorizationHTTPError(c, err)
+	}
+	if actor.SupportLeaseID != "" {
+		return writeAuthorizationHTTPError(c, ErrForbidden)
+	}
+	permissions, err := h.store.ListEligibleSupportAccessLeasePermissions(c.Context())
+	if err != nil {
+		return writeSupportAccessLeaseError(c, err)
+	}
+	return httpx.OK(c, permissions)
+}
+
+func (h *Handler) ListSupportAccessLeaseAuditLogs(c fiber.Ctx) error {
+	actor, err := h.resolveRequiredActor(c, PermissionSupportAccessLeasesRead)
+	if err != nil {
+		return writeAuthorizationHTTPError(c, err)
+	}
+	logs, err := h.store.ListSupportAccessLeaseAuditLogs(c.Context(), actor, c.Params("id"))
+	if err != nil {
+		return writeSupportAccessLeaseError(c, err)
+	}
+	return httpx.OK(c, logs)
+}
+
 func (h *Handler) RequestSupportAccessLease(c fiber.Ctx) error {
 	actor, err := h.resolveRequiredActor(c, PermissionSupportAccessLeasesRequest)
 	if err != nil {
@@ -79,15 +106,16 @@ func (h *Handler) recordSupportAccessLeaseAudit(c fiber.Ctx, actor *Actor, permi
 		return
 	}
 	_ = h.store.RecordAuthorizationAudit(c.Context(), AuthorizationAuditEntry{
-		Actor:         actor,
-		TenantID:      lease.TenantID,
-		Permission:    permission,
-		Operation:     operation,
-		TargetType:    "tenant_support_access_lease",
-		TargetID:      lease.ID,
-		Decision:      AuditDecisionAuthorized,
-		RequestMethod: c.Method(),
-		RequestPath:   c.Path(),
+		Actor:          actor,
+		TenantID:       lease.TenantID,
+		Permission:     permission,
+		SupportLeaseID: lease.ID,
+		Operation:      operation,
+		TargetType:     "tenant_support_access_lease",
+		TargetID:       lease.ID,
+		Decision:       AuditDecisionAuthorized,
+		RequestMethod:  c.Method(),
+		RequestPath:    c.Path(),
 	})
 }
 

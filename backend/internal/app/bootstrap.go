@@ -141,6 +141,7 @@ func Bootstrap(cfg Config) (*fiber.App, func(), error) {
 		BootstrapActorKey:           cfg.AuthzBootstrapActorKey,
 		AuthzHandler:                authzHandler,
 		ActorStore:                  actorStore,
+		AuditStore:                  actorStore,
 		PeopleHandler:               peopleHandler,
 		CollaboratorHandler:         collaboratorHandler,
 		ExpenseHandler:              expenseHandler,
