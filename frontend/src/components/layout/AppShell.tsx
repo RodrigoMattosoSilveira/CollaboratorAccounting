@@ -250,6 +250,7 @@ export function AppShell() {
             identity={{
               personId: actorQuery.data.personId,
               collaboratorId: actorQuery.data.collaboratorId,
+              supportLeaseId: actorQuery.data.supportLeaseId,
             }}
           />
           <main className="min-w-0 flex-1">

@@ -10,6 +10,7 @@ import { ChangePasswordPage } from "../features/auth/ChangePasswordPage";
 import { ResetPasswordPage } from "../features/auth/ResetPasswordPage";
 import { AuthenticationAdminPage } from "../features/auth/AuthenticationAdminPage";
 import { AuthenticationLookupDismissBoundary } from "../features/auth/AuthenticationLookupDismissBoundary";
+import { SupportAccessLeasesPage } from "../features/authz/SupportAccessLeasesPage";
 import { describeRouteError } from "./routeErrorPresentation";
 
 function RouteErrorPage() {
@@ -49,6 +50,7 @@ const protectedChildren: RouteObject[] = [
   { path: "admin/reference-data", lazy: async () => ({ Component: (await import("../features/reference-data/ReferenceDataAdminRoute")).ReferenceDataAdminRoute }) },
   { path: "admin/authentication", element: <RequirePermission permission="authz.manage" applicationOnly><AuthenticationLookupDismissBoundary><AuthenticationAdminPage /></AuthenticationLookupDismissBoundary></RequirePermission> },
   { path: "admin/authorization", lazy: async () => ({ Component: (await import("../features/authz/AuthzAdminRoute")).AuthzAdminRoute }) },
+  { path: "admin/support-access-leases", element: <RequirePermission permission="support_access_leases.read"><SupportAccessLeasesPage /></RequirePermission> },
   { path: "admin/audit-logs", lazy: async () => ({ Component: (await import("../features/authz/AuditLogViewerPage")).AuditLogViewerPage }) },
   { path: "admin/current-account-settings", lazy: async () => ({ Component: (await import("../features/current-accounts/SecondPersonApprovalSettingsPage")).SecondPersonApprovalSettingsPage }) },
   { path: "admin/gold-prices", lazy: async () => ({ Component: (await import("../features/gold-prices/GoldPricesAdminRoute")).GoldPricesAdminRoute }) },

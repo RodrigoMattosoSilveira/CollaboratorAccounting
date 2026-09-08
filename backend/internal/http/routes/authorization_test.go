@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -116,6 +117,9 @@ func TestRequirePermissionAllowsPersistedActor(t *testing.T) {
 		Permissions: map[authz.Permission]struct{}{
 			authz.PermissionPeopleRead: {},
 		},
+		SupportLeasePermissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
 	}}
 
 	app := fiber.New()
@@ -196,6 +200,9 @@ func TestRequirePermissionOrSelfPersonAllowsFullPermissionActor(t *testing.T) {
 		TenantID: "default",
 		Scope:    authz.ActorScopeTenant,
 		Permissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
+		SupportLeasePermissions: map[authz.Permission]struct{}{
 			authz.PermissionPeopleRead: {},
 		},
 	}}
@@ -1036,5 +1043,96 @@ func TestAuthenticatedSessionRequiresTenantSelection(t *testing.T) {
 	}
 	if resp.StatusCode != fiber.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
+}
+
+type recordingRouteAuditStore struct {
+	entries []authz.AuthorizationAuditEntry
+}
+
+func (s *recordingRouteAuditStore) RecordAuthorizationAudit(_ context.Context, entry authz.AuthorizationAuditEntry) error {
+	s.entries = append(s.entries, entry)
+	return nil
+}
+
+func TestRequirePermissionAuditsSupportLeaseAuthorization(t *testing.T) {
+	audit := &recordingRouteAuditStore{}
+	actor := &authz.Actor{
+		ID:             "bootstrap-admin",
+		RecordID:       "actor-bootstrap-admin",
+		TenantID:       "tenant-a",
+		Scope:          authz.ActorScopeApplication,
+		SupportLeaseID: "lease-a",
+		Permissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
+		SupportLeasePermissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
+	}
+	store := fakeActorStore{actor: actor}
+	deps := Dependencies{ActorStore: store, AuditStore: audit}
+	app := fiber.New()
+	app.Get("/people", requirePermission(deps, authz.PermissionPeopleRead), func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/people", nil)
+	req.Header.Set(authz.HeaderActorID, actor.ID)
+	req.Header.Set(authz.HeaderTenantID, actor.TenantID)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform support-authorized request: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	if len(audit.entries) != 1 {
+		t.Fatalf("expected one support access audit event, got %#v", audit.entries)
+	}
+	got := audit.entries[0]
+	if got.Operation != "support_access.use" || got.SupportLeaseID != "lease-a" || got.Permission != authz.PermissionPeopleRead || got.Decision != authz.AuditDecisionAuthorized || got.RequestPath != "/people" {
+		t.Fatalf("unexpected support access audit event: %#v", got)
+	}
+}
+
+func TestRequirePermissionAuditsDeniedSupportLeaseAuthorization(t *testing.T) {
+	audit := &recordingRouteAuditStore{}
+	actor := &authz.Actor{
+		ID:             "bootstrap-admin",
+		RecordID:       "actor-bootstrap-admin",
+		TenantID:       "tenant-a",
+		Scope:          authz.ActorScopeApplication,
+		SupportLeaseID: "lease-a",
+		Permissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
+		SupportLeasePermissions: map[authz.Permission]struct{}{
+			authz.PermissionPeopleRead: {},
+		},
+	}
+	store := fakeActorStore{actor: actor}
+	deps := Dependencies{ActorStore: store, AuditStore: audit}
+	app := fiber.New()
+	app.Get("/expenses", requirePermission(deps, authz.PermissionExpensesRead), func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/expenses", nil)
+	req.Header.Set(authz.HeaderActorID, actor.ID)
+	req.Header.Set(authz.HeaderTenantID, actor.TenantID)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("perform denied support request: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusForbidden {
+		t.Fatalf("expected 403, got %d", resp.StatusCode)
+	}
+	if len(audit.entries) != 1 {
+		t.Fatalf("expected one denied support access audit event, got %#v", audit.entries)
+	}
+	got := audit.entries[0]
+	if got.Operation != "support_access.use" || got.SupportLeaseID != "lease-a" || got.Permission != authz.PermissionExpensesRead || got.Decision != authz.AuditDecisionDenied {
+		t.Fatalf("unexpected denied support access audit event: %#v", got)
 	}
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAuthzActorList, normalizeAuthzCurrentActor } from "./authz.api";
+import { normalizeAuthzActorList, normalizeAuthzCurrentActor, normalizeSupportAccessLeaseList } from "./authz.api";
 
 describe("normalizeAuthzCurrentActor", () => {
   it("normalizes null authorization collections for a Person-only Actor", () => {
@@ -98,5 +98,32 @@ describe("normalizeAuthzActorList", () => {
 
   it("returns an empty array for an unexpected successful response shape", () => {
     expect(normalizeAuthzActorList({ data: { actor } })).toEqual([]);
+  });
+});
+
+describe("normalizeSupportAccessLeaseList", () => {
+  const lease = {
+    id: "lease-pending",
+    tenantId: "default",
+    applicationActorId: "actor-bootstrap-admin",
+    requestedByActorId: "actor-bootstrap-admin",
+    requestedAt: "2026-09-07T12:00:00Z",
+    expiresAt: "2099-09-07T13:00:00Z",
+    reason: "Investigate Tenant support incident",
+    status: "PENDING",
+    effectiveStatus: "PENDING",
+    permissions: ["people.read"],
+  };
+
+  it("preserves the canonical support lease array", () => {
+    expect(normalizeSupportAccessLeaseList([lease])).toEqual([lease]);
+  });
+
+  it("unwraps an additional data array instead of exposing a non-iterable object to Lease History", () => {
+    expect(normalizeSupportAccessLeaseList({ data: [lease] })).toEqual([lease]);
+  });
+
+  it("returns an empty array for an unexpected successful response shape", () => {
+    expect(normalizeSupportAccessLeaseList({ data: { lease } })).toEqual([]);
   });
 });

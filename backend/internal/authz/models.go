@@ -71,6 +71,7 @@ type AuthzAuditLog struct {
 	ActorRecordID  string    `gorm:"type:text"`
 	TenantID       string    `gorm:"type:text;index"`
 	PermissionCode string    `gorm:"type:text"`
+	SupportLeaseID string    `gorm:"type:text;index"`
 	Operation      string    `gorm:"type:text;not null;index"`
 	TargetType     string    `gorm:"type:text;index:idx_authz_audit_target,priority:1"`
 	TargetID       string    `gorm:"type:text;index:idx_authz_audit_target,priority:2"`

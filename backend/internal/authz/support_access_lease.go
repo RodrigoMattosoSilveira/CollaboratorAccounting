@@ -117,6 +117,64 @@ func supportAccessLeasePermissionAllowlist() []Permission {
 	}
 }
 
+func (s *GORMStore) ListEligibleSupportAccessLeasePermissions(ctx context.Context) ([]PermissionResponse, error) {
+	if s == nil || s.database == nil {
+		return nil, ErrMissingActor
+	}
+	allowlist := supportAccessLeasePermissionAllowlist()
+	codes := make([]string, 0, len(allowlist))
+	for _, permission := range allowlist {
+		codes = append(codes, string(permission))
+	}
+	var rows []AuthzPermission
+	if err := s.database.WithContext(ctx).Where("code IN ?", codes).Order("label ASC, code ASC").Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("list eligible support access permissions: %w", err)
+	}
+	allowed := supportAccessLeasePermissionSet()
+	responses := make([]PermissionResponse, 0, len(rows))
+	for _, row := range rows {
+		if _, ok := allowed[Permission(row.Code)]; !ok {
+			continue
+		}
+		responses = append(responses, permissionResponse(row))
+	}
+	return responses, nil
+}
+
+func (s *GORMStore) ListSupportAccessLeaseAuditLogs(ctx context.Context, actor *Actor, leaseID string) ([]AuditLogResponse, error) {
+	if s == nil || s.database == nil || actor == nil {
+		return nil, ErrMissingActor
+	}
+	leaseID = strings.TrimSpace(leaseID)
+	if leaseID == "" {
+		return nil, NewValidationError(map[string]string{"leaseId": "Lease ID is required"})
+	}
+	var lease TenantSupportAccessLease
+	if err := s.database.WithContext(ctx).Where("id = ?", leaseID).First(&lease).Error; err != nil {
+		return nil, err
+	}
+	switch actor.Scope {
+	case ActorScopeApplication:
+		if actor.TenantID != GlobalTenantScope || actor.SupportLeaseID != "" || !containsRoleCode(actor.RoleCodes, RoleApplicationAdmin) || !actor.HasPermission(PermissionSupportAccessLeasesRead) {
+			return nil, ErrForbidden
+		}
+	case ActorScopeTenant:
+		if actor.TenantID != lease.TenantID || !containsRoleCode(actor.RoleCodes, RoleTenantAdmin) || !actor.HasPermission(PermissionSupportAccessLeasesRead) {
+			return nil, ErrForbidden
+		}
+		canonical, err := isCanonicalTenantAdministrator(ctx, s.database, actor.RecordID, actor.TenantID)
+		if err != nil {
+			return nil, err
+		}
+		if !canonical {
+			return nil, ErrForbidden
+		}
+	default:
+		return nil, ErrForbidden
+	}
+	return s.ListAuthorizationAuditLogs(ctx, AuditLogFilter{SupportLeaseID: lease.ID, Limit: 500})
+}
+
 func supportAccessLeasePermissionSet() map[Permission]struct{} {
 	allowed := make(map[Permission]struct{}, len(supportAccessLeasePermissionAllowlist()))
 	for _, permission := range supportAccessLeasePermissionAllowlist() {
@@ -249,28 +307,33 @@ func (s *GORMStore) ListSupportAccessLeases(ctx context.Context, actor *Actor, f
 	}
 
 	status := strings.ToUpper(strings.TrimSpace(filter.Status))
-	if status != "" && status != SupportAccessLeaseStatusExpired {
-		switch status {
-		case SupportAccessLeaseStatusPending, SupportAccessLeaseStatusApproved, SupportAccessLeaseStatusTerminated:
-			query = query.Where("status = ?", status)
-		default:
-			return nil, NewValidationError(map[string]string{"status": "Status must be PENDING, APPROVED, TERMINATED, or EXPIRED"})
-		}
+	now := time.Now().UTC()
+	switch status {
+	case "":
+	case SupportAccessLeaseStatusPending:
+		query = query.Where("status = ? AND expires_at > ?", SupportAccessLeaseStatusPending, now)
+	case SupportAccessLeaseStatusApproved:
+		query = query.Where("status = ? AND expires_at > ?", SupportAccessLeaseStatusApproved, now)
+	case SupportAccessLeaseStatusTerminated:
+		query = query.Where("status = ?", SupportAccessLeaseStatusTerminated)
+	case SupportAccessLeaseStatusExpired:
+		query = query.Where("status IN ? AND expires_at <= ?", []string{
+			SupportAccessLeaseStatusPending,
+			SupportAccessLeaseStatusApproved,
+		}, now)
+	default:
+		return nil, NewValidationError(map[string]string{"status": "Status must be PENDING, APPROVED, TERMINATED, or EXPIRED"})
 	}
 
 	var rows []TenantSupportAccessLease
 	if err := query.Order("requested_at DESC, id DESC").Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("list support access leases: %w", err)
 	}
-	now := time.Now().UTC()
 	responses := make([]SupportAccessLeaseResponse, 0, len(rows))
 	for _, row := range rows {
 		response, err := loadSupportAccessLeaseResponse(ctx, s.database, row.ID, now)
 		if err != nil {
 			return nil, err
-		}
-		if status == SupportAccessLeaseStatusExpired && response.EffectiveStatus != SupportAccessLeaseStatusExpired {
-			continue
 		}
 		responses = append(responses, response)
 	}
@@ -456,7 +519,8 @@ func containsRoleCode(roleCodes []string, role RoleCode) bool {
 }
 
 func effectiveSupportAccessLeaseStatus(lease TenantSupportAccessLease, now time.Time) string {
-	if lease.Status == SupportAccessLeaseStatusApproved && !lease.ExpiresAt.After(now) {
+	if (lease.Status == SupportAccessLeaseStatusPending || lease.Status == SupportAccessLeaseStatusApproved) &&
+		!lease.ExpiresAt.After(now) {
 		return SupportAccessLeaseStatusExpired
 	}
 	return lease.Status
