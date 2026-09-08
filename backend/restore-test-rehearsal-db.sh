@@ -2,11 +2,11 @@
 set -eu
 
 ENVIRONMENT="${APP_ENV:-}"
-SOURCE_DB="${REHEARSAL_BASELINE_DB:-/rehearsal-baseline/pre-bite30h.db}"
+SOURCE_DB="${REHEARSAL_BASELINE_DB:-/rehearsal-baseline/pre-bite30i.db}"
 DB_PATH="${DATABASE_PATH:-/app/data/app.db}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/app/migrations}"
-EXPECTED_LAST_MIGRATION="${EXPECTED_LAST_MIGRATION:-000061_expand_final_settlement_database_checks.up.sql}"
-FORBIDDEN_MIGRATION="${FORBIDDEN_MIGRATION:-000062_tenant_administrator_cardinality.up.sql}"
+EXPECTED_LAST_MIGRATION="${EXPECTED_LAST_MIGRATION:-000062_tenant_administrator_cardinality.up.sql}"
+FORBIDDEN_MIGRATION="${FORBIDDEN_MIGRATION:-000063_global_administration_control_plane.up.sql}"
 TMP_DB="${DB_PATH}.rehearsal.$$"
 
 if [ "$ENVIRONMENT" != "test" ]; then
