@@ -204,6 +204,80 @@ describe("SupportAccessLeasesPage", () => {
     expect(Math.abs(Date.now() - resetTime)).toBeLessThanOrEqual(60_000);
   });
 
+  it("shows duplicate open support-access requests in a modal instead of the inline error panel", async () => {
+    const conflictMessage =
+      "An open Tenant Support Access Lease already exists for this Application Administrator and Tenant";
+
+    mockFetch(async (url, init) => {
+      calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });
+      if (url === "/api/v1/tenants") {
+        return jsonResponse({
+          data: [
+            { id: "default", code: "ALPHA", name: "Tenant A", active: true, operationalStatus: "ACTIVE_READY", tenantAdminCount: 1, createdAt: "", updatedAt: "" },
+          ],
+        });
+      }
+      if (url === "/api/v1/authz/support-access-leases/eligible-permissions") {
+        return jsonResponse({ data: [{ code: "people.read", label: "Read People", description: "Read Tenant People." }] });
+      }
+      if (url === "/api/v1/authz/support-access-leases" && init?.method === "POST") {
+        return jsonResponse(
+          {
+            error: {
+              code: "support_access_lease_conflict",
+              message: conflictMessage,
+            },
+          },
+          { status: 409 },
+        );
+      }
+      if (url === "/api/v1/authz/support-access-leases") {
+        return jsonResponse({ data: [pendingLease] });
+      }
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    renderPage(applicationAdminContext);
+
+    await clickButton("Request Tenant support access");
+    await waitForText("Read People");
+
+    const tenantChoice = container.querySelector(
+      'input[name="support-access-tenant"][value="default"]',
+    ) as HTMLInputElement | null;
+    const permissionChoice = container.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement | null;
+    expect(tenantChoice).not.toBeNull();
+    expect(permissionChoice).not.toBeNull();
+
+    await act(async () => tenantChoice?.click());
+    await setSupportReason("Investigate Tenant support incident");
+    await act(async () => permissionChoice?.click());
+    await waitFor(() => requestSubmitButton()?.disabled === false);
+
+    await act(async () => requestSubmitButton()?.click());
+
+    await waitFor(() => container.querySelector('[role="alertdialog"]') !== null);
+    const dialog = container.querySelector('[role="alertdialog"]');
+    expect(dialog?.getAttribute("aria-modal")).toBe("true");
+    expect(dialog?.textContent).toContain("Support access request already open");
+    expect(dialog?.textContent).toContain(conflictMessage);
+    expect(container.textContent).not.toContain("Status: 409");
+
+    expect(tenantChoice?.checked).toBe(true);
+    expect(supportReasonInput()?.value).toBe("Investigate Tenant support incident");
+    expect(permissionChoice?.checked).toBe(true);
+    await waitFor(() => requestSubmitButton()?.disabled === false);
+
+    await clickButton("Close");
+    await waitFor(() => container.querySelector('[role="alertdialog"]') === null);
+
+    expect(tenantChoice?.checked).toBe(true);
+    expect(supportReasonInput()?.value).toBe("Investigate Tenant support incident");
+    expect(permissionChoice?.checked).toBe(true);
+  });
+
   it("opens the Lease history Tenant choices from the filter and narrows them as the user types", async () => {
     mockFetch(async (url, init) => {
       calls.push({ url, method: init?.method?.toUpperCase() ?? "GET" });

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ApiError } from "../../api/client";
 import { listTenants } from "../../api/tenants.api";
 import { authorizationRequestContext } from "../../api/tenantSelection";
 import { ApiErrorPanel } from "../../components/ApiErrorPanel";
@@ -146,6 +147,7 @@ export function SupportAccessLeasesPage() {
                   permissionsLoading={permissionQuery.isLoading}
                   disabled={requestMutation.isPending}
                   error={requestMutation.error || tenantsQuery.error || permissionQuery.error}
+                  onResetError={() => requestMutation.reset()}
                   onSubmit={(input) => requestMutation.mutateAsync(input).then(() => undefined)}
                 />
               </div>
@@ -386,6 +388,7 @@ function RequestLeasePanel({
   permissionsLoading,
   disabled,
   error,
+  onResetError,
   onSubmit,
 }: {
   tenants: Array<{ id: string; code: string; name: string }>;
@@ -393,6 +396,7 @@ function RequestLeasePanel({
   permissionsLoading: boolean;
   disabled: boolean;
   error: unknown;
+  onResetError: () => void;
   onSubmit: (input: { tenantId: string; expiresAt: string; reason: string; permissions: string[] }) => Promise<void>;
 }) {
   const [tenantId, setTenantId] = useState("");
@@ -402,6 +406,7 @@ function RequestLeasePanel({
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const submissionLockRef = useRef(false);
   const [submissionLocked, setSubmissionLocked] = useState(false);
+  const [conflictDialogMessage, setConflictDialogMessage] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -424,9 +429,12 @@ function RequestLeasePanel({
       setExpiresAt(nowInput());
       setReason("");
       setSelectedPermissions([]);
-    } catch {
-      // The mutation owns error presentation. Preserve the completed form so the
-      // Administrator can correct/retry without re-entering the request.
+    } catch (submitError) {
+      if (isSupportAccessLeaseConflict(submitError)) {
+        setConflictDialogMessage(submitError.message);
+      }
+      // Preserve the completed form so the Administrator can correct/retry
+      // without re-entering the request.
     } finally {
       submissionLockRef.current = false;
       setSubmissionLocked(false);
@@ -458,12 +466,19 @@ function RequestLeasePanel({
       && expirationIsFuture,
   );
 
+  const inlineError = isSupportAccessLeaseConflict(error) ? null : error;
+
+  function dismissConflictDialog() {
+    setConflictDialogMessage("");
+    onResetError();
+  }
+
   return (
     <div className="p-5">
       <p className="text-sm text-slate-600">
         Choose exactly one Tenant, an immutable expiration, a support reason, and only the Tenant permissions required for the case. Approval does not extend the requested expiration.
       </p>
-      <ApiErrorPanel error={error} />
+      <ApiErrorPanel error={inlineError} />
       <form className="mt-4 space-y-5" onSubmit={handleSubmit}>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
           <fieldset>
@@ -598,6 +613,56 @@ function RequestLeasePanel({
           {submitting ? "Requesting…" : "Request support access"}
         </button>
       </form>
+      {conflictDialogMessage && (
+        <SupportAccessLeaseConflictDialog
+          message={conflictDialogMessage}
+          onDismiss={dismissConflictDialog}
+        />
+      )}
+    </div>
+  );
+}
+
+function isSupportAccessLeaseConflict(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === "support_access_lease_conflict";
+}
+
+function SupportAccessLeaseConflictDialog({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 p-4">
+      <div
+        aria-describedby="support-access-conflict-description"
+        aria-labelledby="support-access-conflict-title"
+        aria-modal="true"
+        className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-6 shadow-2xl"
+        role="alertdialog"
+      >
+        <h2 id="support-access-conflict-title" className="text-xl font-bold text-amber-950">
+          Support access request already open
+        </h2>
+        <p
+          id="support-access-conflict-description"
+          className="mt-3 text-base font-semibold text-slate-800"
+        >
+          {message}
+        </p>
+        <div className="mt-6 flex justify-end">
+          <button
+            autoFocus
+            className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+            onClick={onDismiss}
+            type="button"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
