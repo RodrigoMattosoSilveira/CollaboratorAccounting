@@ -207,6 +207,12 @@ func (h *Handler) CloseJourney(c fiber.Ctx) error {
 		}
 		return httpx.WriteError(c, err)
 	}
+	h.recordAuthorizationAudit(
+		c, actor, c.Get(authz.HeaderActorID), actor.TenantID,
+		authz.PermissionJourneySettlementsClose,
+		"collaborators.journey.close", "collaborator_journey", c.Params("collaboratorId"),
+		authz.AuditDecisionAuthorized, "", correctionReasonAuditMetadata(req.CorrectionReasonRequest),
+	)
 	return c.JSON(httpx.APIResponse{Data: result})
 }
 
@@ -497,6 +503,7 @@ func (h *Handler) recordAuthorizationAudit(c fiber.Ctx, actor *authz.Actor, fall
 		Decision:        decision,
 		Reason:          reason,
 		MetadataJSON:    metadataJSON,
+		CorrelationID:   authz.RequestCorrelationID(c),
 		RequestMethod:   c.Method(),
 		RequestPath:     c.Path(),
 	})

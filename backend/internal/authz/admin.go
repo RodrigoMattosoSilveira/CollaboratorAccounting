@@ -133,32 +133,45 @@ type GrantTenantOperatorRoleRequest struct {
 }
 
 type AuditLogFilter struct {
-	ActorID        string `query:"actorId"`
-	TenantID       string `query:"tenantId"`
-	Operation      string `query:"operation"`
-	TargetType     string `query:"targetType"`
-	TargetID       string `query:"targetId"`
-	SupportLeaseID string `query:"supportLeaseId"`
-	Decision       string `query:"decision"`
-	Limit          int    `query:"limit"`
+	AccountID           string `query:"accountId"`
+	ActorID             string `query:"actorId"`
+	TenantID            string `query:"tenantId"`
+	SessionID           string `query:"sessionId"`
+	CorrelationID       string `query:"correlationId"`
+	AuthorizationSource string `query:"authorizationSource"`
+	Operation           string `query:"operation"`
+	TargetType          string `query:"targetType"`
+	TargetID            string `query:"targetId"`
+	SupportLeaseID      string `query:"supportLeaseId"`
+	Decision            string `query:"decision"`
+	Limit               int    `query:"limit"`
 }
 
 type AuditLogResponse struct {
-	ID             string `json:"id"`
-	OccurredAt     string `json:"occurredAt"`
-	ActorID        string `json:"actorId,omitempty"`
-	ActorRecordID  string `json:"actorRecordId,omitempty"`
-	TenantID       string `json:"tenantId,omitempty"`
-	PermissionCode string `json:"permissionCode,omitempty"`
-	SupportLeaseID string `json:"supportLeaseId,omitempty"`
-	Operation      string `json:"operation"`
-	TargetType     string `json:"targetType,omitempty"`
-	TargetID       string `json:"targetId,omitempty"`
-	Decision       string `json:"decision"`
-	Reason         string `json:"reason,omitempty"`
-	MetadataJSON   string `json:"metadataJson,omitempty"`
-	RequestMethod  string `json:"requestMethod,omitempty"`
-	RequestPath    string `json:"requestPath,omitempty"`
+	ID                    string `json:"id"`
+	OccurredAt            string `json:"occurredAt"`
+	AccountID             string `json:"accountId,omitempty"`
+	ActorID               string `json:"actorId,omitempty"`
+	ActorRecordID         string `json:"actorRecordId,omitempty"`
+	ActorScope            string `json:"actorScope,omitempty"`
+	PersonID              string `json:"personId,omitempty"`
+	MembershipID          string `json:"membershipId,omitempty"`
+	TenantID              string `json:"tenantId,omitempty"`
+	SessionID             string `json:"sessionId,omitempty"`
+	CorrelationID         string `json:"correlationId,omitempty"`
+	PermissionCode        string `json:"permissionCode,omitempty"`
+	AuthorizationSource   string `json:"authorizationSource,omitempty"`
+	AuthorizationSourceID string `json:"authorizationSourceId,omitempty"`
+	AuthorizationRoleCode string `json:"authorizationRoleCode,omitempty"`
+	SupportLeaseID        string `json:"supportLeaseId,omitempty"`
+	Operation             string `json:"operation"`
+	TargetType            string `json:"targetType,omitempty"`
+	TargetID              string `json:"targetId,omitempty"`
+	Decision              string `json:"decision"`
+	Reason                string `json:"reason,omitempty"`
+	MetadataJSON          string `json:"metadataJson,omitempty"`
+	RequestMethod         string `json:"requestMethod,omitempty"`
+	RequestPath           string `json:"requestPath,omitempty"`
 }
 
 type ValidationError struct {
@@ -195,11 +208,23 @@ func (s *GORMStore) ListAuthorizationAuditLogs(ctx context.Context, filter Audit
 		limit = 500
 	}
 	query := s.database.WithContext(ctx).Model(&AuthzAuditLog{})
+	if strings.TrimSpace(filter.AccountID) != "" {
+		query = query.Where("account_id = ?", strings.TrimSpace(filter.AccountID))
+	}
 	if strings.TrimSpace(filter.ActorID) != "" {
 		query = query.Where("actor_id = ?", strings.TrimSpace(filter.ActorID))
 	}
 	if strings.TrimSpace(filter.TenantID) != "" {
 		query = query.Where("tenant_id = ?", strings.TrimSpace(filter.TenantID))
+	}
+	if strings.TrimSpace(filter.SessionID) != "" {
+		query = query.Where("session_id = ?", strings.TrimSpace(filter.SessionID))
+	}
+	if strings.TrimSpace(filter.CorrelationID) != "" {
+		query = query.Where("correlation_id = ?", strings.TrimSpace(filter.CorrelationID))
+	}
+	if strings.TrimSpace(filter.AuthorizationSource) != "" {
+		query = query.Where("authorization_source = ?", strings.ToUpper(strings.TrimSpace(filter.AuthorizationSource)))
 	}
 	if strings.TrimSpace(filter.Operation) != "" {
 		query = query.Where("operation = ?", strings.TrimSpace(filter.Operation))
@@ -233,21 +258,30 @@ func (s *GORMStore) ListAuthorizationAuditLogs(ctx context.Context, filter Audit
 			supportLeaseID = strings.TrimSpace(row.TargetID)
 		}
 		responses = append(responses, AuditLogResponse{
-			ID:             row.ID,
-			OccurredAt:     row.OccurredAt.Format(time.RFC3339),
-			ActorID:        row.ActorID,
-			ActorRecordID:  row.ActorRecordID,
-			TenantID:       row.TenantID,
-			PermissionCode: row.PermissionCode,
-			SupportLeaseID: supportLeaseID,
-			Operation:      row.Operation,
-			TargetType:     row.TargetType,
-			TargetID:       row.TargetID,
-			Decision:       row.Decision,
-			Reason:         row.Reason,
-			MetadataJSON:   row.MetadataJSON,
-			RequestMethod:  row.RequestMethod,
-			RequestPath:    row.RequestPath,
+			ID:                    row.ID,
+			OccurredAt:            row.OccurredAt.Format(time.RFC3339),
+			AccountID:             row.AccountID,
+			ActorID:               row.ActorID,
+			ActorRecordID:         row.ActorRecordID,
+			ActorScope:            row.ActorScope,
+			PersonID:              row.PersonID,
+			MembershipID:          row.MembershipID,
+			TenantID:              row.TenantID,
+			SessionID:             row.SessionID,
+			CorrelationID:         row.CorrelationID,
+			PermissionCode:        row.PermissionCode,
+			AuthorizationSource:   row.AuthorizationSource,
+			AuthorizationSourceID: row.AuthorizationSourceID,
+			AuthorizationRoleCode: row.AuthorizationRoleCode,
+			SupportLeaseID:        supportLeaseID,
+			Operation:             row.Operation,
+			TargetType:            row.TargetType,
+			TargetID:              row.TargetID,
+			Decision:              row.Decision,
+			Reason:                row.Reason,
+			MetadataJSON:          row.MetadataJSON,
+			RequestMethod:         row.RequestMethod,
+			RequestPath:           row.RequestPath,
 		})
 	}
 	return responses, nil

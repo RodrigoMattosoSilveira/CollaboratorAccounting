@@ -134,7 +134,7 @@ func (s *service) Login(ctx context.Context, req LoginRequest, userAgent string,
 
 	return LoginResult{
 		Token:   rawToken,
-		Session: sessionResponse(account, expiresAt),
+		Session: sessionResponse(account, session.ID, expiresAt),
 	}, nil
 }
 
@@ -173,7 +173,7 @@ func (s *service) ResolveSession(ctx context.Context, rawToken string) (SessionR
 			return SessionResponse{}, err
 		}
 	}
-	return sessionResponse(record.AccountRecord, record.ExpiresAt), nil
+	return sessionResponse(record.AccountRecord, record.Session.ID, record.ExpiresAt), nil
 }
 
 func (s *service) GetSelfServiceHome(ctx context.Context, accountID string) (SelfServiceHomeResponse, error) {
@@ -563,7 +563,7 @@ func validatePasswordValue(password string, field string) *ValidationError {
 	return nil
 }
 
-func sessionResponse(account AccountRecord, expiresAt time.Time) SessionResponse {
+func sessionResponse(account AccountRecord, sessionID string, expiresAt time.Time) SessionResponse {
 	displayName := strings.TrimSpace(account.GlobalPersonName)
 	if displayName == "" {
 		displayName = strings.TrimSpace(account.DisplayName)
@@ -573,6 +573,7 @@ func sessionResponse(account AccountRecord, expiresAt time.Time) SessionResponse
 	}
 	return SessionResponse{
 		AccountID:          account.ID,
+		SessionID:          strings.TrimSpace(sessionID),
 		DisplayName:        displayName,
 		Login:              normalizeLogin(account.Login),
 		MustChangePassword: account.MustChangePassword,

@@ -1,0 +1,14 @@
+DROP TRIGGER IF EXISTS trg_authz_audit_identity_required_insert;
+DROP INDEX IF EXISTS idx_authz_audit_logs_authorization_source;
+DROP INDEX IF EXISTS idx_authz_audit_logs_correlation_id;
+DROP INDEX IF EXISTS idx_authz_audit_logs_session_id;
+DROP INDEX IF EXISTS idx_authz_audit_logs_account_id;
+ALTER TABLE authz_audit_logs DROP COLUMN authorization_role_code;
+ALTER TABLE authz_audit_logs DROP COLUMN authorization_source_id;
+ALTER TABLE authz_audit_logs DROP COLUMN authorization_source;
+ALTER TABLE authz_audit_logs DROP COLUMN correlation_id;
+ALTER TABLE authz_audit_logs DROP COLUMN session_id;
+ALTER TABLE authz_audit_logs DROP COLUMN membership_id;
+ALTER TABLE authz_audit_logs DROP COLUMN person_id;
+ALTER TABLE authz_audit_logs DROP COLUMN actor_scope;
+ALTER TABLE authz_audit_logs DROP COLUMN account_id;

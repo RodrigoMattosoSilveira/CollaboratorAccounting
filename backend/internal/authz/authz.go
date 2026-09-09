@@ -7,6 +7,11 @@ import (
 )
 
 const (
+	// HeaderCorrelationID is a server-generated per-request audit correlation
+	// identity. Clients may observe it on responses but it is never accepted as
+	// authentication or authorization input.
+	HeaderCorrelationID = "X-Correlation-ID"
+
 	// HeaderAuthorizedBy is the legacy operation-actor header. Bite 28C accepts it
 	// only when the server is explicitly running in isolated test mode.
 	HeaderAuthorizedBy = "X-Authorized-By"
@@ -125,12 +130,30 @@ const (
 	ActorScopeSelf        ActorScope = "SELF"
 )
 
+type AuthorizationSourceKind string
+
+const (
+	AuthorizationSourceIntrinsic          AuthorizationSourceKind = "INTRINSIC"
+	AuthorizationSourceRoleGrant          AuthorizationSourceKind = "ROLE_GRANT"
+	AuthorizationSourceGlobalControlPlane AuthorizationSourceKind = "GLOBAL_CONTROL_PLANE"
+	AuthorizationSourceSupportLease       AuthorizationSourceKind = "SUPPORT_LEASE"
+	AuthorizationSourceNone               AuthorizationSourceKind = "NONE"
+)
+
+type AuthorizationSourceRef struct {
+	Kind     AuthorizationSourceKind
+	ID       string
+	RoleCode string
+}
+
 type Actor struct {
 	// ID is the stable external actor key used by the request/authentication layer.
 	ID string
 	// RecordID is the persisted authz_actors primary key when the actor was loaded
 	// from the authorization store.
 	RecordID                string
+	AccountID               string
+	SessionID               string
 	TenantID                string
 	PersonID                string
 	CollaboratorID          string
@@ -145,6 +168,7 @@ type Actor struct {
 	SupportLeaseID          string
 	SupportLeaseExpiresAt   string
 	SupportLeasePermissions map[Permission]struct{}
+	AuthorizationSources    map[Permission]AuthorizationSourceRef
 }
 
 var (

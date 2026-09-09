@@ -125,6 +125,7 @@ func (h *Handler) recordTenantAuthenticationAudit(c fiber.Ctx, actor *authz.Acto
 		TargetType:    "person",
 		TargetID:      strings.TrimSpace(personID),
 		Decision:      authz.AuditDecisionAuthorized,
+		CorrelationID: authz.RequestCorrelationID(c),
 		RequestMethod: c.Method(),
 		RequestPath:   c.Path(),
 	})
