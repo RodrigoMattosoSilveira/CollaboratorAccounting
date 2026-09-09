@@ -38,7 +38,7 @@ test("partial payout requires and submits a different second approver when tenan
     firstName: `ApprovalE2E${suffix}`,
     nickname: `Approval${suffix}`,
   });
-  const collaborator = await createCollaborator(request, person.id);
+  const collaborator = await createCollaborator(request, person.membershipId);
   let capturedPayoutPayload: PartialPayoutPayload | undefined;
 
   await page.route("**/api/v1/collaborators/**/payout", async (route) => {
@@ -147,7 +147,7 @@ test("partial payout can optionally record second approval when tenant policy is
     firstName: `OptionalApprovalE2E${suffix}`,
     nickname: `OptionalApproval${suffix}`,
   });
-  const collaborator = await createCollaborator(request, person.id);
+  const collaborator = await createCollaborator(request, person.membershipId);
   let capturedPayoutPayload: PartialPayoutPayload | undefined;
 
   await page.route("**/api/v1/collaborators/**/payout", async (route) => {
@@ -221,7 +221,7 @@ type ApiEnvelope<T> = {
   error?: { message?: string; fields?: Record<string, string> };
 };
 
-type CreatedPerson = { id: string; firstName: string; lastName: string; nickname: string };
+type CreatedPerson = { id: string; membershipId: string; firstName: string; lastName: string; nickname: string };
 type CreatedCollaborator = { id: string };
 type AuthzActor = { id: string; actorKey: string; displayName: string; active: boolean };
 type PartialPayoutPayload = {
@@ -355,12 +355,12 @@ async function createCompletePerson(
 
 async function createCollaborator(
   api: APIRequestContext,
-  personId: string,
+  membershipId: string,
 ): Promise<CreatedCollaborator> {
   const response = await api.post(e2eApiUrl("/api/v1/collaborators"), {
     headers: authzHeaders(),
     data: {
-      personId,
+      membershipId,
       journeyStartDate: todayISODate(),
       paymentMethodId: PAYMENT_METHOD_DAILY_ID,
       paymentValue: 250.75,
