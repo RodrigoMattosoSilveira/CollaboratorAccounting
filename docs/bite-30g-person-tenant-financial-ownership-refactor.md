@@ -78,7 +78,7 @@ obligation. `recreated_from_expense_id` links the replacement to its cancelled
 source for auditability. Expense Operators may create Expenses but do not have
 the Tenant-Administrator correction authority (`expenses.update`).
 
-Journey provenance remains required during the staged cutover. Bite 30J owns
+Journey provenance remains required during the staged cutover. Bite 30K owns
 removal of obsolete Collaborator-as-owner compatibility constraints after all
 runtime paths have migrated.
 
@@ -169,4 +169,4 @@ financial history belonging to another Tenant.
 
 Bite 30G does not remove the retained `collaborator_id` provenance columns or
 legacy Journey compatibility foreign keys. Final compatibility-schema removal
-and final foreign-key hardening remain Bite 30J responsibilities.
+and final foreign-key hardening remain Bite 30K responsibilities.

@@ -759,9 +759,12 @@ func (s *service) recordReplacementAudit(ctx context.Context, actorUserID string
 		"previousReplacementForAssignmentId": previousReplacementForAssignmentID,
 	}
 	metadataJSON, _ := json.Marshal(metadata)
+	auditContext := authz.AuthorizationAuditContextFrom(ctx)
 	_ = s.auditStore.RecordAuthorizationAudit(ctx, authz.AuthorizationAuditEntry{
+		Actor:           auditContext.Actor,
 		FallbackActorID: actorUserID,
 		TenantID:        tenantctx.TenantID(ctx),
+		CorrelationID:   auditContext.CorrelationID,
 		Permission:      authz.PermissionPlanningUpdate,
 		Operation:       "work_period_assignment_replacement_set",
 		TargetType:      "work_period_assignment",

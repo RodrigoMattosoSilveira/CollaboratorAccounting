@@ -24,10 +24,17 @@ test("admin can view and filter sensitive audit logs", async ({ page }) => {
           {
             id: "audit-e2e-partial-payout",
             occurredAt: "2026-06-22T14:00:00Z",
+            accountId: "account-bootstrap-admin",
             actorId: "bootstrap-admin",
             actorRecordId: "actor-bootstrap-admin",
+            actorScope: "APPLICATION",
             tenantId: "default",
+            sessionId: "session-bootstrap-admin",
+            correlationId: "correlation-partial-payout",
             permissionCode: "journey_settlements.partial_payout",
+            authorizationSource: "GLOBAL_CONTROL_PLANE",
+            authorizationSourceId: "grant-bootstrap-admin",
+            authorizationRoleCode: "APPLICATION_ADMIN",
             operation: "current_accounts.partial_payout",
             targetType: "collaborator",
             targetId: "collab-e2e-1",
@@ -84,6 +91,10 @@ test("admin can view and filter sensitive audit logs", async ({ page }) => {
   await expect(
     authorizedPayoutRow.locator("dd").filter({ hasText: "second-admin@example.com" }).first(),
   ).toBeVisible();
+  await expect(authorizedPayoutRow).toContainText("account-bootstrap-admin");
+  await expect(authorizedPayoutRow).toContainText("session-bootstrap-admin");
+  await expect(authorizedPayoutRow).toContainText("correlation-partial-payout");
+  await expect(authorizedPayoutRow).toContainText("GLOBAL_CONTROL_PLANE · APPLICATION_ADMIN · grant-bootstrap-admin");
 
   const deniedReversalRow = page
     .getByTestId("audit-log-row")

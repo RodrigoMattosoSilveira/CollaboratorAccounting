@@ -271,6 +271,7 @@ func (h *Handler) recordAdminAudit(c fiber.Ctx, operation string, targetID strin
 		TargetType:      "auth_user_account",
 		TargetID:        strings.TrimSpace(targetID),
 		Decision:        authz.AuditDecisionAuthorized,
+		CorrelationID:   authz.RequestCorrelationID(c),
 		RequestMethod:   c.Method(),
 		RequestPath:     c.Path(),
 	})

@@ -30,9 +30,23 @@ const sensitiveOperationOptions = [
   { value: "ledger_receipts.print", label: "Receipt print" },
   { value: "ledger_receipts.return", label: "Receipt return" },
   { value: "ledger_receipts.backfill_debit_entries", label: "Receipt debit-ledger backfill" },
+  { value: "authentication.accounts.create", label: "Authentication Account created" },
   { value: "authz.actors.create", label: "Authorization actor created" },
   { value: "authz.role_grants.create", label: "Authorization role granted" },
   { value: "authz.role_grants.revoke", label: "Authorization role revoked" },
+  { value: "authentication.accounts.security_suspend", label: "Authentication Account suspended" },
+  { value: "authentication.accounts.security_suspension_clear", label: "Authentication Account suspension cleared" },
+  { value: "authz.actors.activate", label: "Authorization Actor activated" },
+  { value: "authz.actors.deactivate", label: "Authorization Actor deactivated" },
+  { value: "authz.tenant_actors.activate", label: "Tenant Actor activated" },
+  { value: "authz.tenant_actors.deactivate", label: "Tenant Actor deactivated" },
+  { value: "authz.tenant_role_grants.create", label: "Tenant Role Grant created" },
+  { value: "authz.tenant_role_grants.revoke", label: "Tenant Role Grant revoked" },
+  { value: "people.memberships.create", label: "Person–Tenant Membership created" },
+  { value: "people.memberships.status_change", label: "Person–Tenant Membership status changed" },
+  { value: "people.memberships.reactivate", label: "Person–Tenant Membership reactivated" },
+  { value: "collaborators.journey.create", label: "Collaborator Journey created" },
+  { value: "collaborators.journey.close", label: "Collaborator Journey closed" },
   { value: "support_access_leases.request", label: "Support lease requested" },
   { value: "support_access_leases.approve", label: "Support lease approved" },
   { value: "support_access_leases.terminate", label: "Support lease terminated" },
@@ -361,6 +375,21 @@ type Metadata = Record<string, unknown>;
 
 function auditEvidenceItems(log: AuthzAuditLog, metadata: Metadata): Array<{ label: string; value: string }> {
   const items: Array<{ label: string; value: string }> = [];
+
+  if (log.accountId) items.push({ label: "Authentication Account", value: log.accountId });
+  if (log.actorScope) items.push({ label: "Actor scope", value: log.actorScope });
+  if (log.personId) items.push({ label: "Acting Person", value: log.personId });
+  if (log.membershipId) items.push({ label: "Acting Membership", value: log.membershipId });
+  if (log.sessionId) items.push({ label: "Session", value: log.sessionId });
+  if (log.correlationId) items.push({ label: "Correlation", value: log.correlationId });
+  if (log.authorizationSource) {
+    items.push({
+      label: "Authorization source",
+      value: [log.authorizationSource, log.authorizationRoleCode, log.authorizationSourceId]
+        .filter(Boolean)
+        .join(" · "),
+    });
+  }
 
   if (log.reason) {
     items.push({ label: "Decision reason", value: log.reason });

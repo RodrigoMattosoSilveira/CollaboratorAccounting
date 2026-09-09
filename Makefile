@@ -407,6 +407,7 @@ TEST_RELEASE_BASELINE_DB ?= $(SERVER_ROOT)/test/rehearsal-baselines/pre-bite30i.
 TEST_RELEASE_BASELINE_LAST_MIGRATION ?= 000062_tenant_administrator_cardinality.up.sql
 TEST_RELEASE_MIGRATION_UNDER_REHEARSAL ?= 000063_global_administration_control_plane.up.sql
 TEST_RELEASE_FINAL_MIGRATION ?= 000066_support_access_lease_audit_attribution.up.sql
+DEPLOYMENT_FINAL_MIGRATION ?= 000067_audit_identity_lifecycle_hardening.up.sql
 TEST_RELEASE_REHEARSAL_MARKER_DIR ?= $(SERVER_ROOT)/test/release-rehearsal-passed
 
 .PHONY: server-test-rehearsal-capture-baseline
@@ -538,7 +539,7 @@ server-migrated-db-verify:
 	docker exec \
 		-e EXPECTED_BASELINE_LAST_MIGRATION="$(TEST_RELEASE_BASELINE_LAST_MIGRATION)" \
 		-e EXPECTED_FIRST_REHEARSED_MIGRATION="$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)" \
-		-e EXPECTED_FINAL_MIGRATION="$(TEST_RELEASE_FINAL_MIGRATION)" \
+		-e EXPECTED_FINAL_MIGRATION="$(DEPLOYMENT_FINAL_MIGRATION)" \
 		"$$container" /app/verify-migrated-db.sh
 
 .PHONY: server-record-test-release-rehearsal
@@ -568,6 +569,7 @@ server-record-test-release-rehearsal:
 		echo "baseline_last_migration=$(TEST_RELEASE_BASELINE_LAST_MIGRATION)"; \
 		echo "migration_under_rehearsal=$(TEST_RELEASE_MIGRATION_UNDER_REHEARSAL)"; \
 		echo "final_migration=$(TEST_RELEASE_FINAL_MIGRATION)"; \
+		echo "deployment_final_migration=$(DEPLOYMENT_FINAL_MIGRATION)"; \
 		echo "passed_at=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
 	} > "$$marker"; \
 	echo "Recorded successful Test release rehearsal: $$marker"; \
@@ -603,6 +605,10 @@ server-require-test-release-rehearsal:
 	}; \
 	grep -qx "final_migration=$(TEST_RELEASE_FINAL_MIGRATION)" "$$marker" || { \
 		echo "Production deployment blocked: rehearsal did not verify the complete 30I migration sequence."; \
+		exit 1; \
+	}; \
+	grep -qx "deployment_final_migration=$(DEPLOYMENT_FINAL_MIGRATION)" "$$marker" || { \
+		echo "Production deployment blocked: rehearsal did not verify the current deployed migration boundary $(DEPLOYMENT_FINAL_MIGRATION)."; \
 		exit 1; \
 	}; \
 	echo "Production release gate passed using Test rehearsal marker:"; \

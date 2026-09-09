@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -853,7 +854,7 @@ func TestAuthenticatedGlobalAccountResolvesOnlyControlPlaneContext(t *testing.T)
 
 	app := fiber.New()
 	app.Use(func(c fiber.Ctx) error {
-		authentication.SetSessionContext(c, authentication.SessionResponse{AccountID: "application-account"})
+		authentication.SetSessionContext(c, authentication.SessionResponse{AccountID: "application-account", SessionID: "session-application"})
 		return c.Next()
 	})
 	app.Use(authorizationMiddleware(deps))
@@ -865,17 +866,28 @@ func TestAuthenticatedGlobalAccountResolvesOnlyControlPlaneContext(t *testing.T)
 		if actor.Scope != authz.ActorScopeApplication || actor.TenantID != authz.GlobalTenantScope {
 			t.Fatalf("unexpected GLOBAL control-plane actor: %#v", actor)
 		}
+		if actor.AccountID != "application-account" || actor.SessionID != "session-application" {
+			t.Fatalf("expected authenticated Account and Session on effective Actor, got %#v", actor)
+		}
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
 	req := httptest.NewRequest(fiber.MethodGet, "/control-plane", nil)
 	req.Header.Set(authz.HeaderTenantID, authz.GlobalTenantScope)
+	req.Header.Set(authz.HeaderCorrelationID, "client-controlled-correlation")
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	if resp.StatusCode != fiber.StatusNoContent {
 		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+	correlationID := strings.TrimSpace(resp.Header.Get(authz.HeaderCorrelationID))
+	if correlationID == "" {
+		t.Fatal("expected server-generated audit correlation identity on response")
+	}
+	if correlationID == "client-controlled-correlation" {
+		t.Fatal("request correlation identity must not trust the client-provided header")
 	}
 	if store.accountID != "application-account" || store.tenantID != authz.GlobalTenantScope {
 		t.Fatalf("expected Account control-plane lookup, account=%q context=%q", store.accountID, store.tenantID)

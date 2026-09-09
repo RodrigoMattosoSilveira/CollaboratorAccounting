@@ -134,7 +134,7 @@ Bite 30G will move Earnings and Expenses to enduring `person_id + tenant_id` own
 
 ### Legacy removal
 
-Bite 30J removes the compatibility structures only after every runtime domain has cut over.
+Bite 30K removes the compatibility structures only after every runtime domain has cut over.
 
 ## 30B database invariants
 

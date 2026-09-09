@@ -68,6 +68,7 @@ type AccountResponse struct {
 
 type SessionResponse struct {
 	AccountID          string    `json:"accountId"`
+	SessionID          string    `json:"-"`
 	DisplayName        string    `json:"displayName"`
 	Login              string    `json:"login"`
 	MustChangePassword bool      `json:"mustChangePassword"`
@@ -75,7 +76,7 @@ type SessionResponse struct {
 
 	// Bite 30E makes the HTTP session Account-authenticated. These legacy actor
 	// fields remain available only to isolated compatibility tests and route
-	// fallbacks until Bite 30J removes the old single-Actor assumptions; they are
+	// fallbacks until Bite 30K removes the old single-Actor compatibility schema; they are
 	// deliberately no longer part of the browser session contract.
 	ActorID        string `json:"-"`
 	ActorKey       string `json:"-"`

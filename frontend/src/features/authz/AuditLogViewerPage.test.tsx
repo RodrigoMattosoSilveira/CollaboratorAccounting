@@ -10,10 +10,17 @@ const auditLogs: AuthzAuditLog[] = [
   {
     id: "audit-partial-payout-1",
     occurredAt: "2026-06-22T14:00:00Z",
+    accountId: "account-bootstrap-admin",
     actorId: "bootstrap-admin",
     actorRecordId: "actor-bootstrap-admin",
+    actorScope: "APPLICATION",
     tenantId: "default",
+    sessionId: "session-bootstrap-admin",
+    correlationId: "correlation-partial-payout",
     permissionCode: "journey_settlements.partial_payout",
+    authorizationSource: "GLOBAL_CONTROL_PLANE",
+    authorizationSourceId: "grant-bootstrap-admin",
+    authorizationRoleCode: "APPLICATION_ADMIN",
     supportLeaseId: "lease-support-a",
     operation: "current_accounts.partial_payout",
     targetType: "collaborator",
@@ -90,6 +97,10 @@ describe("AuditLogViewerPage", () => {
     await waitForText("COLLABORATOR_REQUESTED_PAYOUT");
     await waitForText("second-admin@example.com");
     await waitForText("recent reauthentication is required");
+    await waitForText("account-bootstrap-admin");
+    await waitForText("session-bootstrap-admin");
+    await waitForText("correlation-partial-payout");
+    await waitForText("GLOBAL_CONTROL_PLANE · APPLICATION_ADMIN · grant-bootstrap-admin");
 
     const getCall = fetchCalls.find((call) => call.url.startsWith("/api/v1/authz/audit-logs"));
     expect(getCall?.headers["X-Actor-ID"]).toBeUndefined();

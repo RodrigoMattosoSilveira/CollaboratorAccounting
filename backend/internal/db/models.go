@@ -54,7 +54,7 @@ type CollaboratorJourney struct {
 	TenantID     string  `gorm:"type:text;not null;default:default;index" json:"tenantId"`
 	MembershipID *string `gorm:"type:text;index" json:"membershipId,omitempty"`
 	// PersonID remains the legacy tenant-owned people.id compatibility foreign key
-	// until Bite 30J removes the pre-Bite-30 projection.
+	// until Bite 30K removes the pre-Bite-30 projection.
 	PersonID string `gorm:"type:text;not null;index" json:"legacyPersonId"`
 
 	JourneyStartDate time.Time `gorm:"type:date;not null" json:"journeyStartDate"`

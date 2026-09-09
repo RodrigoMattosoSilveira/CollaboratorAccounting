@@ -5,7 +5,7 @@ DB_PATH="${DATABASE_PATH:-/app/data/app.db}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/app/migrations}"
 EXPECTED_BASELINE_LAST_MIGRATION="${EXPECTED_BASELINE_LAST_MIGRATION:-000062_tenant_administrator_cardinality.up.sql}"
 EXPECTED_FIRST_REHEARSED_MIGRATION="${EXPECTED_FIRST_REHEARSED_MIGRATION:-000063_global_administration_control_plane.up.sql}"
-EXPECTED_FINAL_MIGRATION="${EXPECTED_FINAL_MIGRATION:-000066_support_access_lease_audit_attribution.up.sql}"
+EXPECTED_FINAL_MIGRATION="${EXPECTED_FINAL_MIGRATION:-000067_audit_identity_lifecycle_hardening.up.sql}"
 
 if [ ! -f "$DB_PATH" ]; then
   echo "Missing database for migration verification: $DB_PATH" >&2
@@ -133,6 +133,29 @@ require_trigger trg_support_access_lease_approval_tenant_administrator
 require_trigger trg_support_access_lease_termination_tenant_administrator
 require_trigger trg_support_access_lease_permission_allowlist
 require_trigger trg_support_access_lease_no_delete
+require_trigger trg_authz_audit_logs_no_update
+require_trigger trg_authz_audit_logs_no_delete
+
+audit_identity_migration_count="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM schema_migrations WHERE filename='000067_audit_identity_lifecycle_hardening.up.sql';")"
+if [ "$audit_identity_migration_count" = "1" ]; then
+  for column in \
+    account_id \
+    actor_scope \
+    person_id \
+    membership_id \
+    session_id \
+    correlation_id \
+    authorization_source \
+    authorization_source_id \
+    authorization_role_code; do
+    require_column authz_audit_logs "$column"
+  done
+  require_index idx_authz_audit_logs_account_id
+  require_index idx_authz_audit_logs_session_id
+  require_index idx_authz_audit_logs_correlation_id
+  require_index idx_authz_audit_logs_authorization_source
+  require_trigger trg_authz_audit_identity_required_insert
+fi
 
 application_admin_permission_count="$(sqlite3 "$DB_PATH" "
 SELECT COUNT(*)
@@ -244,4 +267,6 @@ printf '%s\n' \
   "Integrity check: ok" \
   "Foreign key check: clean" \
   "Application Administrator standing authority: control-plane only" \
-  "Application Administrator tenant-identity violations: 0"
+  "Application Administrator tenant-identity violations: 0" \
+  "Audit history guards: append-only" \
+  "30J audit identity schema: $([ "$audit_identity_migration_count" = "1" ] && printf 'present' || printf 'not-yet-applied')"

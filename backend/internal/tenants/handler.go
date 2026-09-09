@@ -146,6 +146,7 @@ func (h *Handler) recordAudit(c fiber.Ctx, permission authz.Permission, operatio
 		TargetType:      "tenant",
 		TargetID:        tenantID,
 		Decision:        authz.AuditDecisionAuthorized,
+		CorrelationID:   authz.RequestCorrelationID(c),
 		RequestMethod:   c.Method(),
 		RequestPath:     c.Path(),
 	})

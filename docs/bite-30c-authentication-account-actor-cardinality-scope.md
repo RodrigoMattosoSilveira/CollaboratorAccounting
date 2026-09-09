@@ -45,7 +45,7 @@ at most one GLOBAL Actor per Account, and at most one primary Actor.
 
 `auth_user_accounts.actor_id` remains in place temporarily as the Bite 28
 compatibility/default pointer. It is no longer the authoritative ownership
-relation and is scheduled for removal in Bite 30J after the remaining callers
+relation and is scheduled for removal in Bite 30K after the remaining callers
 have cut over.
 
 ## Migration and startup repair
@@ -123,7 +123,7 @@ Bite 30C does not:
 - remove Application Administrator standing tenant-data compatibility or add
   Support Access Leases — Bite 30H;
 - remove legacy `auth_user_accounts.actor_id`, legacy Actor Person/Collaborator
-  links, or copied legacy grants — Bite 30J.
+  links, or copied legacy grants — Bite 30K.
 
 ## Principal invariants established
 

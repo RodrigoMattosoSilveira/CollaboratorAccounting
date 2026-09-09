@@ -114,6 +114,7 @@ func (h *Handler) recordSupportAccessLeaseAudit(c fiber.Ctx, actor *Actor, permi
 		TargetType:     "tenant_support_access_lease",
 		TargetID:       lease.ID,
 		Decision:       AuditDecisionAuthorized,
+		CorrelationID:  RequestCorrelationID(c),
 		RequestMethod:  c.Method(),
 		RequestPath:    c.Path(),
 	})
