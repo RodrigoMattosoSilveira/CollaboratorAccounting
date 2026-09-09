@@ -98,10 +98,19 @@ export type GrantTenantOperatorRoleInput = {
 export type AuthzAuditLog = {
   id: string;
   occurredAt: string;
+  accountId?: string;
   actorId?: string;
   actorRecordId?: string;
+  actorScope?: string;
+  personId?: string;
+  membershipId?: string;
   tenantId?: string;
+  sessionId?: string;
+  correlationId?: string;
   permissionCode?: string;
+  authorizationSource?: string;
+  authorizationSourceId?: string;
+  authorizationRoleCode?: string;
   supportLeaseId?: string;
   operation: string;
   targetType?: string;
@@ -114,8 +123,12 @@ export type AuthzAuditLog = {
 };
 
 export type AuthzAuditLogFilters = {
+  accountId?: string;
   actorId?: string;
   tenantId?: string;
+  sessionId?: string;
+  correlationId?: string;
+  authorizationSource?: string;
   operation?: string;
   targetType?: string;
   targetId?: string;

@@ -1,6 +1,8 @@
 package collaborators
 
 import (
+	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -8,11 +10,33 @@ import (
 	"enterpriseremotesystems/backend/internal/authz"
 	"enterpriseremotesystems/backend/internal/shared/httpx"
 	"enterpriseremotesystems/backend/internal/shared/requesttenant"
+	"enterpriseremotesystems/backend/internal/shared/tenantctx"
 )
 
-type Handler struct{ service Service }
+type Handler struct {
+	service    Service
+	actorStore authz.ActorStore
+	auditStore authz.AuditLogStore
+}
 
-func NewHandler(service Service) *Handler { return &Handler{service: service} }
+type HandlerOption func(*Handler)
+
+func WithAuthorizationAudit(actorStore authz.ActorStore, auditStore authz.AuditLogStore) HandlerOption {
+	return func(handler *Handler) {
+		handler.actorStore = actorStore
+		handler.auditStore = auditStore
+	}
+}
+
+func NewHandler(service Service, options ...HandlerOption) *Handler {
+	handler := &Handler{service: service}
+	for _, option := range options {
+		if option != nil {
+			option(handler)
+		}
+	}
+	return handler
+}
 
 func (h *Handler) ListCandidates(c fiber.Ctx) error {
 	items, err := h.service.ListCandidates(requesttenant.Context(c))
@@ -65,6 +89,7 @@ func (h *Handler) Create(c fiber.Ctx) error {
 	if err != nil {
 		return httpx.WriteError(c, err)
 	}
+	h.recordLifecycleAudit(c, authz.PermissionCollaboratorsCreate, "collaborators.journey.create", created.ID, created.PersonID, created.MembershipID)
 
 	return c.Status(fiber.StatusCreated).JSON(httpx.APIResponse{Data: created})
 }
@@ -134,6 +159,34 @@ func (h *Handler) ExtendJourney(c fiber.Ctx) error {
 	}
 
 	return c.JSON(httpx.APIResponse{Data: updated})
+}
+
+func (h *Handler) recordLifecycleAudit(c fiber.Ctx, permission authz.Permission, operation, collaboratorID, personID, membershipID string) {
+	if h.auditStore == nil {
+		return
+	}
+	actor, err := authz.ResolveRequestActor(c, h.actorStore)
+	if err != nil && !errors.Is(err, authz.ErrMissingActor) {
+		return
+	}
+	metadata, _ := json.Marshal(map[string]string{
+		"personId":     strings.TrimSpace(personID),
+		"membershipId": strings.TrimSpace(membershipID),
+	})
+	_ = h.auditStore.RecordAuthorizationAudit(requesttenant.Context(c), authz.AuthorizationAuditEntry{
+		Actor:           actor,
+		FallbackActorID: strings.TrimSpace(c.Get(authz.HeaderActorID)),
+		TenantID:        tenantctx.TenantID(requesttenant.Context(c)),
+		Permission:      permission,
+		Operation:       operation,
+		TargetType:      "collaborator_journey",
+		TargetID:        strings.TrimSpace(collaboratorID),
+		Decision:        authz.AuditDecisionAuthorized,
+		MetadataJSON:    string(metadata),
+		CorrelationID:   authz.RequestCorrelationID(c),
+		RequestMethod:   c.Method(),
+		RequestPath:     c.Path(),
+	})
 }
 
 func actorUserID(c fiber.Ctx) string {

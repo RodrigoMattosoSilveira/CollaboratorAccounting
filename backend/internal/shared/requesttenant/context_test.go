@@ -35,6 +35,39 @@ func TestContextUsesAuthoritativeActorTenant(t *testing.T) {
 	}
 }
 
+func TestContextCarriesResolvedAuditIdentityAndCorrelation(t *testing.T) {
+	app := fiber.New()
+	app.Get("/", func(c fiber.Ctx) error {
+		actor := &authz.Actor{
+			ID:        "tenant-admin",
+			RecordID:  "actor-tenant-admin",
+			AccountID: "account-tenant-admin",
+			SessionID: "session-tenant-admin",
+			TenantID:  "tenant-selected",
+			Scope:     authz.ActorScopeTenant,
+		}
+		authz.SetRequestActor(c, actor)
+		authz.SetRequestCorrelationID(c, "correlation-requesttenant")
+
+		auditContext := authz.AuthorizationAuditContextFrom(Context(c))
+		if auditContext.Actor != actor {
+			t.Fatalf("expected resolved Actor in service audit context, got %#v", auditContext.Actor)
+		}
+		if auditContext.CorrelationID != "correlation-requesttenant" {
+			t.Fatalf("expected request correlation identity, got %q", auditContext.CorrelationID)
+		}
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusNoContent {
+		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+}
+
 func TestContextRetainsIsolatedHandlerFallbacks(t *testing.T) {
 	app := fiber.New()
 	app.Get("/header", func(c fiber.Ctx) error {

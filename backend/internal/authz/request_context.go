@@ -4,13 +4,39 @@ import (
 	"errors"
 	"strings"
 
+	"enterpriseremotesystems/backend/internal/shared/ids"
 	"github.com/gofiber/fiber/v3"
 )
 
 const (
-	requestActorLocalKey      = "ers.authz.request_actor"
-	requestActorErrorLocalKey = "ers.authz.request_actor_error"
+	requestActorLocalKey         = "ers.authz.request_actor"
+	requestActorErrorLocalKey    = "ers.authz.request_actor_error"
+	requestCorrelationIDLocalKey = "ers.authz.correlation_id"
 )
+
+// SetRequestCorrelationID stores the server-generated per-request correlation
+// identity used to join multiple sensitive audit records emitted by one HTTP
+// request. It has no authorization meaning.
+func SetRequestCorrelationID(c fiber.Ctx, correlationID string) string {
+	correlationID = strings.TrimSpace(correlationID)
+	if correlationID == "" {
+		correlationID = ids.New()
+	}
+	c.Locals(requestCorrelationIDLocalKey, correlationID)
+	return correlationID
+}
+
+// RequestCorrelationID returns the current request's correlation identity,
+// creating one for isolated handler tests that do not install normal route
+// middleware.
+func RequestCorrelationID(c fiber.Ctx) string {
+	if value := c.Locals(requestCorrelationIDLocalKey); value != nil {
+		if correlationID, ok := value.(string); ok && strings.TrimSpace(correlationID) != "" {
+			return strings.TrimSpace(correlationID)
+		}
+	}
+	return SetRequestCorrelationID(c, "")
+}
 
 // SetRequestActor stores the authoritative actor resolved by the route
 // middleware. Handler-level authorization must reuse this actor rather than

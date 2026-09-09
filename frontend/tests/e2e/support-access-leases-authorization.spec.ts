@@ -66,10 +66,19 @@ type Permission = {
 
 type AuditLog = {
   id: string;
+  accountId?: string;
   actorId?: string;
   actorRecordId?: string;
+  actorScope?: string;
+  personId?: string;
+  membershipId?: string;
   tenantId?: string;
+  sessionId?: string;
+  correlationId?: string;
   permissionCode?: string;
+  authorizationSource?: string;
+  authorizationSourceId?: string;
+  authorizationRoleCode?: string;
   supportLeaseId?: string;
   operation: string;
   targetType?: string;
@@ -218,6 +227,16 @@ test.describe("Tenant Support Access Lease authorization", () => {
       expect(globalBefore.membershipId).toBeFalsy();
       expect(globalBefore.collaboratorId).toBeFalsy();
 
+      const tenantAdminActor = await getCurrentActor(
+        tenantAdminApi,
+        authzHeaders(SUPPORT_TENANT_ID),
+      );
+      expect(tenantAdminActor.scope).toBe("TENANT");
+      expect(tenantAdminActor.tenantId).toBe(SUPPORT_TENANT_ID);
+      expect(tenantAdminActor.roleCodes).toContain("TENANT_ADMIN");
+      expect(tenantAdminActor.globalPersonId).toBeTruthy();
+      expect(tenantAdminActor.membershipId).toBeTruthy();
+
       const eligibleResponse = await applicationAdminApi.get(
         e2eApiUrl("/api/v1/authz/support-access-leases/eligible-permissions"),
         { headers: applicationTenantHeaders("*") },
@@ -267,6 +286,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         },
       );
       await expectStatus(requestResponse, 201, "request Tenant support access");
+      const requestCorrelationID = responseCorrelationID(requestResponse);
       const requestedLease = await responseData<SupportAccessLease>(
         requestResponse,
         "request Tenant support access",
@@ -314,6 +334,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         { headers: authzHeaders(SUPPORT_TENANT_ID) },
       );
       await expectStatus(approvalResponse, 200, "approve support access in the exact Tenant");
+      const approvalCorrelationID = responseCorrelationID(approvalResponse);
       const approvedLease = await responseData<SupportAccessLease>(
         approvalResponse,
         "approve support access in the exact Tenant",
@@ -349,6 +370,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         200,
         "lease-backed Application Administrator may use the leased people.read permission",
       );
+      const peopleCorrelationID = responseCorrelationID(peopleResponse);
 
       const expensesResponse = await applicationAdminApi.get(
         e2eApiUrl("/api/v1/expenses?page=1&pageSize=1"),
@@ -360,6 +382,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         "lease-backed Application Administrator must not use an unleased Tenant permission",
       );
       await expectErrorCode(expensesResponse, "forbidden");
+      const expensesCorrelationID = responseCorrelationID(expensesResponse);
 
       const controlPlaneResponse = await applicationAdminApi.get(
         e2eApiUrl("/api/v1/authz/roles"),
@@ -371,6 +394,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         "lease-backed Application Administrator must not use global authorization administration",
       );
       await expectErrorCode(controlPlaneResponse, "forbidden");
+      const controlPlaneCorrelationID = responseCorrelationID(controlPlaneResponse);
 
       const otherTenantResponse = await applicationAdminApi.get(
         e2eApiUrl("/api/v1/authz/current-actor"),
@@ -398,21 +422,45 @@ test.describe("Tenant Support Access Lease authorization", () => {
         auditResponse,
         "read lease-specific support audit history",
       );
-      expectLeaseAudit(
+      const requestAudit = expectLeaseAudit(
         auditLogs,
         requestedLease.id,
         "support_access_leases.request",
         "support_access_leases.request",
         "AUTHORIZED",
       );
-      expectLeaseAudit(
+      expectAuditIdentity(requestAudit, {
+        actorRecordId: globalBefore.actorRecordId,
+        actorScope: "APPLICATION",
+        correlationId: requestCorrelationID,
+        authorizationSource: "GLOBAL_CONTROL_PLANE",
+        authorizationRoleCode: "APPLICATION_ADMIN",
+        requireSourceId: true,
+        requireAccountAndSession: true,
+      });
+      expect(requestAudit.personId).toBeFalsy();
+      expect(requestAudit.membershipId).toBeFalsy();
+
+      const approvalAudit = expectLeaseAudit(
         auditLogs,
         requestedLease.id,
         "support_access_leases.approve",
         "support_access_leases.approve",
         "AUTHORIZED",
       );
-      expectLeaseAudit(
+      expectAuditIdentity(approvalAudit, {
+        actorRecordId: tenantAdminActor.actorRecordId,
+        actorScope: "TENANT",
+        personId: tenantAdminActor.globalPersonId,
+        membershipId: tenantAdminActor.membershipId,
+        correlationId: approvalCorrelationID,
+        authorizationSource: "ROLE_GRANT",
+        authorizationRoleCode: "TENANT_ADMIN",
+        requireSourceId: true,
+        requireAccountAndSession: true,
+      });
+
+      const peopleAudit = expectLeaseAudit(
         auditLogs,
         requestedLease.id,
         "support_access.use",
@@ -421,7 +469,18 @@ test.describe("Tenant Support Access Lease authorization", () => {
         "GET",
         "/api/v1/people",
       );
-      expectLeaseAudit(
+      expectAuditIdentity(peopleAudit, {
+        actorRecordId: globalBefore.actorRecordId,
+        actorScope: "APPLICATION",
+        correlationId: peopleCorrelationID,
+        authorizationSource: "SUPPORT_LEASE",
+        authorizationSourceId: requestedLease.id,
+        requireAccountAndSession: true,
+      });
+      expect(peopleAudit.accountId).toBe(requestAudit.accountId);
+      expect(peopleAudit.sessionId).toBe(requestAudit.sessionId);
+
+      const expensesAudit = expectLeaseAudit(
         auditLogs,
         requestedLease.id,
         "support_access.use",
@@ -430,7 +489,15 @@ test.describe("Tenant Support Access Lease authorization", () => {
         "GET",
         "/api/v1/expenses",
       );
-      expectLeaseAudit(
+      expectAuditIdentity(expensesAudit, {
+        actorRecordId: globalBefore.actorRecordId,
+        actorScope: "APPLICATION",
+        correlationId: expensesCorrelationID,
+        authorizationSource: "NONE",
+        requireAccountAndSession: true,
+      });
+
+      const controlPlaneAudit = expectLeaseAudit(
         auditLogs,
         requestedLease.id,
         "support_access.use",
@@ -439,6 +506,15 @@ test.describe("Tenant Support Access Lease authorization", () => {
         "GET",
         "/api/v1/authz/roles",
       );
+      expectAuditIdentity(controlPlaneAudit, {
+        actorRecordId: globalBefore.actorRecordId,
+        actorScope: "APPLICATION",
+        correlationId: controlPlaneCorrelationID,
+        authorizationSource: "GLOBAL_CONTROL_PLANE",
+        authorizationRoleCode: "APPLICATION_ADMIN",
+        requireSourceId: true,
+        requireAccountAndSession: true,
+      });
 
       const terminationResponse = await tenantAdminApi.post(
         e2eApiUrl(
@@ -450,6 +526,7 @@ test.describe("Tenant Support Access Lease authorization", () => {
         },
       );
       await expectStatus(terminationResponse, 200, "terminate the approved support lease");
+      const terminationCorrelationID = responseCorrelationID(terminationResponse);
       const terminatedLease = await responseData<SupportAccessLease>(
         terminationResponse,
         "terminate the approved support lease",
@@ -457,6 +534,38 @@ test.describe("Tenant Support Access Lease authorization", () => {
       expect(terminatedLease.status).toBe("TERMINATED");
       expect(terminatedLease.effectiveStatus).toBe("TERMINATED");
       expect(terminatedLease.expiresAt).toBe(requestedExpiration);
+
+      const finalAuditResponse = await tenantAdminApi.get(
+        e2eApiUrl(
+          `/api/v1/authz/support-access-leases/${encodeURIComponent(requestedLease.id)}/audit-logs`,
+        ),
+        { headers: authzHeaders(SUPPORT_TENANT_ID) },
+      );
+      await expectStatus(finalAuditResponse, 200, "read terminated lease audit history");
+      const finalAuditLogs = await responseData<AuditLog[]>(
+        finalAuditResponse,
+        "read terminated lease audit history",
+      );
+      const terminationAudit = expectLeaseAudit(
+        finalAuditLogs,
+        requestedLease.id,
+        "support_access_leases.terminate",
+        "support_access_leases.terminate",
+        "AUTHORIZED",
+      );
+      expectAuditIdentity(terminationAudit, {
+        actorRecordId: tenantAdminActor.actorRecordId,
+        actorScope: "TENANT",
+        personId: tenantAdminActor.globalPersonId,
+        membershipId: tenantAdminActor.membershipId,
+        correlationId: terminationCorrelationID,
+        authorizationSource: "ROLE_GRANT",
+        authorizationRoleCode: "TENANT_ADMIN",
+        requireSourceId: true,
+        requireAccountAndSession: true,
+      });
+      expect(terminationAudit.accountId).toBe(approvalAudit.accountId);
+      expect(terminationAudit.sessionId).toBe(approvalAudit.sessionId);
 
       const afterTerminationResponse = await applicationAdminApi.get(
         e2eApiUrl("/api/v1/authz/current-actor"),
@@ -584,7 +693,7 @@ function expectLeaseAudit(
   decision: string,
   requestMethod?: string,
   requestPath?: string,
-): void {
+): AuditLog {
   const entry = logs.find(
     (candidate) =>
       candidate.supportLeaseId === leaseId &&
@@ -599,6 +708,46 @@ function expectLeaseAudit(
     `expected ${decision} ${operation} audit for ${permissionCode} on lease ${leaseId}`,
   ).toBeDefined();
   expect(entry?.tenantId).toBe(SUPPORT_TENANT_ID);
+  return entry as AuditLog;
+}
+
+type AuditIdentityExpectation = {
+  actorRecordId: string;
+  actorScope: string;
+  personId?: string;
+  membershipId?: string;
+  correlationId: string;
+  authorizationSource: string;
+  authorizationSourceId?: string;
+  authorizationRoleCode?: string;
+  requireSourceId?: boolean;
+  requireAccountAndSession?: boolean;
+};
+
+function expectAuditIdentity(entry: AuditLog, expected: AuditIdentityExpectation): void {
+  expect(entry.actorRecordId).toBe(expected.actorRecordId);
+  expect(entry.actorScope).toBe(expected.actorScope);
+  expect(entry.correlationId).toBe(expected.correlationId);
+  expect(entry.authorizationSource).toBe(expected.authorizationSource);
+  if (expected.personId !== undefined) expect(entry.personId).toBe(expected.personId);
+  if (expected.membershipId !== undefined) expect(entry.membershipId).toBe(expected.membershipId);
+  if (expected.authorizationSourceId !== undefined) {
+    expect(entry.authorizationSourceId).toBe(expected.authorizationSourceId);
+  }
+  if (expected.authorizationRoleCode !== undefined) {
+    expect(entry.authorizationRoleCode).toBe(expected.authorizationRoleCode);
+  }
+  if (expected.requireSourceId) expect(entry.authorizationSourceId).toBeTruthy();
+  if (expected.requireAccountAndSession) {
+    expect(entry.accountId).toBeTruthy();
+    expect(entry.sessionId).toBeTruthy();
+  }
+}
+
+function responseCorrelationID(response: APIResponse): string {
+  const correlationID = response.headers()["x-correlation-id"]?.trim() ?? "";
+  expect(correlationID, "expected server-generated X-Correlation-ID response header").not.toBe("");
+  return correlationID;
 }
 
 async function responseArray<T>(

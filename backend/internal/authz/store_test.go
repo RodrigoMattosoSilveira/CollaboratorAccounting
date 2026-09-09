@@ -1122,9 +1122,22 @@ func TestGORMStoreRecordsAndListsAuthorizationAuditLogs(t *testing.T) {
 	database := newAuthzTestDB(t)
 	store := NewGORMStore(database)
 
-	actor := &Actor{ID: "auditor@example.com", RecordID: "authz-actor-auditor", TenantID: "tenant-a"}
+	actor := &Actor{
+		ID:             "auditor@example.com",
+		RecordID:       "authz-actor-auditor",
+		AccountID:      "account-auditor",
+		SessionID:      "session-auditor",
+		TenantID:       "tenant-a",
+		Scope:          ActorScopeTenant,
+		GlobalPersonID: "person-auditor",
+		MembershipID:   "membership-auditor",
+		AuthorizationSources: map[Permission]AuthorizationSourceRef{
+			PermissionLedgerCorrectionsCreate: {Kind: AuthorizationSourceRoleGrant, ID: "grant-auditor", RoleCode: string(RoleExpenseOperator)},
+		},
+	}
 	if err := store.RecordAuthorizationAudit(context.Background(), AuthorizationAuditEntry{
 		Actor:         actor,
+		CorrelationID: "correlation-auditor",
 		Permission:    PermissionLedgerCorrectionsCreate,
 		Operation:     "ledger_entries.reverse",
 		TargetType:    "ledger_entry",
@@ -1146,6 +1159,19 @@ func TestGORMStoreRecordsAndListsAuthorizationAuditLogs(t *testing.T) {
 	got := logs[0]
 	if got.ActorID != "auditor@example.com" || got.PermissionCode != string(PermissionLedgerCorrectionsCreate) || got.Operation != "ledger_entries.reverse" || got.TargetID != "entry-1" || got.Decision != AuditDecisionAuthorized {
 		t.Fatalf("unexpected audit log: %#v", got)
+	}
+	if got.AccountID != "account-auditor" || got.ActorScope != string(ActorScopeTenant) || got.PersonID != "person-auditor" || got.MembershipID != "membership-auditor" || got.SessionID != "session-auditor" || got.CorrelationID != "correlation-auditor" {
+		t.Fatalf("expected complete acting identity chain, got %#v", got)
+	}
+	if got.AuthorizationSource != string(AuthorizationSourceRoleGrant) || got.AuthorizationSourceID != "grant-auditor" || got.AuthorizationRoleCode != string(RoleExpenseOperator) {
+		t.Fatalf("expected Role Grant authorization source, got %#v", got)
+	}
+
+	filtered, err := store.ListAuthorizationAuditLogs(context.Background(), AuditLogFilter{
+		AccountID: "account-auditor", SessionID: "session-auditor", CorrelationID: "correlation-auditor", AuthorizationSource: string(AuthorizationSourceRoleGrant),
+	})
+	if err != nil || len(filtered) != 1 || filtered[0].ID != got.ID {
+		t.Fatalf("expected new audit identity filters to resolve the event, logs=%#v err=%v", filtered, err)
 	}
 }
 
@@ -1249,8 +1275,17 @@ func TestAuthorizationAuditLogCarriesSupportLeaseAttribution(t *testing.T) {
 	actor := &Actor{
 		ID:             "support-admin@example.test",
 		RecordID:       "authz-actor-support-admin",
+		AccountID:      "account-support-admin",
+		SessionID:      "session-support-admin",
 		TenantID:       "tenant-a",
+		Scope:          ActorScopeApplication,
 		SupportLeaseID: "lease-a",
+		SupportLeasePermissions: map[Permission]struct{}{
+			PermissionPeopleRead: {},
+		},
+		AuthorizationSources: map[Permission]AuthorizationSourceRef{
+			PermissionPeopleRead: {Kind: AuthorizationSourceSupportLease, ID: "lease-a"},
+		},
 	}
 	if err := store.RecordAuthorizationAudit(context.Background(), AuthorizationAuditEntry{
 		Actor:         actor,
@@ -1274,6 +1309,8 @@ func TestAuthorizationAuditLogCarriesSupportLeaseAttribution(t *testing.T) {
 	}
 	if got := logs[0]; got.SupportLeaseID != "lease-a" || got.Operation != "support_access.use" || got.PermissionCode != string(PermissionPeopleRead) {
 		t.Fatalf("unexpected support-attributed audit log: %#v", got)
+	} else if got.AuthorizationSource != string(AuthorizationSourceSupportLease) || got.AuthorizationSourceID != "lease-a" || got.ActorScope != string(ActorScopeApplication) || got.AccountID != "account-support-admin" || got.SessionID != "session-support-admin" {
+		t.Fatalf("expected support-lease identity/source attribution, got %#v", got)
 	}
 }
 
@@ -1282,16 +1319,19 @@ func TestAuthorizationAuditLogPreservesHistoricalSupportLeaseProvenance(t *testi
 	store := NewGORMStore(database)
 	now := time.Now().UTC()
 	if err := database.Create(&AuthzAuditLog{
-		ID:            "audit-pre-30i3",
-		OccurredAt:    now,
-		ActorID:       "bootstrap-admin",
-		ActorRecordID: "actor-bootstrap-admin",
-		TenantID:      "tenant-a",
-		Operation:     "support_access_leases.request",
-		TargetType:    "tenant_support_access_lease",
-		TargetID:      "lease-historical",
-		Decision:      AuditDecisionAuthorized,
-		CreatedAt:     now,
+		ID:                  "audit-pre-30i3",
+		OccurredAt:          now,
+		ActorID:             "bootstrap-admin",
+		ActorRecordID:       "actor-bootstrap-admin",
+		ActorScope:          string(ActorScopeApplication),
+		TenantID:            "tenant-a",
+		CorrelationID:       "correlation-historical-fixture",
+		AuthorizationSource: string(AuthorizationSourceGlobalControlPlane),
+		Operation:           "support_access_leases.request",
+		TargetType:          "tenant_support_access_lease",
+		TargetID:            "lease-historical",
+		Decision:            AuditDecisionAuthorized,
+		CreatedAt:           now,
 	}).Error; err != nil {
 		t.Fatalf("insert historical support lease audit row: %v", err)
 	}
