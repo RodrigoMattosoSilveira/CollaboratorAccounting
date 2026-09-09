@@ -53,6 +53,19 @@ func TestTenantReactivationRestoresOnlySelectedMembershipAndBaselineAuthority(t 
 		t.Fatalf("create Tenant B Membership: %v", err)
 	}
 
+	var membershipARecord, membershipBRecord db.PersonTenantMembership
+	if err := database.First(&membershipARecord, "id = ?", first.MembershipID).Error; err != nil {
+		t.Fatalf("load Tenant A Membership: %v", err)
+	}
+	if err := database.First(&membershipBRecord, "id = ?", second.MembershipID).Error; err != nil {
+		t.Fatalf("load Tenant B Membership: %v", err)
+	}
+	if membershipARecord.LegacyPersonID == nil || membershipBRecord.LegacyPersonID == nil {
+		t.Fatal("expected temporary legacy Actor write mirrors during 30K.1")
+	}
+	legacyPersonA := *membershipARecord.LegacyPersonID
+	legacyPersonB := *membershipBRecord.LegacyPersonID
+
 	account := authentication.Account{ID: "account-return", ActorID: "actor-return-a", Login: "return.worker@example.test", PasswordHash: "not-used", Active: true, CreatedAt: now, UpdatedAt: now}
 	if err := database.Create(&account).Error; err != nil {
 		t.Fatalf("create Account: %v", err)
@@ -60,8 +73,8 @@ func TestTenantReactivationRestoresOnlySelectedMembershipAndBaselineAuthority(t 
 	if err := database.Create(&authentication.AccountPerson{AccountID: account.ID, PersonID: first.GlobalPersonID, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
 		t.Fatalf("bind Account Person: %v", err)
 	}
-	actorA := authz.AuthzActor{ID: "actor-return-a", ActorKey: "return-a", DisplayName: "Return A", PersonID: &first.ID, Active: true, CreatedAt: now, UpdatedAt: now}
-	actorB := authz.AuthzActor{ID: "actor-return-b", ActorKey: "return-b", DisplayName: "Return B", PersonID: &second.ID, Active: true, CreatedAt: now, UpdatedAt: now}
+	actorA := authz.AuthzActor{ID: "actor-return-a", ActorKey: "return-a", DisplayName: "Return A", PersonID: &legacyPersonA, Active: true, CreatedAt: now, UpdatedAt: now}
+	actorB := authz.AuthzActor{ID: "actor-return-b", ActorKey: "return-b", DisplayName: "Return B", PersonID: &legacyPersonB, Active: true, CreatedAt: now, UpdatedAt: now}
 	if err := database.Create(&actorA).Error; err != nil {
 		t.Fatalf("create Actor A: %v", err)
 	}

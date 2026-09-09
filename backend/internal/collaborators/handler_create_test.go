@@ -130,8 +130,8 @@ func TestListCandidatesUsesMembershipAndAuthoritativePersonAndExcludesOpenJourne
 	if len(candidates.Data) != 1 {
 		t.Fatalf("expected one candidate, got %+v", candidates.Data)
 	}
-	if candidates.Data[0].ID != person.Data.ID {
-		t.Fatalf("expected legacy candidate Person %q, got %q", person.Data.ID, candidates.Data[0].ID)
+	if candidates.Data[0].ID != person.Data.GlobalPersonID {
+		t.Fatalf("expected canonical candidate Person %q, got %q", person.Data.GlobalPersonID, candidates.Data[0].ID)
 	}
 	if candidates.Data[0].MembershipID != person.Data.MembershipID {
 		t.Fatalf("expected candidate Membership %q, got %q", person.Data.MembershipID, candidates.Data[0].MembershipID)

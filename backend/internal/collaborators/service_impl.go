@@ -2,6 +2,7 @@ package collaborators
 
 import (
 	"context"
+	"errors"
 	"math"
 	"strings"
 	"time"
@@ -50,9 +51,6 @@ func (s *service) ListCandidates(ctx context.Context) ([]peoplepkg.PersonDTO, er
 
 	items := make([]peoplepkg.PersonDTO, 0, len(rows))
 	for _, membership := range rows {
-		if membership.LegacyPersonID == nil {
-			continue
-		}
 		items = append(items, membershipCandidateToPersonDTO(membership))
 	}
 	return items, nil
@@ -68,17 +66,12 @@ func (s *service) Create(ctx context.Context, req CreateCollaboratorRequest, act
 		return nil, ValidationError{Fields: map[string]string{"journeyStartDate": "Journey start date must be YYYY-MM-DD"}}
 	}
 
-	var membership *db.PersonTenantMembership
-	if strings.TrimSpace(req.MembershipID) != "" {
-		membership, err = s.repo.FindActiveMembershipByID(ctx, strings.TrimSpace(req.MembershipID))
-	} else {
-		membership, err = s.repo.FindActiveMembershipByLegacyPersonID(ctx, strings.TrimSpace(req.PersonID))
-	}
+	membership, err := s.repo.FindActiveMembershipByID(ctx, strings.TrimSpace(req.MembershipID))
 	if err != nil {
 		return nil, ValidationError{Fields: map[string]string{"membershipId": "An active Person–Tenant Membership in this tenant is required"}}
 	}
 	if membership.LegacyPersonID == nil || strings.TrimSpace(*membership.LegacyPersonID) == "" {
-		return nil, ValidationError{Fields: map[string]string{"membershipId": "Membership is missing its legacy Person compatibility projection"}}
+		return nil, errors.New("active Person–Tenant Membership is missing its temporary legacy Collaborator write mirror")
 	}
 	if !membership.Person.CanCreateCollaborator {
 		return nil, ValidationError{Fields: map[string]string{"membershipId": "Person profile must be complete before creating a Collaborator"}}
@@ -301,13 +294,9 @@ func (s *service) GetSelfByID(ctx context.Context, id string, membershipID strin
 }
 
 func membershipCandidateToPersonDTO(membership db.PersonTenantMembership) peoplepkg.PersonDTO {
-	legacyID := ""
-	if membership.LegacyPersonID != nil {
-		legacyID = strings.TrimSpace(*membership.LegacyPersonID)
-	}
 	person := membership.Person
 	return peoplepkg.PersonDTO{
-		ID:                      legacyID,
+		ID:                      membership.PersonID,
 		GlobalPersonID:          membership.PersonID,
 		MembershipID:            membership.ID,
 		TenantID:                membership.TenantID,

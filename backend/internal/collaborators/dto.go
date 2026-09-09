@@ -37,10 +37,7 @@ type CollaboratorDTO struct {
 }
 
 type CreateCollaboratorRequest struct {
-	MembershipID string `json:"membershipId"`
-	// PersonID is a deprecated Bite 30 compatibility selector. The service
-	// resolves it to an ACTIVE Membership and never stores it as the parent.
-	PersonID                       string   `json:"personId,omitempty"`
+	MembershipID                   string   `json:"membershipId"`
 	JourneyStartDate               string   `json:"journeyStartDate"`
 	PaymentMethodID                string   `json:"paymentMethodId"`
 	PaymentValue                   float64  `json:"paymentValue"`
