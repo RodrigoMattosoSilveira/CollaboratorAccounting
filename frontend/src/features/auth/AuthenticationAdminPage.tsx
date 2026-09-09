@@ -73,10 +73,8 @@ export function authenticationAccountForActor(
   accounts: AuthAccount[],
 ): AuthAccount | undefined {
   if (!actor) return undefined;
-  return accounts.find(
-    (account) =>
-      account.actorId === actor.id ||
-      account.actors?.some((linkedActor) => linkedActor.actorId === actor.id),
+  return accounts.find((account) =>
+    account.actors?.some((linkedActor) => linkedActor.actorId === actor.id),
   );
 }
 
@@ -161,7 +159,6 @@ export function authenticationAccountMatchesSearch(
   if (!search) return true;
 
   return (
-    matchedActorIds.has(account.actorId) ||
     account.actors?.some(
       (actor) =>
         matchedActorIds.has(actor.actorId) ||
@@ -174,27 +171,20 @@ export function authenticationAccountMatchesSearch(
     ) ||
     account.login.toLowerCase().includes(search) ||
     account.globalPersonName?.toLowerCase().includes(search) ||
-    account.globalPersonEmail?.toLowerCase().includes(search) ||
-    account.actorKey.toLowerCase().includes(search) ||
-    account.displayName.toLowerCase().includes(search)
+    account.globalPersonEmail?.toLowerCase().includes(search)
   );
 }
 
 export function authenticationAccountPersonTarget(
   account: AuthAccount,
 ): AuthAccountActor | undefined {
-  const actors = account.actors ?? [];
-  return (
-    actors.find(
-      (actor) =>
-        actor.primary &&
-        actor.scope === "TENANT" &&
-        Boolean(actor.tenantId && actor.personId),
-    ) ??
-    actors.find(
-      (actor) =>
-        actor.scope === "TENANT" && Boolean(actor.tenantId && actor.personId),
-    )
+  // 30K.2B1 no longer treats auth_account_actors.is_primary as identity.
+  // The Account's Person is global; choose the first canonical Tenant binding
+  // only when the UI needs a Tenant Person navigation target.
+  return (account.actors ?? []).find(
+    (actor) =>
+      actor.scope === "TENANT" &&
+      Boolean(actor.tenantId && actor.membershipId && actor.personId),
   );
 }
 
@@ -527,8 +517,7 @@ export function AuthenticationAdminPage() {
             account.globalPersonName?.trim() ||
             account.actors?.find((actor) => actor.personName?.trim())?.personName ||
             "Linked Person";
-          const anyActorActive =
-            account.actors?.some((actor) => actor.active) ?? account.actorActive;
+          const anyActorActive = account.actors?.some((actor) => actor.active) ?? false;
           const identityBoundary = authenticationAccountIdentityBoundary(account);
 
           return (
@@ -643,7 +632,7 @@ export function AuthenticationAdminPage() {
                       Actors
                     </h3>
                     <span className="text-xs text-slate-500">
-                      {account.actors?.length ?? (account.actorKey ? 1 : 0)} linked
+                      {account.actors?.length ?? 0} linked
                     </span>
                   </div>
                   {(account.actors?.length ?? 0) > 0 ? (
@@ -684,29 +673,15 @@ export function AuthenticationAdminPage() {
                           </div>
                           <p className="mt-2 text-xs text-slate-500">
                             {actor.scope === "GLOBAL" ? "Global Actor" : "Tenant Actor"}
-                            {actor.primary ? " · Primary" : ""}
                           </p>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="mt-2 rounded-xl border border-slate-200 p-3">
-                      <p className="font-semibold text-slate-950">
-                        {account.displayName}
-                      </p>
-                      <dl className="mt-2 space-y-1 text-xs text-slate-500">
-                        {authenticationActorIdentityRows({
-                          actorId: account.actorId,
-                          actorKey: account.actorKey,
-                        }).map((identity) => (
-                          <div key={identity.label} className="flex flex-wrap gap-x-1">
-                            <dt className="font-semibold text-slate-600">
-                              {identity.label}:
-                            </dt>
-                            <dd className="break-all font-mono">{identity.value}</dd>
-                          </div>
-                        ))}
-                      </dl>
+                    <div className="mt-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                      Canonical Account→Actor bindings are unavailable for this account.
+                      Authentication Administration will not reconstruct identity from the
+                      legacy single-Actor pointer.
                     </div>
                   )}
                 </section>
