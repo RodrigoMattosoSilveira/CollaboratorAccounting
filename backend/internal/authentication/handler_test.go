@@ -425,16 +425,20 @@ func TestAuthenticationHandlerPreventsSelfAccountDeactivation(t *testing.T) {
 func boolPointer(value bool) *bool { return &value }
 
 type tenantOptionAuthenticationActorStore struct {
-	actorRecordID string
-	options       []authz.TenantOption
+	accountID string
+	options   []authz.TenantOption
 }
 
 func (s *tenantOptionAuthenticationActorStore) FindActor(context.Context, authz.ActorLookup) (*authz.Actor, error) {
 	return nil, authz.ErrMissingActor
 }
 
-func (s *tenantOptionAuthenticationActorStore) ListActorTenantOptions(_ context.Context, actorRecordID string) ([]authz.TenantOption, error) {
-	s.actorRecordID = actorRecordID
+func (s *tenantOptionAuthenticationActorStore) FindAccountActor(context.Context, string, string) (*authz.Actor, error) {
+	return nil, authz.ErrTenantActorUnavailable
+}
+
+func (s *tenantOptionAuthenticationActorStore) ListAccountTenantOptions(_ context.Context, accountID string) ([]authz.TenantOption, error) {
+	s.accountID = accountID
 	return s.options, nil
 }
 
@@ -474,8 +478,8 @@ func TestAuthenticationHandlerListsGrantedTenantOptions(t *testing.T) {
 	if optionsResponse.StatusCode != http.StatusOK {
 		t.Fatalf("expected tenant-options status 200, got %d", optionsResponse.StatusCode)
 	}
-	if store.actorRecordID != actor.ID {
-		t.Fatalf("tenant options resolved actor %q, want %q", store.actorRecordID, actor.ID)
+	if store.accountID != account.ID {
+		t.Fatalf("tenant options resolved Account %q, want %q", store.accountID, account.ID)
 	}
 	var payload struct {
 		Data []authz.TenantOption `json:"data"`
