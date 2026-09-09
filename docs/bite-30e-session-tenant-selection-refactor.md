@@ -22,7 +22,7 @@ only:
 - `mustChangePassword`
 - `expiresAt`
 
-Legacy single-Actor fields remain internal compatibility data until Bite 30J,
+Legacy single-Actor fields remain internal compatibility data until Bite 30K,
 but are no longer serialized into the browser session response. Session
 validity therefore depends on the Authentication Account, not on whether any
 tenant Actor is currently active.

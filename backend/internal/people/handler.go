@@ -1,6 +1,7 @@
 package people
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -103,7 +104,7 @@ func (h *Handler) CreateMembership(c fiber.Ctx) error {
 		}
 		return httpx.WriteError(c, err)
 	}
-	h.recordAudit(c, authz.PermissionPeopleCreate, "people.memberships.create", created.GlobalPersonID, `{"membershipId":"`+created.MembershipID+`"}`)
+	h.recordAuditTarget(c, authz.PermissionPeopleCreate, "people.memberships.create", "person_tenant_membership", created.MembershipID, membershipAuditMetadata(created.GlobalPersonID, "", created.StatusID))
 	return c.Status(fiber.StatusCreated).JSON(httpx.APIResponse{Data: created})
 }
 
@@ -120,6 +121,7 @@ func (h *Handler) Reactivate(c fiber.Ctx) error {
 		return httpx.WriteError(c, err)
 	}
 	h.recordAudit(c, authz.PermissionPeopleUpdate, "people.operational_reactivate", reactivated.GlobalPersonID, `{"membershipId":"`+reactivated.MembershipID+`"}`)
+	h.recordAuditTarget(c, authz.PermissionPeopleUpdate, "people.memberships.reactivate", "person_tenant_membership", reactivated.MembershipID, membershipAuditMetadata(reactivated.GlobalPersonID, "", reactivated.StatusID))
 	return c.JSON(httpx.APIResponse{Data: reactivated})
 }
 
@@ -138,13 +140,19 @@ func (h *Handler) GetByID(c fiber.Ctx) error {
 
 func (h *Handler) Update(c fiber.Ctx) error {
 	id := c.Params("id")
+	tenantID := requestTenantID(c)
 
 	var req UpdatePersonRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.WriteError(c, err)
 	}
 
-	updated, err := h.service.Update(c.Context(), requestTenantID(c), id, req, actorUserID(c))
+	previousStatusID := ""
+	if previous, getErr := h.service.GetByID(c.Context(), tenantID, id); getErr == nil && previous != nil {
+		previousStatusID = strings.TrimSpace(previous.StatusID)
+	}
+
+	updated, err := h.service.Update(c.Context(), tenantID, id, req, actorUserID(c))
 	if err != nil {
 		if errors.Is(err, ErrTenantReactivationRequired) {
 			return c.Status(fiber.StatusConflict).JSON(httpx.APIResponse{Error: &httpx.APIError{
@@ -155,9 +163,12 @@ func (h *Handler) Update(c fiber.Ctx) error {
 		return httpx.WriteError(c, err)
 	}
 	// Updating through a tenant changes the shared global Person fields while
-	// status/notes remain tenant-membership data. Record the originating tenant
-	// and actor now; Bite 30I will enrich the audit identity chain further.
+	// status/notes remain tenant-membership data. The audit row captures the
+	// originating Tenant and complete effective identity chain.
 	h.recordAudit(c, authz.PermissionPeopleUpdate, "people.global.update_from_tenant", updated.GlobalPersonID, `{"membershipId":"`+updated.MembershipID+`"}`)
+	if previousStatusID != "" && previousStatusID != strings.TrimSpace(updated.StatusID) {
+		h.recordAuditTarget(c, authz.PermissionPeopleUpdate, "people.memberships.status_change", "person_tenant_membership", updated.MembershipID, membershipAuditMetadata(updated.GlobalPersonID, previousStatusID, updated.StatusID))
+	}
 
 	return c.JSON(httpx.APIResponse{
 		Data: updated,
@@ -165,6 +176,10 @@ func (h *Handler) Update(c fiber.Ctx) error {
 }
 
 func (h *Handler) recordAudit(c fiber.Ctx, permission authz.Permission, operation, targetID, metadataJSON string) {
+	h.recordAuditTarget(c, permission, operation, "global_person", targetID, metadataJSON)
+}
+
+func (h *Handler) recordAuditTarget(c fiber.Ctx, permission authz.Permission, operation, targetType, targetID, metadataJSON string) {
 	if h.auditStore == nil {
 		return
 	}
@@ -178,13 +193,29 @@ func (h *Handler) recordAudit(c fiber.Ctx, permission authz.Permission, operatio
 		TenantID:        requestTenantID(c),
 		Permission:      permission,
 		Operation:       operation,
-		TargetType:      "global_person",
+		TargetType:      strings.TrimSpace(targetType),
 		TargetID:        strings.TrimSpace(targetID),
 		Decision:        authz.AuditDecisionAuthorized,
 		MetadataJSON:    metadataJSON,
+		CorrelationID:   authz.RequestCorrelationID(c),
 		RequestMethod:   c.Method(),
 		RequestPath:     c.Path(),
 	})
+}
+
+func membershipAuditMetadata(globalPersonID, previousStatusID, statusID string) string {
+	payload := map[string]string{"globalPersonId": strings.TrimSpace(globalPersonID)}
+	if strings.TrimSpace(previousStatusID) != "" {
+		payload["previousStatusId"] = strings.TrimSpace(previousStatusID)
+	}
+	if strings.TrimSpace(statusID) != "" {
+		payload["statusId"] = strings.TrimSpace(statusID)
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
 }
 
 func requestTenantID(c fiber.Ctx) string {

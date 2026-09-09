@@ -83,7 +83,7 @@ func (s *GORMStore) FindActor(ctx context.Context, lookup ActorLookup) (*Actor, 
 	// A persisted global Actor is evaluated only against global/control-plane
 	// Role Grants. Selecting a tenant no longer turns global authority into
 	// tenant business authority.
-	globalRoles, globalPermissions, err := s.loadDelegatedAuthorization(ctx, actorRow.ID, GlobalTenantScope, ActorScopeApplication)
+	globalRoles, globalPermissions, globalSources, err := s.loadDelegatedAuthorization(ctx, actorRow.ID, GlobalTenantScope, ActorScopeApplication)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +109,7 @@ func (s *GORMStore) FindActor(ctx context.Context, lookup ActorLookup) (*Actor, 
 				SupportLeaseID:          lease.ID,
 				SupportLeaseExpiresAt:   lease.ExpiresAt.UTC().Format(time.RFC3339),
 				SupportLeasePermissions: clonePermissionSet(lease.Permissions),
+				AuthorizationSources:    mergeAuthorizationSources(globalSources, supportLeaseAuthorizationSources(lease.Permissions, lease.ID)),
 			}, nil
 		}
 		return &Actor{
@@ -121,12 +122,13 @@ func (s *GORMStore) FindActor(ctx context.Context, lookup ActorLookup) (*Actor, 
 			Permissions:          clonePermissionSet(globalPermissions),
 			DelegatedPermissions: globalPermissions,
 			IntrinsicPermissions: map[Permission]struct{}{},
+			AuthorizationSources: globalSources,
 		}, nil
 	}
 
 	// Header/test actors remain useful for isolated tests, but tenant delegated
 	// authority is resolved only from grants for the explicitly requested tenant.
-	roles, delegated, err := s.loadDelegatedAuthorization(ctx, actorRow.ID, tenantID, ActorScopeTenant)
+	roles, delegated, delegatedSources, err := s.loadDelegatedAuthorization(ctx, actorRow.ID, tenantID, ActorScopeTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -142,48 +144,58 @@ func (s *GORMStore) FindActor(ctx context.Context, lookup ActorLookup) (*Actor, 
 		Permissions:          clonePermissionSet(delegated),
 		DelegatedPermissions: delegated,
 		IntrinsicPermissions: map[Permission]struct{}{},
+		AuthorizationSources: delegatedSources,
 	}, nil
 }
 
-func (s *GORMStore) loadDelegatedAuthorization(ctx context.Context, actorID string, tenantID string, scope ActorScope) ([]string, map[Permission]struct{}, error) {
+func (s *GORMStore) loadDelegatedAuthorization(ctx context.Context, actorID string, tenantID string, scope ActorScope) ([]string, map[Permission]struct{}, map[Permission]AuthorizationSourceRef, error) {
 	type grantProjection struct {
+		GrantID  string
 		RoleID   string
 		RoleCode string
 	}
 	var grants []grantProjection
 	query := s.database.WithContext(ctx).
 		Table("authz_actor_role_grants g").
-		Select("r.id AS role_id, r.code AS role_code").
+		Select("g.id AS grant_id, r.id AS role_id, r.code AS role_code").
 		Joins("JOIN authz_roles r ON r.id = g.role_id AND r.active = ?", true).
 		Where("g.actor_id = ? AND g.active = ? AND g.lifecycle_suspended = ? AND g.tenant_id = ?", actorID, true, false, tenantID)
+	sourceKind := AuthorizationSourceRoleGrant
 	switch scope {
 	case ActorScopeApplication:
 		query = query.Where("r.scope_type = ?", string(ActorScopeApplication))
+		sourceKind = AuthorizationSourceGlobalControlPlane
 	case ActorScopeTenant:
 		query = query.Where("r.scope_type = ?", string(ActorScopeTenant))
 	default:
-		return nil, nil, ErrForbidden
+		return nil, nil, nil, ErrForbidden
 	}
-	if err := query.Scan(&grants).Error; err != nil {
-		return nil, nil, fmt.Errorf("find authorization grants: %w", err)
+	if err := query.Order("r.code ASC, g.id ASC").Scan(&grants).Error; err != nil {
+		return nil, nil, nil, fmt.Errorf("find authorization grants: %w", err)
 	}
 
 	permissions := map[Permission]struct{}{}
+	sources := map[Permission]AuthorizationSourceRef{}
 	roles := make([]string, 0, len(grants))
 	for _, grant := range grants {
 		roles = append(roles, grant.RoleCode)
 		var permissionRows []AuthzRolePermission
 		if err := s.database.WithContext(ctx).
 			Where("role_id = ?", grant.RoleID).
+			Order("permission_code ASC").
 			Find(&permissionRows).Error; err != nil {
-			return nil, nil, fmt.Errorf("find authorization permissions: %w", err)
+			return nil, nil, nil, fmt.Errorf("find authorization permissions: %w", err)
 		}
 		for _, row := range permissionRows {
-			permissions[Permission(row.PermissionCode)] = struct{}{}
+			permission := Permission(row.PermissionCode)
+			permissions[permission] = struct{}{}
+			if _, exists := sources[permission]; !exists {
+				sources[permission] = AuthorizationSourceRef{Kind: sourceKind, ID: grant.GrantID, RoleCode: grant.RoleCode}
+			}
 		}
 	}
 	sort.Strings(roles)
-	return roles, permissions, nil
+	return roles, permissions, sources, nil
 }
 
 func AutoMigrate(database *gorm.DB) error {
@@ -217,6 +229,20 @@ END`,
 BEFORE DELETE ON authz_audit_logs
 BEGIN
   SELECT RAISE(ABORT, 'authz_audit_logs are immutable; append a new audit event instead');
+END`,
+		`CREATE TRIGGER IF NOT EXISTS trg_authz_audit_identity_required_insert
+BEFORE INSERT ON authz_audit_logs
+FOR EACH ROW
+WHEN TRIM(COALESCE(NEW.correlation_id, '')) = ''
+  OR UPPER(TRIM(COALESCE(NEW.authorization_source, ''))) NOT IN (
+    'INTRINSIC', 'ROLE_GRANT', 'GLOBAL_CONTROL_PLANE', 'SUPPORT_LEASE', 'NONE'
+  )
+  OR (
+    TRIM(COALESCE(NEW.actor_record_id, '')) <> ''
+    AND TRIM(COALESCE(NEW.actor_scope, '')) = ''
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'authz_audit_identity_required');
 END`,
 	}
 	for _, statement := range statements {
@@ -872,7 +898,7 @@ func (s *GORMStore) FindAccountActor(ctx context.Context, accountID string, tena
 	}
 
 	if binding.ScopeType == "GLOBAL" {
-		roles, delegated, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, GlobalTenantScope, ActorScopeApplication)
+		roles, delegated, delegatedSources, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, GlobalTenantScope, ActorScopeApplication)
 		if err != nil {
 			return nil, err
 		}
@@ -889,6 +915,7 @@ func (s *GORMStore) FindAccountActor(ctx context.Context, accountID string, tena
 			Permissions:          clonePermissionSet(delegated),
 			DelegatedPermissions: delegated,
 			IntrinsicPermissions: map[Permission]struct{}{},
+			AuthorizationSources: delegatedSources,
 		}, nil
 	}
 
@@ -969,7 +996,7 @@ func (s *GORMStore) buildTenantBoundActor(ctx context.Context, binding accountAc
 	}
 
 	intrinsic := intrinsicSelfServicePermissions(hasCollaboratorHistory, collaboratorID != "")
-	roles, delegated, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, tenantID, ActorScopeTenant)
+	roles, delegated, delegatedSources, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, tenantID, ActorScopeTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -989,6 +1016,7 @@ func (s *GORMStore) buildTenantBoundActor(ctx context.Context, binding accountAc
 		Permissions:          permissions,
 		IntrinsicPermissions: intrinsic,
 		DelegatedPermissions: delegated,
+		AuthorizationSources: mergeAuthorizationSources(intrinsicAuthorizationSources(intrinsic, identity.MembershipID), delegatedSources),
 	}, nil
 }
 
@@ -1029,6 +1057,32 @@ func mergePermissionSets(sets ...map[Permission]struct{}) map[Permission]struct{
 
 func clonePermissionSet(source map[Permission]struct{}) map[Permission]struct{} {
 	return mergePermissionSets(source)
+}
+
+func mergeAuthorizationSources(sets ...map[Permission]AuthorizationSourceRef) map[Permission]AuthorizationSourceRef {
+	merged := map[Permission]AuthorizationSourceRef{}
+	for _, set := range sets {
+		for permission, source := range set {
+			merged[permission] = source
+		}
+	}
+	return merged
+}
+
+func intrinsicAuthorizationSources(permissions map[Permission]struct{}, membershipID string) map[Permission]AuthorizationSourceRef {
+	sources := map[Permission]AuthorizationSourceRef{}
+	for permission := range permissions {
+		sources[permission] = AuthorizationSourceRef{Kind: AuthorizationSourceIntrinsic, ID: strings.TrimSpace(membershipID)}
+	}
+	return sources
+}
+
+func supportLeaseAuthorizationSources(permissions map[Permission]struct{}, leaseID string) map[Permission]AuthorizationSourceRef {
+	sources := map[Permission]AuthorizationSourceRef{}
+	for permission := range permissions {
+		sources[permission] = AuthorizationSourceRef{Kind: AuthorizationSourceSupportLease, ID: strings.TrimSpace(leaseID)}
+	}
+	return sources
 }
 
 func (s *GORMStore) ListAccountTenantOptions(ctx context.Context, accountID string) ([]TenantOption, error) {
@@ -1177,7 +1231,7 @@ func (s *GORMStore) buildSupportLeaseActorForAccount(ctx context.Context, accoun
 		return nil, gorm.ErrRecordNotFound
 	}
 
-	roles, controlPlanePermissions, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, GlobalTenantScope, ActorScopeApplication)
+	roles, controlPlanePermissions, controlPlaneSources, err := s.loadDelegatedAuthorization(ctx, binding.ActorID, GlobalTenantScope, ActorScopeApplication)
 	if err != nil {
 		return nil, err
 	}
@@ -1205,6 +1259,7 @@ func (s *GORMStore) buildSupportLeaseActorForAccount(ctx context.Context, accoun
 		SupportLeaseID:          lease.ID,
 		SupportLeaseExpiresAt:   lease.ExpiresAt.UTC().Format(time.RFC3339),
 		SupportLeasePermissions: clonePermissionSet(lease.Permissions),
+		AuthorizationSources:    mergeAuthorizationSources(controlPlaneSources, supportLeaseAuthorizationSources(lease.Permissions, lease.ID)),
 	}, nil
 }
 

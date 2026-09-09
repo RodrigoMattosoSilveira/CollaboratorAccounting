@@ -285,6 +285,7 @@ func (h *Handler) recordAdminAudit(c fiber.Ctx, permission Permission, operation
 		TargetType:      targetType,
 		TargetID:        targetID,
 		Decision:        AuditDecisionAuthorized,
+		CorrelationID:   RequestCorrelationID(c),
 		RequestMethod:   c.Method(),
 		RequestPath:     c.Path(),
 	})

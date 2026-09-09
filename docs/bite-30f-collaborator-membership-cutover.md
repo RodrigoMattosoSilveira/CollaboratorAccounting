@@ -92,7 +92,7 @@ Migration `000056_collaborator_membership_cutover`:
 9. protects Membership rows that are referenced by Journey history.
 
 The migration intentionally does not remove `collaborator_journeys.person_id`.
-That compatibility removal belongs to Bite 30J after downstream modules have
+That compatibility removal belongs to Bite 30K after downstream modules have
 cut over.
 
 ## Follow-on cutovers
@@ -102,4 +102,4 @@ ownership to global Person + Tenant while retaining Collaborator Journey as
 provenance. See `docs/bite-30g-person-tenant-financial-ownership-refactor.md`.
 
 Legacy Person rows, legacy Actor Person/Collaborator pointers, and remaining
-compatibility schema are still retained until Bite 30J.
+compatibility schema are still retained until Bite 30K.

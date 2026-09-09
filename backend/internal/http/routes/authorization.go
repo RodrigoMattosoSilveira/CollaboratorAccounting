@@ -24,6 +24,9 @@ const (
 // bootstrap or isolated-test modes.
 func authorizationMiddleware(deps Dependencies) fiber.Handler {
 	return func(c fiber.Ctx) error {
+		correlationID := authz.RequestCorrelationID(c)
+		c.Set(authz.HeaderCorrelationID, correlationID)
+
 		if deps.DisableRouteAuthorization || isPublicHealthPath(c.Path()) {
 			return c.Next()
 		}
@@ -105,6 +108,8 @@ func resolveAuthenticatedActor(c fiber.Ctx, deps Dependencies, session authentic
 			actor, err := accountActorStore.FindAccountActor(c.Context(), accountID, tenantID)
 			if err == nil {
 				actor.Source = authz.ActorSourceAuthenticatedSession
+				actor.AccountID = accountID
+				actor.SessionID = strings.TrimSpace(session.SessionID)
 				return actor, nil
 			}
 			if !errors.Is(err, authz.ErrAccountActorFoundationUnavailable) {
@@ -126,6 +131,8 @@ func resolveAuthenticatedActor(c fiber.Ctx, deps Dependencies, session authentic
 		return nil, authz.ErrAuthenticationRequired
 	}
 	actor.Source = authz.ActorSourceAuthenticatedSession
+	actor.AccountID = accountID
+	actor.SessionID = strings.TrimSpace(session.SessionID)
 	return actor, nil
 }
 
@@ -391,6 +398,7 @@ func recordSupportLeaseAuthorization(c fiber.Ctx, deps Dependencies, actor *auth
 		TargetID:       c.Path(),
 		Decision:       decision,
 		Reason:         reason,
+		CorrelationID:  authz.RequestCorrelationID(c),
 		RequestMethod:  c.Method(),
 		RequestPath:    c.Path(),
 	})

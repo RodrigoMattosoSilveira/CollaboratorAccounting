@@ -17,12 +17,17 @@ import (
 // execute without the normal route middleware.
 func Context(c fiber.Ctx) context.Context {
 	tenantID := tenants.DefaultTenantID
-	if actor, err := authz.RequestActorFromContext(c); err == nil && actor != nil {
+	actor, actorErr := authz.RequestActorFromContext(c)
+	if actorErr == nil && actor != nil {
 		if selected := strings.TrimSpace(actor.TenantID); selected != "" {
 			tenantID = selected
 		}
 	} else if selected := strings.TrimSpace(c.Get("X-Tenant-ID")); selected != "" {
 		tenantID = selected
 	}
-	return tenantctx.WithTenantID(c.Context(), tenantID)
+	ctx := tenantctx.WithTenantID(c.Context(), tenantID)
+	if actorErr == nil && actor != nil {
+		ctx = authz.WithAuthorizationAuditContext(ctx, actor, authz.RequestCorrelationID(c))
+	}
+	return ctx
 }

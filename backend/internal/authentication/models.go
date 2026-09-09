@@ -8,7 +8,7 @@ import "time"
 // used by pre-30C clients and session responses. The authoritative ownership
 // relation is auth_account_actors, which allows one Account to control many
 // tenant Actors while preserving a single global Actor for Application
-// Administrators. Bite 30J removes this compatibility column after all callers
+// Administrators. Bite 30K removes this compatibility column after all callers
 // have cut over.
 type Account struct {
 	ID                 string     `gorm:"type:text;primaryKey"`

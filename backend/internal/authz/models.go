@@ -65,22 +65,31 @@ type AuthzActorRoleGrant struct {
 func (AuthzActorRoleGrant) TableName() string { return "authz_actor_role_grants" }
 
 type AuthzAuditLog struct {
-	ID             string    `gorm:"type:text;primaryKey"`
-	OccurredAt     time.Time `gorm:"not null;index"`
-	ActorID        string    `gorm:"type:text;index"`
-	ActorRecordID  string    `gorm:"type:text"`
-	TenantID       string    `gorm:"type:text;index"`
-	PermissionCode string    `gorm:"type:text"`
-	SupportLeaseID string    `gorm:"type:text;index"`
-	Operation      string    `gorm:"type:text;not null;index"`
-	TargetType     string    `gorm:"type:text;index:idx_authz_audit_target,priority:1"`
-	TargetID       string    `gorm:"type:text;index:idx_authz_audit_target,priority:2"`
-	Decision       string    `gorm:"type:text;not null;index"`
-	Reason         string    `gorm:"type:text"`
-	MetadataJSON   string    `gorm:"type:text"`
-	RequestMethod  string    `gorm:"type:text"`
-	RequestPath    string    `gorm:"type:text"`
-	CreatedAt      time.Time `gorm:"not null"`
+	ID                    string    `gorm:"type:text;primaryKey"`
+	OccurredAt            time.Time `gorm:"not null;index"`
+	AccountID             string    `gorm:"type:text;index"`
+	ActorID               string    `gorm:"type:text;index"`
+	ActorRecordID         string    `gorm:"type:text"`
+	ActorScope            string    `gorm:"type:text"`
+	PersonID              string    `gorm:"type:text"`
+	MembershipID          string    `gorm:"type:text"`
+	TenantID              string    `gorm:"type:text;index"`
+	SessionID             string    `gorm:"type:text;index"`
+	CorrelationID         string    `gorm:"type:text;index"`
+	PermissionCode        string    `gorm:"type:text"`
+	AuthorizationSource   string    `gorm:"type:text;index"`
+	AuthorizationSourceID string    `gorm:"type:text"`
+	AuthorizationRoleCode string    `gorm:"type:text"`
+	SupportLeaseID        string    `gorm:"type:text;index"`
+	Operation             string    `gorm:"type:text;not null;index"`
+	TargetType            string    `gorm:"type:text;index:idx_authz_audit_target,priority:1"`
+	TargetID              string    `gorm:"type:text;index:idx_authz_audit_target,priority:2"`
+	Decision              string    `gorm:"type:text;not null;index"`
+	Reason                string    `gorm:"type:text"`
+	MetadataJSON          string    `gorm:"type:text"`
+	RequestMethod         string    `gorm:"type:text"`
+	RequestPath           string    `gorm:"type:text"`
+	CreatedAt             time.Time `gorm:"not null"`
 }
 
 type TenantSupportAccessLease struct {

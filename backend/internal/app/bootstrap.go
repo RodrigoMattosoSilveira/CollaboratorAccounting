@@ -102,7 +102,7 @@ func Bootstrap(cfg Config) (*fiber.App, func(), error) {
 
 	collaboratorRepo := collaborators.NewRepository(database)
 	collaboratorSvc := collaborators.NewService(collaboratorRepo)
-	collaboratorHandler := collaborators.NewHandler(collaboratorSvc)
+	collaboratorHandler := collaborators.NewHandler(collaboratorSvc, collaborators.WithAuthorizationAudit(actorStore, actorStore))
 
 	expenseRepo := expenses.NewRepository(database)
 	expenseSvc := expenses.NewService(expenseRepo)

@@ -17,6 +17,8 @@ type tenantRecordingService struct {
 	createTenantID string
 	getTenantID    string
 	updateTenantID string
+	getStatusID    string
+	updateStatusID string
 }
 
 func (s *tenantRecordingService) List(_ context.Context, tenantID string, _ PersonListFilter) ([]PersonDTO, int64, error) {
@@ -31,12 +33,18 @@ func (s *tenantRecordingService) Create(_ context.Context, tenantID string, _ Cr
 
 func (s *tenantRecordingService) GetByID(_ context.Context, tenantID string, id string) (*PersonDTO, error) {
 	s.getTenantID = tenantID
-	return &PersonDTO{ID: id, TenantID: tenantID}, nil
+	return &PersonDTO{
+		ID: id, TenantID: tenantID, GlobalPersonID: "global-" + id,
+		MembershipID: "membership-" + id, StatusID: s.getStatusID,
+	}, nil
 }
 
 func (s *tenantRecordingService) Update(_ context.Context, tenantID string, id string, _ UpdatePersonRequest, _ string) (*PersonDTO, error) {
 	s.updateTenantID = tenantID
-	return &PersonDTO{ID: id, TenantID: tenantID}, nil
+	return &PersonDTO{
+		ID: id, TenantID: tenantID, GlobalPersonID: "global-" + id,
+		MembershipID: "membership-" + id, StatusID: s.updateStatusID,
+	}, nil
 }
 
 func (s *tenantRecordingService) SearchGlobal(_ context.Context, tenantID string, _ GlobalPersonSearchFilter) ([]GlobalPersonDTO, int64, error) {
@@ -136,5 +144,81 @@ func TestHandlerUsesAuthoritativeSelectedTenantForPeopleOperations(t *testing.T)
 			}
 			test.assertSeen(t)
 		})
+	}
+}
+
+type peopleRecordingAuditStore struct {
+	entries []authz.AuthorizationAuditEntry
+}
+
+func (s *peopleRecordingAuditStore) RecordAuthorizationAudit(_ context.Context, entry authz.AuthorizationAuditEntry) error {
+	s.entries = append(s.entries, entry)
+	return nil
+}
+
+func TestUpdateAuditsMembershipLifecycleWithoutConfusingTargetAndActingIdentity(t *testing.T) {
+	service := &tenantRecordingService{
+		getStatusID:    "ref-person-status-active",
+		updateStatusID: "ref-person-status-inactive",
+	}
+	audit := &peopleRecordingAuditStore{}
+	handler := NewHandler(service, WithAuthorizationAudit(nil, audit))
+	actingActor := &authz.Actor{
+		ID:             "tenant-admin@example.test",
+		RecordID:       "actor-tenant-admin",
+		AccountID:      "account-tenant-admin",
+		SessionID:      "session-tenant-admin",
+		TenantID:       "tenant-selected",
+		Scope:          authz.ActorScopeTenant,
+		GlobalPersonID: "acting-person",
+		MembershipID:   "acting-membership",
+	}
+
+	app := fiber.New()
+	app.Use(func(c fiber.Ctx) error {
+		authz.SetRequestActor(c, actingActor)
+		authz.SetRequestCorrelationID(c, "correlation-membership-update")
+		return c.Next()
+	})
+	app.Put("/people/:id", handler.Update)
+
+	request := httptest.NewRequest(http.MethodPut, "/people/person-target", bytes.NewBufferString(`{"statusId":"ref-person-status-inactive"}`))
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request)
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("expected successful response, got %d", response.StatusCode)
+	}
+
+	if len(audit.entries) != 2 {
+		t.Fatalf("expected global update and membership lifecycle audit rows, got %#v", audit.entries)
+	}
+	globalUpdate := audit.entries[0]
+	if globalUpdate.Operation != "people.global.update_from_tenant" || globalUpdate.TargetType != "global_person" || globalUpdate.TargetID != "global-person-target" {
+		t.Fatalf("unexpected global Person audit entry: %#v", globalUpdate)
+	}
+	membershipChange := audit.entries[1]
+	if membershipChange.Operation != "people.memberships.status_change" || membershipChange.TargetType != "person_tenant_membership" || membershipChange.TargetID != "membership-person-target" {
+		t.Fatalf("unexpected membership lifecycle audit entry: %#v", membershipChange)
+	}
+	if membershipChange.Actor != actingActor || membershipChange.Actor.GlobalPersonID != "acting-person" || membershipChange.Actor.MembershipID != "acting-membership" {
+		t.Fatalf("audit acting identity must remain the request Actor, got %#v", membershipChange.Actor)
+	}
+	if membershipChange.CorrelationID != "correlation-membership-update" || globalUpdate.CorrelationID != membershipChange.CorrelationID {
+		t.Fatalf("expected one correlation identity for both audit rows, got %#v", audit.entries)
+	}
+	if membershipChange.TenantID != "tenant-selected" {
+		t.Fatalf("expected originating Tenant in lifecycle audit, got %q", membershipChange.TenantID)
+	}
+	if membershipChange.PersonID != "" || membershipChange.MembershipID != "" {
+		t.Fatalf("target identity must not be written as acting identity: %#v", membershipChange)
+	}
+	if !bytes.Contains([]byte(membershipChange.MetadataJSON), []byte(`"globalPersonId":"global-person-target"`)) ||
+		!bytes.Contains([]byte(membershipChange.MetadataJSON), []byte(`"previousStatusId":"ref-person-status-active"`)) ||
+		!bytes.Contains([]byte(membershipChange.MetadataJSON), []byte(`"statusId":"ref-person-status-inactive"`)) {
+		t.Fatalf("unexpected membership lifecycle metadata: %s", membershipChange.MetadataJSON)
 	}
 }
