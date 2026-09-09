@@ -10,29 +10,15 @@ import (
 const dateLayout = "2006-01-02"
 
 func ToDTO(row db.CollaboratorJourney) CollaboratorDTO {
-	personID := strings.TrimSpace(row.Membership.PersonID)
-	personNameValue := globalPersonName(row.Membership.Person)
-	personNickname := strings.TrimSpace(row.Membership.Person.Nickname)
-	if personID == "" {
-		personID = strings.TrimSpace(row.Person.GlobalPersonID)
-	}
-	if personID == "" {
-		personID = strings.TrimSpace(row.PersonID)
-	}
-	if personNameValue == "" {
-		personNameValue = personName(row.Person)
-	}
-	if personNickname == "" {
-		personNickname = strings.TrimSpace(row.Person.Nickname)
-	}
+	person := row.Membership.Person
 	return CollaboratorDTO{
 		ID:                             row.ID,
 		TenantID:                       row.TenantID,
 		MembershipID:                   collaboratorMembershipID(row.MembershipID),
-		PersonID:                       personID,
+		PersonID:                       strings.TrimSpace(row.Membership.PersonID),
 		LegacyPersonID:                 row.PersonID,
-		PersonName:                     personNameValue,
-		PersonNickname:                 personNickname,
+		PersonName:                     globalPersonName(person),
+		PersonNickname:                 strings.TrimSpace(person.Nickname),
 		JourneyStartDate:               formatDate(row.JourneyStartDate),
 		DefaultEndDate:                 formatDate(row.DefaultEndDate),
 		ExtensionDays:                  row.ExtensionDays,
