@@ -28,7 +28,8 @@ func Bootstrap(cfg Config) (*fiber.App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if cfg.AutoMigrate || (cfg.Env == "test" && !cfg.AutoMigrateConfigured) {
+	autoMigrate := cfg.AutoMigrate || (cfg.Env == "test" && !cfg.AutoMigrateConfigured)
+	if autoMigrate {
 		if err := db.AutoMigrate(database); err != nil {
 			return nil, nil, err
 		}
@@ -42,12 +43,22 @@ func Bootstrap(cfg Config) (*fiber.App, func(), error) {
 	if err := db.EnsureGlobalPersonMembershipFoundation(database); err != nil {
 		return nil, nil, err
 	}
-	if cfg.AutoMigrate || (cfg.Env == "test" && !cfg.AutoMigrateConfigured) {
+	// The People search projection is disposable runtime infrastructure. SQL
+	// migration 000055 still describes the legacy Person-keyed shape, while
+	// Bite 30K.1 reads it by canonical Membership ID. Deployment-style startup
+	// intentionally disables AutoMigrate, so refresh the projection here after
+	// the canonical Global Person/Membership foundation has been verified.
+	if !autoMigrate {
+		if err := db.InstallPeopleSearchIndex(database); err != nil {
+			return nil, nil, err
+		}
+	}
+	if autoMigrate {
 		if err := authz.AutoMigrate(database); err != nil {
 			return nil, nil, err
 		}
 	}
-	if cfg.AutoMigrate || (cfg.Env == "test" && !cfg.AutoMigrateConfigured) {
+	if autoMigrate {
 		if err := authentication.AutoMigrate(database); err != nil {
 			return nil, nil, err
 		}
