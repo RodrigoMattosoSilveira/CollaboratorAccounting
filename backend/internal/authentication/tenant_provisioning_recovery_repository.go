@@ -38,9 +38,10 @@ func (r *GORMRepository) FindPersonAuthentication(ctx context.Context, tenantID 
 	var membership membershipProjection
 	membershipResult := r.database.WithContext(ctx).
 		Table("person_tenant_memberships m").
-		Select("m.id, m.person_id, m.legacy_person_id, r.code, gp.email").
+		Select("m.id, m.person_id, m.legacy_person_id, r.code, COALESCE(p.email, gp.email) AS email").
 		Joins("JOIN reference_data r ON r.id = m.status_id AND r.tenant_id = m.tenant_id AND r.type = ?", "person_status").
 		Joins("JOIN global_people gp ON gp.id = m.person_id").
+		Joins("LEFT JOIN people p ON p.id = m.legacy_person_id AND p.tenant_id = m.tenant_id").
 		Where("m.tenant_id = ? AND (m.person_id = ? OR m.legacy_person_id = ?)", tenantID, personID, personID).
 		Limit(1).
 		Scan(&membership)
@@ -56,6 +57,11 @@ func (r *GORMRepository) FindPersonAuthentication(ctx context.Context, tenantID 
 		legacyPersonID = strings.TrimSpace(*membership.LegacyPersonID)
 	}
 
+	// 30K.1 makes the People API ID canonical (Global Person ID), but the
+	// Authentication cutover is intentionally deferred to 30K.2. While the
+	// tenant-local Person projection still exists, use its email when initializing
+	// credentials for a Tenant-selected Person. Once an Account exists, its login
+	// remains authoritative and replaces this value below.
 	record := PersonAuthenticationRecord{
 		TenantID:             tenantID,
 		LegacyPersonID:       legacyPersonID,
