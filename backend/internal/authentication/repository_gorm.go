@@ -23,7 +23,6 @@ func NewRepository(database *gorm.DB) *GORMRepository {
 
 type accountProjection struct {
 	ID                 string
-	ActorID            string
 	Login              string
 	PasswordHash       string
 	Active             bool
@@ -33,11 +32,6 @@ type accountProjection struct {
 	PasswordChangedAt  *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
-	ActorKey           string
-	DisplayName        string
-	PersonID           *string
-	CollaboratorID     *string
-	ActorActive        bool
 }
 
 func (r *GORMRepository) ListAccounts(ctx context.Context) ([]AccountRecord, error) {
@@ -761,11 +755,14 @@ func (r *GORMRepository) ConsumePasswordResetToken(ctx context.Context, tokenID 
 }
 
 func (r *GORMRepository) accountQuery(ctx context.Context) *gorm.DB {
+	// Bite 30K.2B1 makes Authentication Administration hydrate identity only
+	// through auth_account_people + auth_account_actors. The legacy
+	// auth_user_accounts.actor_id column remains a 30K.3 compatibility write,
+	// but it is no longer a read source for Account identity.
 	return r.database.WithContext(ctx).
 		Table("auth_user_accounts").
 		Select(`
 			auth_user_accounts.id,
-			auth_user_accounts.actor_id,
 			auth_user_accounts.login,
 			auth_user_accounts.password_hash,
 			auth_user_accounts.active,
@@ -774,20 +771,13 @@ func (r *GORMRepository) accountQuery(ctx context.Context) *gorm.DB {
 			auth_user_accounts.last_login_at,
 			auth_user_accounts.password_changed_at,
 			auth_user_accounts.created_at,
-			auth_user_accounts.updated_at,
-			authz_actors.actor_key,
-			authz_actors.display_name,
-			authz_actors.person_id,
-			authz_actors.collaborator_id,
-			authz_actors.active AS actor_active`).
-		Joins("JOIN authz_actors ON authz_actors.id = auth_user_accounts.actor_id")
+			auth_user_accounts.updated_at`)
 }
 
 func mapAccountProjection(row accountProjection) AccountRecord {
 	return AccountRecord{
 		Account: Account{
 			ID:                 row.ID,
-			ActorID:            row.ActorID,
 			Login:              row.Login,
 			PasswordHash:       row.PasswordHash,
 			Active:             row.Active,
@@ -798,17 +788,11 @@ func mapAccountProjection(row accountProjection) AccountRecord {
 			CreatedAt:          row.CreatedAt,
 			UpdatedAt:          row.UpdatedAt,
 		},
-		ActorKey:       row.ActorKey,
-		DisplayName:    row.DisplayName,
-		PersonID:       stringValue(row.PersonID),
-		CollaboratorID: stringValue(row.CollaboratorID),
-		ActorActive:    row.ActorActive,
 	}
 }
 
 func (r *GORMRepository) hydrateAccountActors(ctx context.Context, record AccountRecord) (AccountRecord, error) {
 	if !r.database.Migrator().HasTable(&AccountActor{}) {
-		record.AnyActorActive = record.ActorActive
 		return record, nil
 	}
 
@@ -826,7 +810,6 @@ func (r *GORMRepository) hydrateAccountActors(ctx context.Context, record Accoun
 		TenantID        *string
 		TenantName      *string
 		MembershipID    *string
-		IsPrimary       bool
 	}
 	var rows []actorBindingProjection
 	if err := r.database.WithContext(ctx).
@@ -834,34 +817,30 @@ func (r *GORMRepository) hydrateAccountActors(ctx context.Context, record Accoun
 		Select(`aa.actor_id AS actor_id,
 			a.actor_key AS actor_key,
 			a.display_name AS display_name,
-			a.person_id AS person_id,
+			gp.id AS person_id,
 			gp.first_name AS person_first_name,
 			gp.last_name AS person_last_name,
 			gp.nickname AS person_nickname,
-			a.collaborator_id AS collaborator_id,
+			cj.id AS collaborator_id,
 			a.active AS active,
 			aa.scope_type AS scope_type,
 			aa.tenant_id AS tenant_id,
 			t.name AS tenant_name,
-			aa.membership_id AS membership_id,
-			aa.is_primary AS is_primary`).
+			aa.membership_id AS membership_id`).
 		Joins("JOIN authz_actors a ON a.id = aa.actor_id").
-		Joins("LEFT JOIN auth_account_people aap ON aap.account_id = aa.account_id").
-		Joins("LEFT JOIN global_people gp ON gp.id = aap.person_id").
+		Joins("LEFT JOIN person_tenant_memberships m ON m.id = aa.membership_id AND m.tenant_id = aa.tenant_id").
+		Joins("LEFT JOIN global_people gp ON gp.id = m.person_id").
+		Joins("LEFT JOIN collaborator_journeys cj ON cj.membership_id = aa.membership_id AND cj.tenant_id = aa.tenant_id AND cj.closed_at IS NULL").
 		Joins("LEFT JOIN tenants t ON t.id = aa.tenant_id").
 		Where("aa.account_id = ?", record.ID).
-		Order("aa.is_primary DESC, aa.scope_type ASC, aa.tenant_id ASC, a.actor_key ASC").
+		Order("CASE WHEN aa.scope_type = 'GLOBAL' THEN 0 ELSE 1 END, aa.tenant_id ASC, a.actor_key ASC").
 		Scan(&rows).Error; err != nil {
 		return AccountRecord{}, fmt.Errorf("hydrate Authentication Account Actors: %w", err)
-	}
-	if len(rows) == 0 {
-		record.AnyActorActive = record.ActorActive
-		return record, nil
 	}
 
 	record.Actors = make([]AccountActorRecord, 0, len(rows))
 	record.AnyActorActive = false
-	for _, row := range rows {
+	for index, row := range rows {
 		actor := AccountActorRecord{
 			ActorID:        row.ActorID,
 			ActorKey:       row.ActorKey,
@@ -875,13 +854,19 @@ func (r *GORMRepository) hydrateAccountActors(ctx context.Context, record Accoun
 			TenantName:     stringValue(row.TenantName),
 			MembershipID:   stringValue(row.MembershipID),
 			Active:         row.Active,
-			Primary:        row.IsPrimary,
+			// is_primary is intentionally ignored by 30K.2B1. Keep the response
+			// field false until 30K.3 removes the compatibility column/DTO field.
+			Primary: false,
 		}
 		record.Actors = append(record.Actors, actor)
 		if actor.Active {
 			record.AnyActorActive = true
 		}
-		if actor.Primary {
+
+		// Preserve the pre-30K response envelope for callers that still render the
+		// top-level Actor fields, but derive that projection deterministically from
+		// the canonical AccountActor binding list rather than actor_id/is_primary.
+		if index == 0 {
 			record.ActorID = actor.ActorID
 			record.ActorKey = actor.ActorKey
 			record.DisplayName = actor.DisplayName

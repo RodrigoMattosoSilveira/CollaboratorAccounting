@@ -59,8 +59,14 @@ func TestAccountActorFoundationSplitsMultiTenantPersonActorWithoutMovingLegacyGr
 	if accountRecord.GlobalPersonName != "Shared Person" || accountRecord.GlobalPersonEmail != "multi@example.com" {
 		t.Fatalf("expected Authentication Account Person identity, got name=%q email=%q", accountRecord.GlobalPersonName, accountRecord.GlobalPersonEmail)
 	}
+	if accountRecord.GlobalPersonID != personBinding.PersonID {
+		t.Fatalf("expected Account Person binding %q, got %q", personBinding.PersonID, accountRecord.GlobalPersonID)
+	}
 	tenantNames := map[string]string{"tenant-a": "Tenant A", "tenant-b": "Tenant B"}
 	for _, boundActor := range accountRecord.Actors {
+		if boundActor.PersonID != personBinding.PersonID {
+			t.Fatalf("Actor binding must derive canonical Global Person %q from Membership, got %#v", personBinding.PersonID, boundActor)
+		}
 		if boundActor.PersonName != "Shared Person" || boundActor.PersonNickname != "Shared" {
 			t.Fatalf("expected global Person search identity on Actor binding, got %#v", boundActor)
 		}
@@ -198,14 +204,59 @@ func TestAccountActorFoundationMakesApplicationAdministratorGlobalOnly(t *testin
 	if err != nil {
 		t.Fatalf("hydrate global Account Actor binding: %v", err)
 	}
-	if len(record.Actors) != 1 || !record.Actors[0].Primary {
-		t.Fatalf("expected one primary global Actor binding, got %#v", record.Actors)
+	if len(record.Actors) != 1 || record.Actors[0].ActorID != actor.ID {
+		t.Fatalf("expected one canonical global AccountActor binding, got %#v", record.Actors)
+	}
+	if record.Actors[0].Primary {
+		t.Fatalf("Authentication Administration must ignore legacy is_primary, got %#v", record.Actors)
 	}
 	tenantID := "tenant-a"
 	if err := ensureAccountActorBinding(database, AccountActor{
 		AccountID: account.ID, ActorID: "forbidden-tenant-actor", ScopeType: AccountActorScopeTenant, TenantID: &tenantID, CreatedAt: now, UpdatedAt: now,
 	}); err == nil {
 		t.Fatal("Application Administrator Account must not accept a tenant Actor binding")
+	}
+}
+
+func TestAccountHydrationIgnoresLegacySingleActorPointerAndPrimaryFlag(t *testing.T) {
+	database := accountActorFoundationTestDatabase(t)
+	now := time.Now().UTC()
+
+	legacy := authz.AuthzActor{ID: "legacy-pointer-actor", ActorKey: "legacy-pointer", DisplayName: "Legacy Pointer", Active: true, CreatedAt: now, UpdatedAt: now}
+	canonical := authz.AuthzActor{ID: "canonical-bound-actor", ActorKey: "canonical-bound", DisplayName: "Canonical Bound Actor", Active: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&legacy).Error; err != nil {
+		t.Fatalf("create legacy pointer Actor: %v", err)
+	}
+	if err := database.Create(&canonical).Error; err != nil {
+		t.Fatalf("create canonical bound Actor: %v", err)
+	}
+	account := Account{ID: "account-canonical-hydration", ActorID: legacy.ID, Login: "canonical-hydration@example.com", PasswordHash: "hash", Active: true, MustChangePassword: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&account).Error; err != nil {
+		t.Fatalf("create Account with legacy pointer: %v", err)
+	}
+	if err := database.Create(&AccountActor{
+		AccountID: account.ID,
+		ActorID:   canonical.ID,
+		ScopeType: AccountActorScopeGlobal,
+		Primary:   false,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}).Error; err != nil {
+		t.Fatalf("create canonical AccountActor binding: %v", err)
+	}
+
+	record, err := NewRepository(database).FindAccountByID(context.Background(), account.ID)
+	if err != nil {
+		t.Fatalf("hydrate Account from canonical binding: %v", err)
+	}
+	if record.ActorID != canonical.ID || record.ActorKey != canonical.ActorKey || record.DisplayName != canonical.DisplayName {
+		t.Fatalf("Authentication Administration must project canonical AccountActor identity, got %#v", record)
+	}
+	if record.ActorID == legacy.ID || record.ActorKey == legacy.ActorKey {
+		t.Fatalf("legacy auth_user_accounts.actor_id must be inert for hydration: %#v", record)
+	}
+	if len(record.Actors) != 1 || record.Actors[0].ActorID != canonical.ID || record.Actors[0].Primary {
+		t.Fatalf("expected one non-primary canonical binding, got %#v", record.Actors)
 	}
 }
 
