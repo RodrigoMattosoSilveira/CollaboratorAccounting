@@ -57,10 +57,10 @@ func TestBootstrapRefreshesCanonicalPeopleSearchProjectionWhenAutoMigrateDisable
 		t.Fatalf("migrate authentication database: %v", err)
 	}
 
-	// Recreate the shape provided by historical migration 000055. A deployed
-	// database reaches Bootstrap with AutoMigrate disabled, so 30K.1 must
-	// refresh this disposable projection before canonical Membership-based
-	// Collaborator search can use it.
+	// Recreate the table shape provided by historical migration 000055 while
+	// deliberately leaving the canonical Membership triggers in place. Bootstrap
+	// must refresh this disposable projection before any Membership-foundation
+	// repair can fire those triggers, so mixed/partially refreshed state is safe.
 	if err := database.Exec(`DROP TABLE people_search_index`).Error; err != nil {
 		t.Fatalf("drop canonical people search projection: %v", err)
 	}
