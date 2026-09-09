@@ -158,7 +158,7 @@ export function authenticationAccountMatchesSearch(
   const search = searchValue.trim().toLowerCase();
   if (!search) return true;
 
-  return (
+  return Boolean(
     account.actors?.some(
       (actor) =>
         matchedActorIds.has(actor.actorId) ||
@@ -169,9 +169,9 @@ export function authenticationAccountMatchesSearch(
         actor.tenantId?.toLowerCase().includes(search) ||
         actor.tenantName?.toLowerCase().includes(search),
     ) ||
-    account.login.toLowerCase().includes(search) ||
-    account.globalPersonName?.toLowerCase().includes(search) ||
-    account.globalPersonEmail?.toLowerCase().includes(search)
+      account.login.toLowerCase().includes(search) ||
+      account.globalPersonName?.toLowerCase().includes(search) ||
+      account.globalPersonEmail?.toLowerCase().includes(search),
   );
 }
 
