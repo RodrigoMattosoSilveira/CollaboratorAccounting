@@ -970,10 +970,11 @@ function isRoleCompatibleWithActor(role: AuthzRole, actor: AuthzActor): boolean 
   if (bindingScope === "TENANT") return roleScope === "TENANT";
   if (bindingScope === "GLOBAL") return roleScope === "APPLICATION";
 
-  // Actors created from the Application Authorization page are control-plane
-  // Actors until Authentication Account ownership gives them an explicit
-  // GLOBAL or TENANT binding. Do not let an unbound Actor acquire a tenant Role.
-  return roleScope === "APPLICATION";
+  // Raw Actors created from Application Authorization are intentionally
+  // identity-neutral. 30K.2B2 requires delegated application authority to be
+  // rooted in a canonical GLOBAL AccountActor owned by an Authentication
+  // Account, so an unbound Actor must not be offered any grantable Role.
+  return false;
 }
 
 function normalizedRoleScope(role: AuthzRole): string {

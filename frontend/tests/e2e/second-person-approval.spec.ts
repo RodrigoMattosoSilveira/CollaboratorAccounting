@@ -271,42 +271,19 @@ async function createTenantAuthorizedSecondApprover(
     suffix: identitySuffix,
     firstName: `SecondApprover${identitySuffix}`,
     nickname: `SecondApprover${identitySuffix}`,
+    email: input.actorKey,
   });
 
   const applicationAdminApi = await newApplicationAdminApi();
   try {
-    const actorResponse = await applicationAdminApi.post(
-      e2eApiUrl("/api/v1/authz/actors"),
-      {
-        headers: applicationAdminHeaders(),
-        data: {
-          actorKey: input.actorKey,
-          displayName: input.displayName,
-          personId: person.id,
-          active: true,
-        },
-      },
-    );
-    if (!actorResponse.ok()) {
-      throw new Error(
-        `Create second-approver actor failed at ${actorResponse.url()}: ${actorResponse.status()} ${await actorResponse.text()}`,
-      );
-    }
-    const actorBody = (await actorResponse.json()) as ApiEnvelope<AuthzActor>;
-    if (!actorBody.data) {
-      throw new Error("Create second-approver actor response did not include data");
-    }
-    const actor = actorBody.data;
-
     const accountResponse = await applicationAdminApi.post(
       e2eApiUrl("/api/v1/auth/accounts"),
       {
         headers: applicationAdminHeaders(),
         data: {
-          actorId: actor.id,
+          tenantId: "default",
           login: input.actorKey,
           temporaryPassword: `Second-Approver-${identitySuffix}-Password!`,
-          mustChangePassword: false,
         },
       },
     );
@@ -315,6 +292,27 @@ async function createTenantAuthorizedSecondApprover(
         `Create second-approver account failed at ${accountResponse.url()}: ${accountResponse.status()} ${await accountResponse.text()}`,
       );
     }
+    const accountBody = (await accountResponse.json()) as ApiEnvelope<{
+      actors?: Array<{
+        actorId?: string;
+        actorKey?: string;
+        displayName?: string;
+        tenantId?: string;
+        active?: boolean;
+      }>;
+    }>;
+    const tenantActor = accountBody.data?.actors?.find(
+      (candidate) => candidate.tenantId === "default",
+    );
+    if (!tenantActor?.actorId) {
+      throw new Error("Create second-approver account response did not include the default tenant Actor");
+    }
+    const actor: AuthzActor = {
+      id: tenantActor.actorId,
+      actorKey: tenantActor.actorKey || input.actorKey,
+      displayName: tenantActor.displayName || input.displayName,
+      active: tenantActor.active ?? true,
+    };
 
     const grantResponse = await applicationAdminApi.post(
       e2eApiUrl(`/api/v1/authz/actors/${encodeURIComponent(actor.id)}/role-grants`),
@@ -337,7 +335,7 @@ async function createTenantAuthorizedSecondApprover(
 
 async function createCompletePerson(
   api: APIRequestContext,
-  input: { suffix: number; firstName: string; nickname: string },
+  input: { suffix: number; firstName: string; nickname: string; email?: string },
 ): Promise<CreatedPerson> {
   const response = await api.post(e2eApiUrl("/api/v1/people"), {
     headers: authzHeaders(),
@@ -385,10 +383,12 @@ function completePersonPayload({
   suffix,
   firstName,
   nickname,
+  email,
 }: {
   suffix: number;
   firstName: string;
   nickname: string;
+  email?: string;
 }) {
   const emailLocal = String(suffix).replace(/\D/g, "");
   return {
@@ -398,7 +398,7 @@ function completePersonPayload({
     cpf: validCPF(suffix),
     rg: validRG(suffix),
     cellular: validBrazilianCellular(suffix),
-    email: `second-approval-e2e-${emailLocal}@example.com`,
+    email: email ?? `second-approval-e2e-${emailLocal}@example.com`,
     street1: "Rua Playwright 123",
     street2: "Apto E2E",
     city: "Sao Paulo",

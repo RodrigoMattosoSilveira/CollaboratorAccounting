@@ -436,6 +436,19 @@ describe("AuthzAdminPage", () => {
 
     await waitForText("global-support-e2e created.");
 
+    const createdActorArticle = articleByText("global-support-e2e");
+    const createdActorRole = controlByLabel<HTMLSelectElement>(
+      createdActorArticle,
+      "Role",
+      "select",
+    );
+    expect(createdActorRole.disabled).toBe(true);
+    expect(createdActorRole.options.length).toBe(0);
+    expect(buttonInArticle("global-support-e2e", "Grant Role").disabled).toBe(true);
+    expect(createdActorArticle.textContent).toContain(
+      "Authentication Account binding is required.",
+    );
+
     const createCall = fetchCalls.find(
       (call) => call.url === "/api/v1/authz/actors" && call.method === "POST",
     );
