@@ -107,13 +107,7 @@ func TestAuthenticationAccountCreationDerivesSelfAccessFromAccountMembership(t *
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "auth-existing-person-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID, Type: "person_status", Code: "ACTIVE", Label: "Authentication Existing Active", Active: true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create person status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "auth-existing-person", CreatedAt: now, UpdatedAt: now},
 		TenantID:  appdb.DefaultTenantID, FirstName: "Existing", LastName: "Person", Nickname: "ExistingPerson",
@@ -172,13 +166,7 @@ func TestAuthenticationLoginDoesNotBackfillPersonRoleGrant(t *testing.T) {
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "auth-login-person-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID, Type: "person_status", Code: "ACTIVE", Label: "Authentication Login Active", Active: true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create person status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "auth-login-person", CreatedAt: now, UpdatedAt: now},
 		TenantID:  appdb.DefaultTenantID, FirstName: "Login", LastName: "Person", Nickname: "LoginPerson",
@@ -464,12 +452,34 @@ func authenticationTestService(t *testing.T) (*gorm.DB, *GORMRepository, Service
 	return database, repository, service, actor
 }
 
+func authenticationTestActivePersonStatus(t *testing.T, database *gorm.DB) appdb.ReferenceData {
+	t.Helper()
+	var status appdb.ReferenceData
+	result := database.Where(
+		"tenant_id = ? AND type = ? AND code = ? AND active = ?",
+		appdb.DefaultTenantID, "person_status", "ACTIVE", true,
+	).Limit(1).Find(&status)
+	if result.Error != nil {
+		t.Fatalf("find ACTIVE Person status: %v", result.Error)
+	}
+	if result.RowsAffected > 0 {
+		return status
+	}
+	now := time.Now().UTC()
+	status = appdb.ReferenceData{
+		BaseModel: appdb.BaseModel{ID: "auth-fixture-person-status-active", CreatedAt: now, UpdatedAt: now},
+		TenantID:  appdb.DefaultTenantID, Type: "person_status", Code: "ACTIVE", Label: "Active", Active: true,
+	}
+	if err := database.Create(&status).Error; err != nil {
+		t.Fatalf("create ACTIVE Person status: %v", err)
+	}
+	return status
+}
+
 func ensureAuthenticationTestPerson(t *testing.T, database *gorm.DB, login string) string {
 	t.Helper()
 	login = normalizeLogin(login)
-	if err := appdb.SeedTenantData(database, appdb.DefaultTenantID); err != nil {
-		t.Fatalf("seed default tenant data: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 	if err := appdb.EnsureGlobalPersonMembershipFoundation(database); err != nil {
 		t.Fatalf("ensure existing Person foundation: %v", err)
 	}
@@ -487,10 +497,6 @@ func ensureAuthenticationTestPerson(t *testing.T, database *gorm.DB, login strin
 		return strings.TrimSpace(existing.GlobalPersonID)
 	}
 
-	var status appdb.ReferenceData
-	if err := database.Where("tenant_id = ? AND type = ? AND code = ? AND active = ?", appdb.DefaultTenantID, "person_status", "ACTIVE", true).First(&status).Error; err != nil {
-		t.Fatalf("find ACTIVE Person status: %v", err)
-	}
 	now := time.Now().UTC()
 	stem := strings.NewReplacer("@", "-", ".", "-", "+", "-").Replace(login)
 	person := appdb.Person{
@@ -548,17 +554,7 @@ func TestAuthenticationCreatesPersonActorAndAccountWithoutCollaboratorJourney(t 
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "auth-person-only-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID,
-		Type:      "person_status",
-		Code:      "ACTIVE",
-		Label:     "Authentication Person Only Active",
-		Active:    true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create Person-only status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "auth-person-only", CreatedAt: now, UpdatedAt: now},
@@ -649,8 +645,8 @@ func TestAccountLevelSelfServiceKeepsCurrentAccountWithoutActiveTenantContext(t 
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
+	activePersonStatus := authenticationTestActivePersonStatus(t, database)
 	references := []appdb.ReferenceData{
-		{BaseModel: appdb.BaseModel{ID: "self-service-person-active", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "person_status", Code: "ACTIVE", Label: "Self Service Person Active", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "self-service-person-inactive", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "person_status", Code: "INACTIVE", Label: "Self Service Person Inactive", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "self-service-payment-daily", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "method", Code: "DAILY", Label: "Self Service Daily", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "self-service-sector", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "sector", Code: "OPS", Label: "Self Service Operations", Active: true},
@@ -676,7 +672,7 @@ func TestAccountLevelSelfServiceKeepsCurrentAccountWithoutActiveTenantContext(t 
 		Cellular:  "11987650001",
 		Email:     "historical-person@example.com",
 		Country:   "Brasil",
-		StatusID:  "self-service-person-active",
+		StatusID:  activePersonStatus.ID,
 	}
 	if err := database.Create(&person).Error; err != nil {
 		t.Fatalf("create self-service Person: %v", err)
@@ -783,8 +779,8 @@ func TestAuthenticationCreatesPersonActorAndAccountWhenNoActorExists(t *testing.
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
+	activePersonStatus := authenticationTestActivePersonStatus(t, database)
 	references := []appdb.ReferenceData{
-		{BaseModel: appdb.BaseModel{ID: "auth-person-status", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "person_status", Code: "ACTIVE", Label: "Active", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "auth-payment-method", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "payment_method", Code: "DAILY", Label: "Daily", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "auth-sector", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "sector", Code: "OPS", Label: "Operations", Active: true},
 		{BaseModel: appdb.BaseModel{ID: "auth-location", CreatedAt: now, UpdatedAt: now}, TenantID: appdb.DefaultTenantID, Type: "location", Code: "MAIN", Label: "Main", Active: true},
@@ -808,7 +804,7 @@ func TestAuthenticationCreatesPersonActorAndAccountWhenNoActorExists(t *testing.
 		Cellular:  "11912345678",
 		Email:     "return-account@example.com",
 		Country:   "Brasil",
-		StatusID:  "auth-person-status",
+		StatusID:  activePersonStatus.ID,
 	}
 	if err := database.Create(&person).Error; err != nil {
 		t.Fatalf("create Person without actor: %v", err)
@@ -936,17 +932,7 @@ func TestAuthenticationAllowsAccountForActorWithActiveMembershipAndNoDelegatedRo
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
 
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "auth-membership-only-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID,
-		Type:      "person_status",
-		Code:      "ACTIVE",
-		Label:     "Authentication Membership Active",
-		Active:    true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create active Person status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "auth-membership-only-person", CreatedAt: now, UpdatedAt: now},

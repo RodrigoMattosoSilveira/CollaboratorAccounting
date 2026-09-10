@@ -308,17 +308,7 @@ func (s *recordingAuthenticationAuditStore) RecordAuthorizationAudit(_ context.C
 func TestAuthenticationHandlerPreservesTargetTenantFromCreateAccountBody(t *testing.T) {
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "handler-target-tenant-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID,
-		Type:      "person_status",
-		Code:      "ACTIVE",
-		Label:     "Active",
-		Active:    true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create Person status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "handler-target-tenant-person", CreatedAt: now, UpdatedAt: now},
 		TenantID:  appdb.DefaultTenantID,
