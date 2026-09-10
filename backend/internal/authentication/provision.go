@@ -71,9 +71,21 @@ func ProvisionApplicationAdmin(ctx context.Context, database *gorm.DB, cfg Provi
 			return fmt.Errorf("find existing administrator login: %w", loginLookup.Error)
 		}
 		if loginLookup.RowsAffected > 0 {
+			var binding AccountActor
+			bindingLookup := tx.Where(
+				"account_id = ? AND scope_type = ?",
+				existingLogin.ID,
+				AccountActorScopeGlobal,
+			).Limit(1).Find(&binding)
+			if bindingLookup.Error != nil {
+				return fmt.Errorf("find canonical administrator AccountActor binding: %w", bindingLookup.Error)
+			}
+			if bindingLookup.RowsAffected == 0 {
+				return fmt.Errorf("provision application administrator: login %q has no canonical GLOBAL AccountActor binding", cfg.Login)
+			}
 			var linkedActor authz.AuthzActor
-			if err := tx.First(&linkedActor, "id = ?", existingLogin.ActorID).Error; err != nil {
-				return fmt.Errorf("find authorization actor linked to administrator login: %w", err)
+			if err := tx.First(&linkedActor, "id = ?", binding.ActorID).Error; err != nil {
+				return fmt.Errorf("find canonical authorization actor linked to administrator login: %w", err)
 			}
 			if linkedActor.ActorKey != cfg.ActorKey {
 				return fmt.Errorf("provision application administrator: login %q is already linked to actor %q", cfg.Login, linkedActor.ActorKey)
@@ -152,10 +164,21 @@ func ProvisionApplicationAdmin(ctx context.Context, database *gorm.DB, cfg Provi
 			AuthorizationReactivated: authorizationReactivated,
 		}
 
+		var actorBinding AccountActor
+		actorBindingLookup := tx.Where(
+			"actor_id = ? AND scope_type = ?",
+			bootstrap.ActorID,
+			AccountActorScopeGlobal,
+		).Limit(1).Find(&actorBinding)
+		if actorBindingLookup.Error != nil {
+			return fmt.Errorf("find canonical Authentication Account for application Actor: %w", actorBindingLookup.Error)
+		}
+
 		var actorAccount Account
-		actorLookup := tx.Where("actor_id = ?", bootstrap.ActorID).Limit(1).Find(&actorAccount)
-		if actorLookup.Error != nil {
-			return fmt.Errorf("find authentication account for actor: %w", actorLookup.Error)
+		if actorBindingLookup.RowsAffected > 0 {
+			if err := tx.First(&actorAccount, "id = ?", actorBinding.AccountID).Error; err != nil {
+				return fmt.Errorf("find Authentication Account owning application Actor: %w", err)
+			}
 		}
 
 		var loginAccount Account
@@ -163,15 +186,15 @@ func ProvisionApplicationAdmin(ctx context.Context, database *gorm.DB, cfg Provi
 		if loginLookup.Error != nil {
 			return fmt.Errorf("find authentication account by login: %w", loginLookup.Error)
 		}
-		if actorLookup.RowsAffected == 0 && loginLookup.RowsAffected > 0 {
+		if actorBindingLookup.RowsAffected == 0 && loginLookup.RowsAffected > 0 {
 			return fmt.Errorf("provision application administrator: login %q is already linked to another authorization actor", cfg.Login)
 		}
-		if actorLookup.RowsAffected > 0 && loginLookup.RowsAffected > 0 && actorAccount.ID != loginAccount.ID {
+		if actorBindingLookup.RowsAffected > 0 && loginLookup.RowsAffected > 0 && actorAccount.ID != loginAccount.ID {
 			return fmt.Errorf("provision application administrator: login %q is already linked to another authorization actor", cfg.Login)
 		}
 
 		now := time.Now().UTC()
-		if actorLookup.RowsAffected == 0 {
+		if actorBindingLookup.RowsAffected == 0 {
 			passwordHash, err := bcrypt.GenerateFromPassword([]byte(cfg.Password), cfg.PasswordHashCost)
 			if err != nil {
 				return fmt.Errorf("hash administrator password: %w", err)
@@ -190,8 +213,15 @@ func ProvisionApplicationAdmin(ctx context.Context, database *gorm.DB, cfg Provi
 			if err := tx.Create(&account).Error; err != nil {
 				return fmt.Errorf("create administrator authentication account: %w", err)
 			}
-			if err := ensureAccountActorFoundation(tx, account); err != nil {
-				return err
+			if err := ensureAccountActorBinding(tx, AccountActor{
+				AccountID: account.ID,
+				ActorID:   bootstrap.ActorID,
+				ScopeType: AccountActorScopeGlobal,
+				Primary:   false,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}); err != nil {
+				return fmt.Errorf("create canonical application administrator AccountActor binding: %w", err)
 			}
 			result.AccountID = account.ID
 			result.AccountCreated = true
@@ -234,8 +264,15 @@ func ProvisionApplicationAdmin(ctx context.Context, database *gorm.DB, cfg Provi
 			}
 		}
 
-		if err := ensureAccountActorFoundation(tx, actorAccount); err != nil {
-			return err
+		if err := ensureAccountActorBinding(tx, AccountActor{
+			AccountID: actorAccount.ID,
+			ActorID:   bootstrap.ActorID,
+			ScopeType: AccountActorScopeGlobal,
+			Primary:   false,
+			CreatedAt: actorBinding.CreatedAt,
+			UpdatedAt: actorBinding.UpdatedAt,
+		}); err != nil {
+			return fmt.Errorf("verify canonical application administrator AccountActor binding: %w", err)
 		}
 
 		if result.PasswordUpdated || result.AccountReactivated || result.AuthorizationReactivated || result.LoginUpdated {

@@ -584,7 +584,6 @@ func deactivateOperationalPersonTx(tx *gorm.DB, globalPersonID string, now time.
 		return err
 	}
 	membershipIDs := make([]string, 0, len(memberships))
-	legacyPersonIDs := make([]string, 0, len(memberships))
 	for _, membership := range memberships {
 		inactiveStatusID, err := personStatusIDByCodeTx(tx, membership.TenantID, "INACTIVE")
 		if err != nil {
@@ -598,7 +597,6 @@ func deactivateOperationalPersonTx(tx *gorm.DB, globalPersonID string, now time.
 			if err := tx.Model(&db.Person{}).Where("id = ? AND tenant_id = ?", legacyPersonID, membership.TenantID).Updates(map[string]any{"status_id": inactiveStatusID, "updated_at": now}).Error; err != nil {
 				return err
 			}
-			legacyPersonIDs = append(legacyPersonIDs, legacyPersonID)
 		}
 		membershipIDs = append(membershipIDs, membership.ID)
 	}
@@ -640,13 +638,6 @@ func deactivateOperationalPersonTx(tx *gorm.DB, globalPersonID string, now time.
 			return err
 		}
 		actorIDs = append(actorIDs, boundActorIDs...)
-	}
-	if len(legacyPersonIDs) > 0 {
-		var legacyActorIDs []string
-		if err := tx.Table("authz_actors").Where("person_id IN ?", legacyPersonIDs).Pluck("id", &legacyActorIDs).Error; err != nil {
-			return err
-		}
-		actorIDs = append(actorIDs, legacyActorIDs...)
 	}
 	if len(actorIDs) > 0 {
 		if err := tx.Table("authz_actors").Where("id IN ?", actorIDs).Updates(map[string]any{"active": false, "updated_at": now}).Error; err != nil {
@@ -735,8 +726,7 @@ func reactivateTenantMembershipTx(tx *gorm.DB, tenantID string, legacyPersonID s
 		if strings.TrimSpace(legacy.Nickname) == "" {
 			displayName = strings.TrimSpace(legacy.FirstName + " " + legacy.LastName)
 		}
-		personID := legacyPersonID
-		if err := tx.Table("authz_actors").Create(map[string]any{"id": actorID, "actor_key": actorKey, "display_name": displayName, "person_id": personID, "active": true, "created_at": now, "updated_at": now}).Error; err != nil {
+		if err := tx.Table("authz_actors").Create(map[string]any{"id": actorID, "actor_key": actorKey, "display_name": displayName, "active": true, "created_at": now, "updated_at": now}).Error; err != nil {
 			return err
 		}
 		tenant := tenantID

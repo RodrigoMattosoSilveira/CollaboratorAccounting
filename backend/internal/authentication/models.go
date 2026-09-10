@@ -4,12 +4,10 @@ import "time"
 
 // Account is the application-global authentication identity for one human.
 //
-// ActorID is retained during Bite 30C only as the legacy/default actor pointer
-// used by pre-30C clients and session responses. The authoritative ownership
-// relation is auth_account_actors, which allows one Account to control many
-// tenant Actors while preserving a single global Actor for Application
-// Administrators. Bite 30K removes this compatibility column after all callers
-// have cut over.
+// ActorID is retained only as a physical compatibility write until Bite 30K.3
+// removes the column. After 30K.2A/30K.2B1 it MUST NOT determine authenticated
+// session identity, Tenant selection, or Authentication Administration display.
+// The authoritative ownership relation is auth_account_actors.
 type Account struct {
 	ID                 string     `gorm:"type:text;primaryKey"`
 	ActorID            string     `gorm:"type:text;not null;uniqueIndex"`
@@ -46,6 +44,8 @@ const (
 // AccountActor is the authoritative Account -> Actor ownership relation.
 // Tenant bindings identify exactly one Tenant and, when the Actor represents a
 // Person, exactly one Person-Tenant Membership. Global bindings have neither.
+// Primary is retained only because the pre-30K.3 schema still contains
+// is_primary; runtime identity and Administration ordering ignore it.
 type AccountActor struct {
 	AccountID    string    `gorm:"type:text;primaryKey;uniqueIndex:ux_auth_account_actor,priority:1;index"`
 	ActorID      string    `gorm:"type:text;primaryKey;uniqueIndex:ux_auth_account_actor,priority:2;uniqueIndex;index"`
