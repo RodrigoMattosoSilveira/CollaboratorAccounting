@@ -176,12 +176,12 @@ describe("authentication account collaborator selection", () => {
     ).toBeUndefined();
   });
 
-  it("maps a collaborator nickname result through the 30C Person/Tenant Actor identity", () => {
+  it("maps a collaborator nickname result through canonical Person/Tenant Actor identity", () => {
     const personActor: AuthzActor = {
       ...eligibleActor,
       id: "actor-person",
       collaboratorId: undefined,
-      personId: collaborator.legacyPersonId,
+      personId: collaborator.personId,
       roleGrants: eligibleActor.roleGrants?.map((grant) => ({
         ...grant,
         actorId: "actor-person",

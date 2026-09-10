@@ -49,6 +49,26 @@ func ensureAccountActorFoundation(tx *gorm.DB, account Account) error {
 		return fmt.Errorf("find legacy authentication actor for account %s: %w", account.ID, err)
 	}
 
+	// Canonical 30K.2B2 writers install the AccountActor binding at creation
+	// time and intentionally leave authz_actors.person_id/collaborator_id empty.
+	// When the legacy compatibility pointer already names an Actor canonically
+	// owned by this Account, validate that binding and leave it untouched rather
+	// than trying to reconstruct its Membership from retired Actor identity.
+	var canonicalBinding AccountActor
+	bindingResult := tx.Where("actor_id = ?", legacyActor.ID).Limit(1).Find(&canonicalBinding)
+	if bindingResult.Error != nil {
+		return fmt.Errorf("find canonical Authentication Account Actor binding: %w", bindingResult.Error)
+	}
+	if bindingResult.RowsAffected > 0 {
+		if canonicalBinding.AccountID != account.ID {
+			return fmt.Errorf("authorization actor %s is already bound to another Authentication Account or scope", legacyActor.ID)
+		}
+		if err := validateAccountActorBinding(tx, canonicalBinding); err != nil {
+			return fmt.Errorf("validate canonical Authentication Account Actor binding: %w", err)
+		}
+		return nil
+	}
+
 	applicationAdmin, err := actorHasApplicationAdminGrant(tx, legacyActor.ID)
 	if err != nil {
 		return err

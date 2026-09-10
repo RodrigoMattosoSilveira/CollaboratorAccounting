@@ -65,8 +65,11 @@ func TestEnsureE2ETenantFixturesSurvivesAccountActorFoundationAndIsIdempotent(t 
 	if err := database.First(&actor, "id = ?", actorID).Error; err != nil {
 		t.Fatalf("find E2E Tenant Administrator Actor: %v", err)
 	}
-	if actor.PersonID == nil || *actor.PersonID != legacyPersonID {
-		t.Fatalf("expected legacy actor Person projection %q, got %#v", legacyPersonID, actor.PersonID)
+	if actor.PersonID != nil {
+		t.Fatalf("canonical E2E Tenant Administrator Actor must not persist legacy Person identity, got %#v", actor.PersonID)
+	}
+	if actor.CollaboratorID != nil {
+		t.Fatalf("canonical E2E Tenant Administrator Actor must not persist legacy Collaborator identity, got %#v", actor.CollaboratorID)
 	}
 
 	var binding authentication.AccountActor
