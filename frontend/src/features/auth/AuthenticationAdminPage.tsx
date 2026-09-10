@@ -56,12 +56,12 @@ export function authenticationActorForCollaborator(
   );
   if (collaboratorActor) return collaboratorActor;
 
-  // Bite 30C makes the tenant Actor represent the Person/Membership. During
-  // the transition an Actor does not have to retain a Collaborator Journey ID,
-  // so bridge collaborator search results through the tenant Person identity.
+  // Canonical Actor identity is the global Person reached through the exact
+  // AccountActor Membership. If no current Journey was projected on the Actor,
+  // bridge collaborator search results through that canonical Person identity.
   return actors.find(
     (actor) =>
-      actor.personId === (collaborator.legacyPersonId ?? collaborator.personId) &&
+      actor.personId === collaborator.personId &&
       activeAuthenticationGrants(actor).some(
         (grant) => grant.tenantId === collaborator.tenantId,
       ),
@@ -383,7 +383,6 @@ export function AuthenticationAdminPage() {
           onSubmit={(event) => {
             event.preventDefault();
             mutation.mutate({
-              actorId: "",
               tenantId: targetTenantId,
               login,
               temporaryPassword,

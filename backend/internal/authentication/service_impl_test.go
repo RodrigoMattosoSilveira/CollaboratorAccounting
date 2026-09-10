@@ -16,10 +16,10 @@ import (
 )
 
 func TestAuthenticationLoginSessionLogoutAndPasswordChange(t *testing.T) {
-	database, repository, service, actor := authenticationTestService(t)
+	database, repository, service, _ := authenticationTestService(t)
 	mustChange := true
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: " Admin@Example.COM ", TemporaryPassword: "Temporary-Password-1", MustChangePassword: &mustChange,
+		TenantID: appdb.DefaultTenantID, Login: " Admin@Example.COM ", TemporaryPassword: "Temporary-Password-1", MustChangePassword: &mustChange,
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -43,7 +43,7 @@ func TestAuthenticationLoginSessionLogoutAndPasswordChange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("login: %v", err)
 	}
-	if login.Token == "" || login.Session.ActorKey != actor.ActorKey || login.Session.AccountID != account.ID {
+	if login.Token == "" || login.Session.ActorKey != account.ActorKey || login.Session.AccountID != account.ID {
 		t.Fatalf("unexpected login result: %#v", login)
 	}
 	if login.Session.Login != "admin@example.com" {
@@ -136,22 +136,25 @@ func TestAuthenticationAccountCreationDerivesSelfAccessFromAccountMembership(t *
 	}
 
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: person.Email, TemporaryPassword: "Existing-Person-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: person.Email, TemporaryPassword: "Existing-Person-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
 	}
 
-	assertNoActivePersonRoleGrant(t, database, actor.ID)
+	if account.ActorID == actor.ID {
+		t.Fatal("canonical provisioning must not reuse a legacy Actor identified by authz_actors.person_id")
+	}
+	assertNoActivePersonRoleGrant(t, database, account.ActorID)
 
 	login, err := service.Login(context.Background(), LoginRequest{Login: account.Login, Password: "Existing-Person-Password-1"}, "", "")
 	if err != nil {
 		t.Fatalf("login: %v", err)
 	}
-	if login.Session.PersonID != person.ID {
-		t.Fatalf("expected login session person %q, got %#v", person.ID, login.Session)
+	if login.Session.PersonID != account.GlobalPersonID {
+		t.Fatalf("expected canonical login Person identity %q, got %#v", account.GlobalPersonID, login.Session)
 	}
-	assertNoActivePersonRoleGrant(t, database, actor.ID)
+	assertNoActivePersonRoleGrant(t, database, account.ActorID)
 
 	resolved, err := authz.NewGORMStore(database).FindAccountActor(context.Background(), account.ID, appdb.DefaultTenantID)
 	if err != nil {
@@ -160,8 +163,8 @@ func TestAuthenticationAccountCreationDerivesSelfAccessFromAccountMembership(t *
 	if !resolved.HasIntrinsicPermission(authz.PermissionPeopleSelfRead) || !resolved.HasPermission(authz.PermissionPeopleSelfUpdate) {
 		t.Fatalf("expected intrinsic Person self-service, effective=%v intrinsic=%v", authz.PermissionNames(resolved.Permissions), authz.PermissionNames(resolved.IntrinsicPermissions))
 	}
-	if !resolved.HasPermission(authz.PermissionCollaboratorsRead) || resolved.HasIntrinsicPermission(authz.PermissionCollaboratorsRead) {
-		t.Fatalf("expected existing Expense Operator authorization to remain delegated and additive, effective=%v intrinsic=%v", authz.PermissionNames(resolved.Permissions), authz.PermissionNames(resolved.IntrinsicPermissions))
+	if resolved.HasPermission(authz.PermissionCollaboratorsRead) {
+		t.Fatalf("legacy Actor delegated authority must not transfer to the canonical AccountActor, effective=%v roles=%v", authz.PermissionNames(resolved.Permissions), resolved.RoleCodes)
 	}
 }
 
@@ -198,8 +201,8 @@ func TestAuthenticationLoginDoesNotBackfillPersonRoleGrant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("login existing account: %v", err)
 	}
-	if login.Session.PersonID != person.ID {
-		t.Fatalf("expected login Person identity %q, got %#v", person.ID, login.Session)
+	if login.Session.PersonID != account.GlobalPersonID {
+		t.Fatalf("expected canonical login Person identity %q, got %#v", account.GlobalPersonID, login.Session)
 	}
 	assertNoActivePersonRoleGrant(t, database, account.ActorID)
 
@@ -227,12 +230,15 @@ func assertNoActivePersonRoleGrant(t *testing.T, database *gorm.DB, actorID stri
 }
 
 func TestAuthenticationSeparatesAccountAndActorActivation(t *testing.T) {
-	database, _, service, actor := authenticationTestService(t)
+	database, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "operator@example.com", TemporaryPassword: "Operator-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "operator@example.com", TemporaryPassword: "Operator-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
+	}
+	if err := authz.GrantRole(database, account.ActorID, authz.RoleExpenseOperator, appdb.DefaultTenantID); err != nil {
+		t.Fatalf("grant canonical AccountActor tenant role: %v", err)
 	}
 	activeLogin, err := service.Login(context.Background(), LoginRequest{Login: account.Login, Password: "Operator-Password-1"}, "", "")
 	if err != nil {
@@ -243,7 +249,7 @@ func TestAuthenticationSeparatesAccountAndActorActivation(t *testing.T) {
 		t.Fatalf("issue reset token before account deactivation: %v", err)
 	}
 	var grantsBefore []authz.AuthzActorRoleGrant
-	if err := database.Where("actor_id = ? AND active = ?", actor.ID, true).Order("role_id, tenant_id").Find(&grantsBefore).Error; err != nil {
+	if err := database.Where("actor_id = ? AND active = ?", account.ActorID, true).Order("role_id, tenant_id").Find(&grantsBefore).Error; err != nil {
 		t.Fatalf("load active grants before account deactivation: %v", err)
 	}
 	if len(grantsBefore) == 0 {
@@ -271,7 +277,7 @@ func TestAuthenticationSeparatesAccountAndActorActivation(t *testing.T) {
 		t.Fatalf("reactivate account: %v", err)
 	}
 	var grantsAfter []authz.AuthzActorRoleGrant
-	if err := database.Where("actor_id = ? AND active = ?", actor.ID, true).Order("role_id, tenant_id").Find(&grantsAfter).Error; err != nil {
+	if err := database.Where("actor_id = ? AND active = ?", account.ActorID, true).Order("role_id, tenant_id").Find(&grantsAfter).Error; err != nil {
 		t.Fatalf("load active grants after account reactivation: %v", err)
 	}
 	if len(grantsAfter) != len(grantsBefore) {
@@ -289,7 +295,7 @@ func TestAuthenticationSeparatesAccountAndActorActivation(t *testing.T) {
 	if err := service.Logout(context.Background(), reactivatedLogin.Token); err != nil {
 		t.Fatalf("logout reactivated account: %v", err)
 	}
-	if err := database.Model(&authz.AuthzActor{}).Where("id = ?", actor.ID).Update("active", false).Error; err != nil {
+	if err := database.Model(&authz.AuthzActor{}).Where("id = ?", account.ActorID).Update("active", false).Error; err != nil {
 		t.Fatalf("deactivate actor: %v", err)
 	}
 	if _, err := service.Login(context.Background(), LoginRequest{Login: account.Login, Password: "Wrong-Password-1"}, "", ""); err != ErrInvalidCredentials {
@@ -305,9 +311,9 @@ func TestAuthenticationSeparatesAccountAndActorActivation(t *testing.T) {
 }
 
 func TestAuthenticationRejectsResetTokenForInactiveAccountButNotInactiveActor(t *testing.T) {
-	database, _, service, actor := authenticationTestService(t)
+	database, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "inactive-reset-target@example.com", TemporaryPassword: "Inactive-Reset-Target-1",
+		TenantID: appdb.DefaultTenantID, Login: "inactive-reset-target@example.com", TemporaryPassword: "Inactive-Reset-Target-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -324,7 +330,7 @@ func TestAuthenticationRejectsResetTokenForInactiveAccountButNotInactiveActor(t 
 	if _, err := service.SetAccountActive(context.Background(), account.ID, true); err != nil {
 		t.Fatalf("reactivate account: %v", err)
 	}
-	if err := database.Model(&authz.AuthzActor{}).Where("id = ?", actor.ID).Update("active", false).Error; err != nil {
+	if err := database.Model(&authz.AuthzActor{}).Where("id = ?", account.ActorID).Update("active", false).Error; err != nil {
 		t.Fatalf("deactivate actor: %v", err)
 	}
 	reset, err := service.IssuePasswordResetToken(context.Background(), account.ID)
@@ -337,9 +343,9 @@ func TestAuthenticationRejectsResetTokenForInactiveAccountButNotInactiveActor(t 
 }
 
 func TestAuthenticationPasswordResetTokenIsOneTimeAndRevokesSessions(t *testing.T) {
-	database, _, service, actor := authenticationTestService(t)
+	database, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "reset@example.com", TemporaryPassword: "Original-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "reset@example.com", TemporaryPassword: "Original-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -397,13 +403,14 @@ func TestAuthenticationSessionExpires(t *testing.T) {
 	if err := AutoMigrate(database); err != nil {
 		t.Fatalf("migrate authentication database: %v", err)
 	}
-	actor := createAuthenticationTestActor(t, database)
+	_ = createAuthenticationTestActor(t, database)
+	ensureAuthenticationTestPerson(t, database, "expiry@example.com")
 	now := time.Date(2026, 7, 21, 10, 0, 0, 0, time.UTC)
 	service := NewService(NewRepository(database), ServiceConfig{
 		SessionTTL: 5 * time.Minute, PasswordResetTTL: 10 * time.Minute, PasswordHashCost: bcrypt.MinCost,
 		Clock: func() time.Time { return now }, RandomReader: rand.Reader,
 	})
-	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{ActorID: actor.ID, Login: "expiry@example.com", TemporaryPassword: "Expiry-Password-1"})
+	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{TenantID: appdb.DefaultTenantID, Login: "expiry@example.com", TemporaryPassword: "Expiry-Password-1"})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
 	}
@@ -433,11 +440,80 @@ func authenticationTestService(t *testing.T) (*gorm.DB, *GORMRepository, Service
 		t.Fatalf("migrate authentication database: %v", err)
 	}
 	actor := createAuthenticationTestActor(t, database)
+	for _, login := range []string{
+		"admin@example.com",
+		"operator@example.com",
+		"inactive-reset-target@example.com",
+		"reset@example.com",
+		"expired-reset@example.com",
+		"permanent@example.com",
+		"cookie@example.com",
+		"inactive-login@example.com",
+		"reset-target@example.com",
+		"inactive-reset-handler@example.com",
+		"audited@example.com",
+		"self-admin@example.com",
+		"tenant-options@example.com",
+	} {
+		ensureAuthenticationTestPerson(t, database, login)
+	}
 	repository := NewRepository(database)
 	service := NewService(repository, ServiceConfig{
 		SessionTTL: time.Hour, PasswordResetTTL: 30 * time.Minute, PasswordHashCost: bcrypt.MinCost, RandomReader: rand.Reader,
 	})
 	return database, repository, service, actor
+}
+
+func ensureAuthenticationTestPerson(t *testing.T, database *gorm.DB, login string) string {
+	t.Helper()
+	login = normalizeLogin(login)
+	if err := appdb.SeedTenantData(database, appdb.DefaultTenantID); err != nil {
+		t.Fatalf("seed default tenant data: %v", err)
+	}
+	if err := appdb.EnsureGlobalPersonMembershipFoundation(database); err != nil {
+		t.Fatalf("ensure existing Person foundation: %v", err)
+	}
+	type identity struct{ GlobalPersonID string }
+	var existing identity
+	result := database.Table("person_tenant_memberships m").
+		Select("m.person_id AS global_person_id").
+		Joins("JOIN global_people gp ON gp.id = m.person_id").
+		Where("m.tenant_id = ? AND gp.email = ? COLLATE NOCASE", appdb.DefaultTenantID, login).
+		Limit(1).Scan(&existing)
+	if result.Error != nil {
+		t.Fatalf("find test Person identity: %v", result.Error)
+	}
+	if result.RowsAffected > 0 && strings.TrimSpace(existing.GlobalPersonID) != "" {
+		return strings.TrimSpace(existing.GlobalPersonID)
+	}
+
+	var status appdb.ReferenceData
+	if err := database.Where("tenant_id = ? AND type = ? AND code = ? AND active = ?", appdb.DefaultTenantID, "person_status", "ACTIVE", true).First(&status).Error; err != nil {
+		t.Fatalf("find ACTIVE Person status: %v", err)
+	}
+	now := time.Now().UTC()
+	stem := strings.NewReplacer("@", "-", ".", "-", "+", "-").Replace(login)
+	person := appdb.Person{
+		BaseModel: appdb.BaseModel{ID: "auth-fixture-" + stem, CreatedAt: now, UpdatedAt: now},
+		TenantID:  appdb.DefaultTenantID, FirstName: "Authentication", LastName: "Fixture", Nickname: stem,
+		CPF: "cpf-" + stem, RG: "rg-" + stem, Cellular: "cell-" + stem, Email: login, Country: "Brasil",
+		ProfileCompletionStatus: "COMPLETE", StatusID: status.ID,
+	}
+	if err := database.Create(&person).Error; err != nil {
+		t.Fatalf("create test Person %s: %v", login, err)
+	}
+	if err := appdb.EnsureGlobalPersonMembershipFoundation(database); err != nil {
+		t.Fatalf("project test Person %s: %v", login, err)
+	}
+	result = database.Table("person_tenant_memberships m").
+		Select("m.person_id AS global_person_id").
+		Joins("JOIN global_people gp ON gp.id = m.person_id").
+		Where("m.tenant_id = ? AND gp.email = ? COLLATE NOCASE", appdb.DefaultTenantID, login).
+		Limit(1).Scan(&existing)
+	if result.Error != nil || result.RowsAffected == 0 || strings.TrimSpace(existing.GlobalPersonID) == "" {
+		t.Fatalf("resolve projected test Person %s: result=%#v error=%v", login, existing, result.Error)
+	}
+	return strings.TrimSpace(existing.GlobalPersonID)
 }
 
 func createAuthenticationTestActor(t *testing.T, database *gorm.DB) authz.AuthzActor {
@@ -520,8 +596,8 @@ func TestAuthenticationCreatesPersonActorAndAccountWithoutCollaboratorJourney(t 
 	if err := database.First(&actor, "id = ?", account.ActorID).Error; err != nil {
 		t.Fatalf("find provisioned Person Actor: %v", err)
 	}
-	if actor.PersonID == nil || *actor.PersonID != person.ID {
-		t.Fatalf("expected Actor Person %q, got %#v", person.ID, actor.PersonID)
+	if actor.PersonID != nil {
+		t.Fatalf("canonical tenant Actor must not persist legacy Person identity, got %#v", actor.PersonID)
 	}
 	if actor.CollaboratorID != nil {
 		t.Fatalf("expected no Collaborator Journey on Person-only Actor, got %#v", actor.CollaboratorID)
@@ -533,8 +609,8 @@ func TestAuthenticationCreatesPersonActorAndAccountWithoutCollaboratorJourney(t 
 	if err != nil {
 		t.Fatalf("login through Person-only Authentication Account: %v", err)
 	}
-	if login.Session.PersonID != person.ID {
-		t.Fatalf("expected session Person %q, got %#v", person.ID, login.Session)
+	if login.Session.PersonID != account.GlobalPersonID {
+		t.Fatalf("expected canonical session Person %q, got %#v", account.GlobalPersonID, login.Session)
 	}
 	if login.Session.CollaboratorID != "" {
 		t.Fatalf("expected empty session Collaborator ID, got %q", login.Session.CollaboratorID)
@@ -629,7 +705,7 @@ func TestAccountLevelSelfServiceKeepsCurrentAccountWithoutActiveTenantContext(t 
 	}
 
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: person.Email, TemporaryPassword: "Historical-Person-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: person.Email, TemporaryPassword: "Historical-Person-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create self-service Authentication Account: %v", err)
@@ -795,11 +871,8 @@ func TestAuthenticationCreatesPersonActorAndAccountWhenNoActorExists(t *testing.
 	if err := database.First(&actor, "id = ?", account.ActorID).Error; err != nil {
 		t.Fatalf("find provisioned actor: %v", err)
 	}
-	if actor.PersonID == nil || *actor.PersonID != person.ID {
-		t.Fatalf("expected actor person %q, got %#v", person.ID, actor.PersonID)
-	}
-	if actor.CollaboratorID == nil || *actor.CollaboratorID != collaborator.ID {
-		t.Fatalf("expected actor collaborator %q, got %#v", collaborator.ID, actor.CollaboratorID)
+	if actor.PersonID != nil || actor.CollaboratorID != nil {
+		t.Fatalf("canonical tenant Actor must be identity-neutral, person=%#v collaborator=%#v", actor.PersonID, actor.CollaboratorID)
 	}
 
 	assertNoActivePersonRoleGrant(t, database, actor.ID)
@@ -831,8 +904,8 @@ func TestAuthenticationCreatesPersonActorAndAccountWhenNoActorExists(t *testing.
 	if err != nil {
 		t.Fatalf("login through provisioned account: %v", err)
 	}
-	if login.Session.PersonID != person.ID || login.Session.CollaboratorID != collaborator.ID {
-		t.Fatalf("unexpected provisioned session identity: %#v", login.Session)
+	if login.Session.PersonID != account.GlobalPersonID || login.Session.CollaboratorID != collaborator.ID {
+		t.Fatalf("unexpected canonical provisioned session identity: %#v", login.Session)
 	}
 	if !login.Session.MustChangePassword {
 		t.Fatal("expected first login for a provisioned Person account to require a password change")
@@ -847,17 +920,15 @@ func TestAuthenticationCreatesPersonActorAndAccountWhenNoActorExists(t *testing.
 	}
 }
 
-func TestAuthenticationAllowsLegacyTenantGrantedActorWithoutMembership(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+func TestAuthenticationRejectsLegacyTenantGrantedActorWithoutCanonicalMembership(t *testing.T) {
+	_, _, service, _ := authenticationTestService(t)
 
-	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "legacy-granted@example.com", TemporaryPassword: "Legacy-Granted-Password-1",
+	_, err := service.CreateAccount(context.Background(), CreateAccountRequest{
+		TenantID: appdb.DefaultTenantID, Login: "legacy-granted@example.com", TemporaryPassword: "Legacy-Granted-Password-1",
 	})
-	if err != nil {
-		t.Fatalf("create Account for pre-30D tenant-granted Actor: %v", err)
-	}
-	if account.ActorID != actor.ID {
-		t.Fatalf("expected Account actor %q, got %q", actor.ID, account.ActorID)
+	var validation *ValidationError
+	if !errors.As(err, &validation) || validation.ValidationFields()["login"] == "" {
+		t.Fatalf("expected canonical Person/Membership validation, got %v", err)
 	}
 }
 
@@ -912,18 +983,18 @@ func TestAuthenticationAllowsAccountForActorWithActiveMembershipAndNoDelegatedRo
 	}
 
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: person.Email, TemporaryPassword: "Membership-Only-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: person.Email, TemporaryPassword: "Membership-Only-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create Account from active Membership without delegated role: %v", err)
 	}
-	if account.ActorID != actor.ID {
-		t.Fatalf("expected Account actor %q, got %q", actor.ID, account.ActorID)
+	if account.ActorID == actor.ID {
+		t.Fatal("canonical provisioning must not reuse the legacy Person-linked Actor")
 	}
 
 	var activeGrantCount int64
 	if err := database.Model(&authz.AuthzActorRoleGrant{}).
-		Where("actor_id = ? AND active = ?", actor.ID, true).
+		Where("actor_id = ? AND active = ?", account.ActorID, true).
 		Count(&activeGrantCount).Error; err != nil {
 		t.Fatalf("count delegated Role Grants: %v", err)
 	}
@@ -943,68 +1014,47 @@ func TestAuthenticationAllowsAccountForActorWithActiveMembershipAndNoDelegatedRo
 	}
 }
 
-func TestAuthenticationRejectsAccountForActorWithoutActiveTenantAccess(t *testing.T) {
-	database, _, service, _ := authenticationTestService(t)
-	now := time.Now().UTC()
-	actor := authz.AuthzActor{
-		ID:          "auth-test-actor-without-access",
-		ActorKey:    "auth-test-actor-without-access@example.com",
-		DisplayName: "Actor Without Access",
-		Active:      true,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-	if err := database.Create(&actor).Error; err != nil {
-		t.Fatalf("create actor without access: %v", err)
-	}
+func TestAuthenticationRejectsAccountWithoutCanonicalMembership(t *testing.T) {
+	_, _, service, _ := authenticationTestService(t)
 
 	_, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "no-access@example.com", TemporaryPassword: "No-Access-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "no-access@example.com", TemporaryPassword: "No-Access-Password-1",
 	})
 	var validation *ValidationError
 	if !errors.As(err, &validation) {
 		t.Fatalf("expected validation error, got %v", err)
 	}
-	if got := validation.ValidationFields()["actorId"]; got != "Authorization actor must be linked to an active Person-Tenant Membership before creating an account" {
-		t.Fatalf("unexpected actor validation: %q", got)
+	if got := validation.ValidationFields()["login"]; got == "" {
+		t.Fatalf("expected login to identify a canonical Person/Membership requirement, got %#v", validation.ValidationFields())
 	}
 }
 
-func TestAuthenticationRejectsDuplicateLoginAndActorAccount(t *testing.T) {
-	database, _, service, actor := authenticationTestService(t)
-	if _, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "duplicate@example.com", TemporaryPassword: "Duplicate-Password-1",
-	}); err != nil {
+func TestAuthenticationReusesExistingAccountForCanonicalPerson(t *testing.T) {
+	database, _, service, _ := authenticationTestService(t)
+	ensureAuthenticationTestPerson(t, database, "duplicate@example.com")
+
+	first, err := service.CreateAccount(context.Background(), CreateAccountRequest{
+		TenantID: appdb.DefaultTenantID, Login: "duplicate@example.com", TemporaryPassword: "Duplicate-Password-1",
+	})
+	if err != nil {
 		t.Fatalf("create initial account: %v", err)
 	}
-	now := time.Now().UTC()
-	secondActor := authz.AuthzActor{
-		ID: "auth-test-actor-two", ActorKey: "auth-test-actor-two@example.com", DisplayName: "Second Authentication Actor",
-		Active: true, CreatedAt: now, UpdatedAt: now,
+	second, err := service.CreateAccount(context.Background(), CreateAccountRequest{
+		TenantID: appdb.DefaultTenantID, Login: "DUPLICATE@example.com", TemporaryPassword: "Unused-Password-2",
+	})
+	if err != nil {
+		t.Fatalf("reuse canonical Person Account: %v", err)
 	}
-	if err := database.Create(&secondActor).Error; err != nil {
-		t.Fatalf("create second actor: %v", err)
-	}
-	if err := authz.GrantRole(database, secondActor.ID, authz.RoleExpenseOperator, appdb.DefaultTenantID); err != nil {
-		t.Fatalf("grant second actor tenant access: %v", err)
-	}
-	if _, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: secondActor.ID, Login: "DUPLICATE@example.com", TemporaryPassword: "Duplicate-Password-2",
-	}); err != ErrLoginAlreadyExists {
-		t.Fatalf("expected case-insensitive duplicate login rejection, got %v", err)
-	}
-	if _, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "other@example.com", TemporaryPassword: "Duplicate-Password-3",
-	}); err != ErrActorAlreadyLinked {
-		t.Fatalf("expected one-account-per-actor rejection, got %v", err)
+	if second.ID != first.ID || second.ActorID != first.ActorID {
+		t.Fatalf("expected one Account/Actor for the same canonical Membership, first=%#v second=%#v", first, second)
 	}
 }
 
 func TestAuthenticationRejectsPasswordBeyondBcryptInputLimit(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	password := strings.Repeat("a", 73)
 	_, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "long-password@example.com", TemporaryPassword: password,
+		TenantID: appdb.DefaultTenantID, Login: "long-password@example.com", TemporaryPassword: password,
 	})
 	var validation *ValidationError
 	if !errors.As(err, &validation) || validation.ValidationFields()["temporaryPassword"] == "" {
@@ -1013,9 +1063,9 @@ func TestAuthenticationRejectsPasswordBeyondBcryptInputLimit(t *testing.T) {
 }
 
 func TestAuthenticationRejectsExpiredPasswordResetToken(t *testing.T) {
-	database, _, service, actor := authenticationTestService(t)
+	database, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "expired-reset@example.com", TemporaryPassword: "Expired-Reset-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "expired-reset@example.com", TemporaryPassword: "Expired-Reset-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -1036,16 +1086,16 @@ func TestAuthenticationRejectsExpiredPasswordResetToken(t *testing.T) {
 	}
 }
 
-func TestAuthenticationAccountCanOptOutOfTemporaryPasswordChange(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+func TestAuthenticationAccountCannotOptOutOfTemporaryPasswordChange(t *testing.T) {
+	_, _, service, _ := authenticationTestService(t)
 	mustChange := false
 	account, err := service.CreateAccount(context.Background(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "permanent@example.com", TemporaryPassword: "Permanent-Password-1", MustChangePassword: &mustChange,
+		TenantID: appdb.DefaultTenantID, Login: "permanent@example.com", TemporaryPassword: "Permanent-Password-1", MustChangePassword: &mustChange,
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
 	}
-	if account.MustChangePassword {
-		t.Fatal("explicit mustChangePassword=false must be persisted")
+	if !account.MustChangePassword {
+		t.Fatal("administrative provisioning must require a first-login password change")
 	}
 }

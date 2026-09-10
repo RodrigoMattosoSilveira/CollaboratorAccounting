@@ -30,8 +30,6 @@ const defaultRequestActor: AuthzAdminRequestActor = {
 const emptyActorForm: CreateAuthzActorInput = {
   actorKey: "",
   displayName: "",
-  personId: "",
-  collaboratorId: "",
   active: true,
 };
 
@@ -127,8 +125,6 @@ export function AuthzAdminPage() {
       const created = await createActorMutation.mutateAsync({
         actorKey: actorForm.actorKey.trim(),
         displayName: actorForm.displayName.trim(),
-        personId: normalizeOptional(actorForm.personId),
-        collaboratorId: normalizeOptional(actorForm.collaboratorId),
         active: true,
       });
       setActorForm(emptyActorForm);
@@ -1047,10 +1043,7 @@ function loadRequestActor(): AuthzAdminRequestActor {
   };
 }
 
-function normalizeOptional(value: string | null | undefined) {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
+
 
 function byCode<T extends { code: string }>(a: T, b: T) {
   return a.code.localeCompare(b.code);

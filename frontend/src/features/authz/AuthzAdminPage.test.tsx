@@ -443,8 +443,6 @@ describe("AuthzAdminPage", () => {
       actorKey: "global-support-e2e",
       displayName: "Global Support E2E",
       active: true,
-      personId: null,
-      collaboratorId: null,
     });
     expect(
       fetchCalls.some((call) => call.url.startsWith("/api/v1/collaborators")),
