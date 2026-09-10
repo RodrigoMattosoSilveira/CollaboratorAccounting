@@ -357,6 +357,7 @@ func installSupportAccessLeaseFixtureTables(t *testing.T, database *gorm.DB) {
 		`CREATE TABLE IF NOT EXISTS person_tenant_memberships (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, person_id TEXT NOT NULL, status_id TEXT NOT NULL, legacy_person_id TEXT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS auth_account_actors (account_id TEXT NOT NULL, actor_id TEXT NOT NULL, scope_type TEXT NOT NULL, tenant_id TEXT NULL, membership_id TEXT NULL, is_primary INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, PRIMARY KEY(account_id, actor_id))`,
 		`CREATE TABLE IF NOT EXISTS auth_account_people (account_id TEXT NOT NULL, person_id TEXT NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, PRIMARY KEY(account_id, person_id))`,
+		`CREATE TABLE IF NOT EXISTS collaborator_journeys (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, membership_id TEXT NOT NULL, journey_start_date DATETIME NOT NULL, created_at DATETIME NOT NULL, closed_at DATETIME NULL)`,
 	}
 	for _, statement := range statements {
 		if err := database.Exec(statement).Error; err != nil {

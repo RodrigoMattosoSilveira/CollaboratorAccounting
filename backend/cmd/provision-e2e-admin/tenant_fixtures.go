@@ -162,7 +162,6 @@ func ensureE2ETenantAdministrator(ctx context.Context, database *gorm.DB, fixtur
 			ID:          fixture.Stem + "-actor",
 			ActorKey:    fixture.ActorKey,
 			DisplayName: fixture.ActorKey,
-			PersonID:    &legacyPersonID,
 			Active:      true,
 			CreatedAt:   now,
 			UpdatedAt:   now,
@@ -177,19 +176,13 @@ func ensureE2ETenantAdministrator(ctx context.Context, database *gorm.DB, fixtur
 				return fmt.Errorf("ensure E2E Tenant Administrator Actor: %w", err)
 			}
 		} else {
-			existingPersonID := ""
-			if existingActor.PersonID != nil {
-				existingPersonID = strings.TrimSpace(*existingActor.PersonID)
-			}
-			if existingPersonID != "" && existingPersonID != person.ID && existingPersonID != legacyPerson.ID {
-				return fmt.Errorf("E2E Tenant Administrator Actor %s is bound to another legacy Person", actor.ID)
-			}
 			if err := tx.Model(&authz.AuthzActor{}).Where("id = ?", actor.ID).Updates(map[string]any{
-				"actor_key":    actor.ActorKey,
-				"display_name": actor.DisplayName,
-				"person_id":    legacyPerson.ID,
-				"active":       true,
-				"updated_at":   now,
+				"actor_key":       actor.ActorKey,
+				"collaborator_id": nil,
+				"display_name":    actor.DisplayName,
+				"person_id":       nil,
+				"active":          true,
+				"updated_at":      now,
 			}).Error; err != nil {
 				return fmt.Errorf("reconcile E2E Tenant Administrator Actor: %w", err)
 			}
@@ -235,10 +228,19 @@ func ensureE2ETenantAdministrator(ctx context.Context, database *gorm.DB, fixtur
 		membershipID := membership.ID
 		accountActor := authentication.AccountActor{
 			AccountID: account.ID, ActorID: actor.ID, ScopeType: authentication.AccountActorScopeTenant,
-			TenantID: &tenantID, MembershipID: &membershipID, Primary: true, CreatedAt: now, UpdatedAt: now,
+			TenantID: &tenantID, MembershipID: &membershipID, Primary: false, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := tx.Where("account_id = ? AND actor_id = ?", account.ID, actor.ID).FirstOrCreate(&accountActor).Error; err != nil {
 			return fmt.Errorf("ensure E2E Tenant Administrator Account/Actor binding: %w", err)
+		}
+		if err := tx.Model(&authentication.AccountActor{}).Where("account_id = ? AND actor_id = ?", account.ID, actor.ID).Updates(map[string]any{
+			"scope_type":    authentication.AccountActorScopeTenant,
+			"tenant_id":     tenantID,
+			"membership_id": membershipID,
+			"is_primary":    false,
+			"updated_at":    now,
+		}).Error; err != nil {
+			return fmt.Errorf("reconcile E2E Tenant Administrator Account/Actor binding: %w", err)
 		}
 
 		if err := authz.GrantRole(tx, actor.ID, authz.RoleTenantAdmin, fixture.TenantID); err != nil {

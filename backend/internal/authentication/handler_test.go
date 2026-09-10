@@ -16,9 +16,9 @@ import (
 )
 
 func TestAuthenticationHandlerIssuesReadsAndClearsSessionCookie(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "cookie@example.com", TemporaryPassword: "Cookie-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "cookie@example.com", TemporaryPassword: "Cookie-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -155,9 +155,9 @@ func TestAuthenticationHandlerMissingSessionProbeReturnsNoContentWithoutClearing
 }
 
 func TestAuthenticationHandlerInactiveAccountLoginReturnsPreciseCodeForVerifiedCredentials(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "inactive-login@example.com", TemporaryPassword: "Inactive-Login-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "inactive-login@example.com", TemporaryPassword: "Inactive-Login-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -199,9 +199,9 @@ func TestAuthenticationHandlerInactiveAccountLoginReturnsPreciseCodeForVerifiedC
 }
 
 func TestAuthenticationHandlerResetReturnsVerifiedAccountIdentity(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "reset-target@example.com", TemporaryPassword: "Original-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "reset-target@example.com", TemporaryPassword: "Original-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -247,9 +247,9 @@ func TestAuthenticationHandlerResetReturnsVerifiedAccountIdentity(t *testing.T) 
 }
 
 func TestAuthenticationHandlerInactiveResetTargetDoesNotClearCallerCookie(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "inactive-reset-handler@example.com", TemporaryPassword: "Inactive-Reset-Handler-1",
+		TenantID: appdb.DefaultTenantID, Login: "inactive-reset-handler@example.com", TemporaryPassword: "Inactive-Reset-Handler-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -308,17 +308,7 @@ func (s *recordingAuthenticationAuditStore) RecordAuthorizationAudit(_ context.C
 func TestAuthenticationHandlerPreservesTargetTenantFromCreateAccountBody(t *testing.T) {
 	database, _, service, _ := authenticationTestService(t)
 	now := time.Now().UTC()
-	status := appdb.ReferenceData{
-		BaseModel: appdb.BaseModel{ID: "handler-target-tenant-status", CreatedAt: now, UpdatedAt: now},
-		TenantID:  appdb.DefaultTenantID,
-		Type:      "person_status",
-		Code:      "ACTIVE",
-		Label:     "Active",
-		Active:    true,
-	}
-	if err := database.Create(&status).Error; err != nil {
-		t.Fatalf("create Person status: %v", err)
-	}
+	status := authenticationTestActivePersonStatus(t, database)
 	person := appdb.Person{
 		BaseModel: appdb.BaseModel{ID: "handler-target-tenant-person", CreatedAt: now, UpdatedAt: now},
 		TenantID:  appdb.DefaultTenantID,
@@ -352,7 +342,7 @@ func TestAuthenticationHandlerPreservesTargetTenantFromCreateAccountBody(t *test
 }
 
 func TestAuthenticationHandlerAuditsAccountCreation(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	auditStore := &recordingAuthenticationAuditStore{}
 	actorStore := fixedAuthenticationActorStore{actor: &authz.Actor{
 		ID: "application-admin", RecordID: "application-admin-record", TenantID: authz.GlobalTenantScope,
@@ -363,7 +353,7 @@ func TestAuthenticationHandlerAuditsAccountCreation(t *testing.T) {
 	app.Post("/accounts", handler.CreateAccount)
 
 	body, _ := json.Marshal(CreateAccountRequest{
-		ActorID: actor.ID, Login: "audited@example.com", TemporaryPassword: "Audited-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "audited@example.com", TemporaryPassword: "Audited-Password-1",
 	})
 	request := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
@@ -386,15 +376,15 @@ func TestAuthenticationHandlerAuditsAccountCreation(t *testing.T) {
 }
 
 func TestAuthenticationHandlerPreventsSelfAccountDeactivation(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "self-admin@example.com", TemporaryPassword: "Self-Admin-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "self-admin@example.com", TemporaryPassword: "Self-Admin-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create self account: %v", err)
 	}
 	actorStore := fixedAuthenticationActorStore{actor: &authz.Actor{
-		ID: "self-admin", RecordID: actor.ID, TenantID: authz.GlobalTenantScope,
+		ID: "self-admin", RecordID: account.ActorID, TenantID: authz.GlobalTenantScope,
 		Scope: authz.ActorScopeApplication, Permissions: map[authz.Permission]struct{}{authz.PermissionAuthzManage: {}},
 	}}
 	handler := NewHandler(service, CookieConfig{}, actorStore, nil)
@@ -425,23 +415,27 @@ func TestAuthenticationHandlerPreventsSelfAccountDeactivation(t *testing.T) {
 func boolPointer(value bool) *bool { return &value }
 
 type tenantOptionAuthenticationActorStore struct {
-	actorRecordID string
-	options       []authz.TenantOption
+	accountID string
+	options   []authz.TenantOption
 }
 
 func (s *tenantOptionAuthenticationActorStore) FindActor(context.Context, authz.ActorLookup) (*authz.Actor, error) {
 	return nil, authz.ErrMissingActor
 }
 
-func (s *tenantOptionAuthenticationActorStore) ListActorTenantOptions(_ context.Context, actorRecordID string) ([]authz.TenantOption, error) {
-	s.actorRecordID = actorRecordID
+func (s *tenantOptionAuthenticationActorStore) FindAccountActor(context.Context, string, string) (*authz.Actor, error) {
+	return nil, authz.ErrTenantActorUnavailable
+}
+
+func (s *tenantOptionAuthenticationActorStore) ListAccountTenantOptions(_ context.Context, accountID string) ([]authz.TenantOption, error) {
+	s.accountID = accountID
 	return s.options, nil
 }
 
 func TestAuthenticationHandlerListsGrantedTenantOptions(t *testing.T) {
-	_, _, service, actor := authenticationTestService(t)
+	_, _, service, _ := authenticationTestService(t)
 	account, err := service.CreateAccount(t.Context(), CreateAccountRequest{
-		ActorID: actor.ID, Login: "tenant-options@example.com", TemporaryPassword: "Tenant-Options-Password-1",
+		TenantID: appdb.DefaultTenantID, Login: "tenant-options@example.com", TemporaryPassword: "Tenant-Options-Password-1",
 	})
 	if err != nil {
 		t.Fatalf("create account: %v", err)
@@ -474,8 +468,8 @@ func TestAuthenticationHandlerListsGrantedTenantOptions(t *testing.T) {
 	if optionsResponse.StatusCode != http.StatusOK {
 		t.Fatalf("expected tenant-options status 200, got %d", optionsResponse.StatusCode)
 	}
-	if store.actorRecordID != actor.ID {
-		t.Fatalf("tenant options resolved actor %q, want %q", store.actorRecordID, actor.ID)
+	if store.accountID != account.ID {
+		t.Fatalf("tenant options resolved Account %q, want %q", store.accountID, account.ID)
 	}
 	var payload struct {
 		Data []authz.TenantOption `json:"data"`

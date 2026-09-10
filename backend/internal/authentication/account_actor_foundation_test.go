@@ -59,8 +59,14 @@ func TestAccountActorFoundationSplitsMultiTenantPersonActorWithoutMovingLegacyGr
 	if accountRecord.GlobalPersonName != "Shared Person" || accountRecord.GlobalPersonEmail != "multi@example.com" {
 		t.Fatalf("expected Authentication Account Person identity, got name=%q email=%q", accountRecord.GlobalPersonName, accountRecord.GlobalPersonEmail)
 	}
+	if accountRecord.GlobalPersonID != personBinding.PersonID {
+		t.Fatalf("expected Account Person binding %q, got %q", personBinding.PersonID, accountRecord.GlobalPersonID)
+	}
 	tenantNames := map[string]string{"tenant-a": "Tenant A", "tenant-b": "Tenant B"}
 	for _, boundActor := range accountRecord.Actors {
+		if boundActor.PersonID != personBinding.PersonID {
+			t.Fatalf("Actor binding must derive canonical Global Person %q from Membership, got %#v", personBinding.PersonID, boundActor)
+		}
 		if boundActor.PersonName != "Shared Person" || boundActor.PersonNickname != "Shared" {
 			t.Fatalf("expected global Person search identity on Actor binding, got %#v", boundActor)
 		}
@@ -198,14 +204,59 @@ func TestAccountActorFoundationMakesApplicationAdministratorGlobalOnly(t *testin
 	if err != nil {
 		t.Fatalf("hydrate global Account Actor binding: %v", err)
 	}
-	if len(record.Actors) != 1 || !record.Actors[0].Primary {
-		t.Fatalf("expected one primary global Actor binding, got %#v", record.Actors)
+	if len(record.Actors) != 1 || record.Actors[0].ActorID != actor.ID {
+		t.Fatalf("expected one canonical global AccountActor binding, got %#v", record.Actors)
+	}
+	if record.Actors[0].Primary {
+		t.Fatalf("Authentication Administration must ignore legacy is_primary, got %#v", record.Actors)
 	}
 	tenantID := "tenant-a"
 	if err := ensureAccountActorBinding(database, AccountActor{
 		AccountID: account.ID, ActorID: "forbidden-tenant-actor", ScopeType: AccountActorScopeTenant, TenantID: &tenantID, CreatedAt: now, UpdatedAt: now,
 	}); err == nil {
 		t.Fatal("Application Administrator Account must not accept a tenant Actor binding")
+	}
+}
+
+func TestAccountHydrationIgnoresLegacySingleActorPointerAndPrimaryFlag(t *testing.T) {
+	database := accountActorFoundationTestDatabase(t)
+	now := time.Now().UTC()
+
+	legacy := authz.AuthzActor{ID: "legacy-pointer-actor", ActorKey: "legacy-pointer", DisplayName: "Legacy Pointer", Active: true, CreatedAt: now, UpdatedAt: now}
+	canonical := authz.AuthzActor{ID: "canonical-bound-actor", ActorKey: "canonical-bound", DisplayName: "Canonical Bound Actor", Active: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&legacy).Error; err != nil {
+		t.Fatalf("create legacy pointer Actor: %v", err)
+	}
+	if err := database.Create(&canonical).Error; err != nil {
+		t.Fatalf("create canonical bound Actor: %v", err)
+	}
+	account := Account{ID: "account-canonical-hydration", ActorID: legacy.ID, Login: "canonical-hydration@example.com", PasswordHash: "hash", Active: true, MustChangePassword: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&account).Error; err != nil {
+		t.Fatalf("create Account with legacy pointer: %v", err)
+	}
+	if err := database.Create(&AccountActor{
+		AccountID: account.ID,
+		ActorID:   canonical.ID,
+		ScopeType: AccountActorScopeGlobal,
+		Primary:   false,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}).Error; err != nil {
+		t.Fatalf("create canonical AccountActor binding: %v", err)
+	}
+
+	record, err := NewRepository(database).FindAccountByID(context.Background(), account.ID)
+	if err != nil {
+		t.Fatalf("hydrate Account from canonical binding: %v", err)
+	}
+	if record.ActorID != canonical.ID || record.ActorKey != canonical.ActorKey || record.DisplayName != canonical.DisplayName {
+		t.Fatalf("Authentication Administration must project canonical AccountActor identity, got %#v", record)
+	}
+	if record.ActorID == legacy.ID || record.ActorKey == legacy.ActorKey {
+		t.Fatalf("legacy auth_user_accounts.actor_id must be inert for hydration: %#v", record)
+	}
+	if len(record.Actors) != 1 || record.Actors[0].ActorID != canonical.ID || record.Actors[0].Primary {
+		t.Fatalf("expected one non-primary canonical binding, got %#v", record.Actors)
 	}
 }
 
@@ -331,7 +382,7 @@ func TestCreatePersonAccountReusesGlobalAccountAndAddsSecondTenantActor(t *testi
 	}
 }
 
-func TestCreateExplicitTenantActorReusesExistingGlobalPersonAccount(t *testing.T) {
+func TestCanonicalProvisioningIgnoresLegacyTenantActorIdentityAndAuthority(t *testing.T) {
 	database := accountActorFoundationTestDatabase(t)
 	now := time.Now().UTC()
 	createFoundationTenantPerson(t, database, "tenant-a", "Tenant A", "person-explicit-a", "33344455566", "explicit@example.com", now)
@@ -341,57 +392,56 @@ func TestCreateExplicitTenantActorReusesExistingGlobalPersonAccount(t *testing.T
 	}
 
 	personA := "person-explicit-a"
-	actorA := authz.AuthzActor{ID: "explicit-actor-a", ActorKey: "explicit-a", DisplayName: "Explicit A", PersonID: &personA, Active: true, CreatedAt: now, UpdatedAt: now}
-	if err := database.Create(&actorA).Error; err != nil {
-		t.Fatalf("create tenant A actor: %v", err)
+	legacyActorA := authz.AuthzActor{ID: "explicit-actor-a", ActorKey: "explicit-a", DisplayName: "Explicit A", PersonID: &personA, Active: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&legacyActorA).Error; err != nil {
+		t.Fatalf("create tenant A legacy actor: %v", err)
 	}
-	if err := authz.GrantRole(database, actorA.ID, authz.RoleExpenseOperator, "tenant-a"); err != nil {
-		t.Fatalf("grant tenant A delegated operator role: %v", err)
+	if err := authz.GrantRole(database, legacyActorA.ID, authz.RoleExpenseOperator, "tenant-a"); err != nil {
+		t.Fatalf("grant tenant A legacy delegated operator role: %v", err)
 	}
 
 	personB := "person-explicit-b"
-	actorB := authz.AuthzActor{ID: "explicit-actor-b", ActorKey: "explicit-b", DisplayName: "Explicit B", PersonID: &personB, Active: true, CreatedAt: now, UpdatedAt: now}
-	if err := database.Create(&actorB).Error; err != nil {
-		t.Fatalf("create tenant B actor: %v", err)
+	legacyActorB := authz.AuthzActor{ID: "explicit-actor-b", ActorKey: "explicit-b", DisplayName: "Explicit B", PersonID: &personB, Active: true, CreatedAt: now, UpdatedAt: now}
+	if err := database.Create(&legacyActorB).Error; err != nil {
+		t.Fatalf("create tenant B legacy actor: %v", err)
 	}
-	if err := authz.GrantRole(database, actorB.ID, authz.RoleExpenseOperator, "tenant-b"); err != nil {
-		t.Fatalf("grant tenant B delegated operator role: %v", err)
-	}
-
-	repository := NewRepository(database)
-	service := NewService(repository, ServiceConfig{SessionTTL: time.Hour, PasswordResetTTL: time.Minute, PasswordHashCost: bcrypt.MinCost})
-	first, err := service.CreateAccount(context.Background(), CreateAccountRequest{ActorID: actorA.ID, Login: "explicit@example.com", TemporaryPassword: "Explicit-Password-1"})
-	if err != nil {
-		t.Fatalf("create first explicit Actor account: %v", err)
-	}
-	second, err := service.CreateAccount(context.Background(), CreateAccountRequest{ActorID: actorB.ID, Login: "explicit@example.com", TemporaryPassword: "Unused-Password-2"})
-	if err != nil {
-		t.Fatalf("bind second explicit Actor to existing account: %v", err)
-	}
-	if first.ID != second.ID {
-		t.Fatalf("explicit Actors for the same global Person must share one Account: first=%s second=%s", first.ID, second.ID)
-	}
-	if len(second.Actors) != 2 {
-		t.Fatalf("expected two explicit tenant Actors on one Account, got %#v", second.Actors)
+	if err := authz.GrantRole(database, legacyActorB.ID, authz.RoleExpenseOperator, "tenant-b"); err != nil {
+		t.Fatalf("grant tenant B legacy delegated operator role: %v", err)
 	}
 
-	var accountCount int64
-	if err := database.Model(&Account{}).Where("login = ? COLLATE NOCASE", "explicit@example.com").Count(&accountCount).Error; err != nil {
-		t.Fatalf("count Authentication Accounts: %v", err)
+	service := NewService(NewRepository(database), ServiceConfig{SessionTTL: time.Hour, PasswordResetTTL: time.Minute, PasswordHashCost: bcrypt.MinCost})
+	first, err := service.CreateAccount(context.Background(), CreateAccountRequest{TenantID: "tenant-a", Login: "explicit@example.com", TemporaryPassword: "Explicit-Password-1"})
+	if err != nil {
+		t.Fatalf("create first canonical Membership account: %v", err)
 	}
-	if accountCount != 1 {
-		t.Fatalf("expected exactly one Authentication Account for the global Person, got %d", accountCount)
+	second, err := service.CreateAccount(context.Background(), CreateAccountRequest{TenantID: "tenant-b", Login: "explicit@example.com", TemporaryPassword: "Unused-Password-2"})
+	if err != nil {
+		t.Fatalf("bind second canonical Membership to existing account: %v", err)
 	}
-	for _, tenantID := range []string{"tenant-a", "tenant-b"} {
-		resolved, err := authz.NewGORMStore(database).FindAccountActor(context.Background(), second.ID, tenantID)
+	if first.ID != second.ID || len(second.Actors) != 2 {
+		t.Fatalf("same global Person must share one Account with two canonical Actors: first=%#v second=%#v", first, second)
+	}
+
+	for _, bound := range second.Actors {
+		if bound.ActorID == legacyActorA.ID || bound.ActorID == legacyActorB.ID {
+			t.Fatalf("canonical provisioning must not reuse a legacy Person-linked Actor: %#v", bound)
+		}
+		var persisted authz.AuthzActor
+		if err := database.First(&persisted, "id = ?", bound.ActorID).Error; err != nil {
+			t.Fatalf("find canonical Actor %s: %v", bound.ActorID, err)
+		}
+		if persisted.PersonID != nil || persisted.CollaboratorID != nil {
+			t.Fatalf("canonical Actor must be identity-neutral: %#v", persisted)
+		}
+		resolved, err := authz.NewGORMStore(database).FindAccountActor(context.Background(), second.ID, bound.TenantID)
 		if err != nil {
-			t.Fatalf("resolve explicit %s Actor: %v", tenantID, err)
+			t.Fatalf("resolve canonical %s Actor: %v", bound.TenantID, err)
 		}
 		if !resolved.HasIntrinsicPermission(authz.PermissionPeopleSelfRead) {
-			t.Fatalf("explicit %s Actor must receive intrinsic self-service from Membership", tenantID)
+			t.Fatalf("canonical %s Actor must derive self-service from Membership", bound.TenantID)
 		}
-		if !resolved.HasPermission(authz.PermissionExpensesCreate) || resolved.HasIntrinsicPermission(authz.PermissionExpensesCreate) {
-			t.Fatalf("delegated Expense Operator authority must remain additive and non-intrinsic: effective=%v intrinsic=%v", authz.PermissionNames(resolved.Permissions), authz.PermissionNames(resolved.IntrinsicPermissions))
+		if resolved.HasPermission(authz.PermissionExpensesCreate) || len(resolved.RoleCodes) != 0 {
+			t.Fatalf("legacy Actor delegated authority must not transfer to canonical AccountActor: %#v", resolved)
 		}
 	}
 }
