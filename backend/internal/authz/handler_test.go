@@ -188,6 +188,7 @@ func TestAuthzAdminCanDeactivateAnotherActor(t *testing.T) {
 
 func TestAuthzAdminCreatesIdentityNeutralActorAndRejectsUnboundTenantGrant(t *testing.T) {
 	database := newAuthzTestDB(t)
+	installTenantRoleDelegationFixtureTables(t, database)
 	adminActorID := createAuthzActor(t, database, "app-admin-tooling@example.com", nil, nil)
 	grantAuthzRole(t, database, adminActorID, RoleApplicationAdmin, GlobalTenantScope)
 	app := newAuthzTestApp(database)
